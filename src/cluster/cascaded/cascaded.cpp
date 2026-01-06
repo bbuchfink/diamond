@@ -118,7 +118,7 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<DbFi
 	const auto algo = from_string<GraphAlgo>(config.graph_algo);
 	const int ccd = round_ccd(round, round_count, config.lin_stage1);
 	return algo == GraphAlgo::GREEDY_VERTEX_COVER ?
-		Util::Algo::greedy_vertex_cover(edge_array, config.weighted_gvc ? member_counts : nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd)
+		Util::Algo::greedy_vertex_cover<SuperBlockId>(edge_array, config.weighted_gvc ? member_counts : nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd)
 		: len_sorted_clust(edge_array);
 	//return Util::Algo::cluster_pr(edge_array);
 }
@@ -133,7 +133,7 @@ static pair<vector<SuperBlockId>, DbFilter> update_clustering(const DbFilter& pr
 }
 
 vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
-	if (db->sequence_count() > (int64_t)numeric_limits<SuperBlockId>::max())
+	if (db->sequence_count() > (uint64_t)numeric_limits<SuperBlockId>::max())
 		throw runtime_error("Workflow supports a maximum of " + to_string(numeric_limits<SuperBlockId>::max()) + " input sequences.");
 	const vector<string> steps = cluster_steps(config.approx_min_id, linear);
 	const double evalue_cutoff = config.max_evalue,

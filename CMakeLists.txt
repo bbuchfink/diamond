@@ -162,11 +162,6 @@ else()
 endif()
 
 check_symbol_exists(sysinfo "sys/sysinfo.h" HAVE_SYSINFO)
-CHECK_INCLUDE_FILE_CXX("memory_resource" HAVE_MEMORY_RESOURCE)
-
-if(HAVE_MEMORY_RESOURCE)
-  add_definitions(-DHAVE_MEMORY_RESOURCE)
-endif()
 
 if(CMAKE_BUILD_MARCH)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${CMAKE_BUILD_MARCH}")
@@ -182,6 +177,7 @@ endif()
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   add_definitions(-D_HAS_STD_BYTE=0)
+  add_definitions(-D_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS)
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -Wreturn-type -Wno-unused -Wno-unused-parameter -Wno-unused-variable -Wno-uninitialized -Wno-deprecated-copy -Wno-unknown-warning-option ")#-g -fsanitize=address -fno-omit-frame-pointer ")
 endif()
@@ -308,6 +304,7 @@ set(OBJECTS
         src/util/io/serializer.cpp
         src/util/io/temp_file.cpp
         src/util/io/text_input_file.cpp
+        src/util/io/file.cpp
         src/data/taxon_list.cpp
         src/data/taxonomy_nodes.cpp
         src/lib/murmurhash/MurmurHash3.cpp
@@ -410,7 +407,6 @@ set(OBJECTS
         src/cluster/external/align.cpp
         src/cluster/external/cluster.cpp
         src/cluster/external/output.cpp
-        src/util/algo/pagerank.cpp
         #src/util/algo/mcl.cpp
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
@@ -420,7 +416,6 @@ set(OBJECTS
         src/data/blastdb/pin.cpp
         src/data/blastdb/pal.cpp
         src/data/blastdb/asn1.cpp
-        src/util/io/mmap.cpp
         src/data/blastdb/blastdb.cpp
 )
 
@@ -471,8 +466,12 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
 endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/src/" "${ZLIB_INCLUDE_DIR}" "${CMAKE_SOURCE_DIR}/src/lib")
-find_package(SQLite3)
-target_link_libraries(diamond SQLite::SQLite3 ${CMAKE_DL_LIBS})
+#find_package(SQLite3)
+#target_link_libraries(diamond SQLite::SQLite3 ${CMAKE_DL_LIBS})
+find_path(${SQLite3_INCLUDE_DIR} NAMES sqlite3.h PATHS ${SQLite3_INCLUDE_DIR})
+find_library(SQLite3_LIBRARY NAMES libsqlite3.a libsqlite3.so)
+target_include_directories(diamond PRIVATE "${SQLite3_INCLUDE_DIR}")
+target_link_libraries(diamond ${SQLite3_LIBRARY} ${CMAKE_DL_LIBS})
 
 if(WITH_ZSTD)
   find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})

@@ -48,7 +48,7 @@ using Acc = string;
 
 void greedy_vertex_cover() {
 	config.database.require();
-	using Int = int64_t;
+	using Int = uint64_t;
 	using Edge = Util::Algo::Edge<Int>;
 	const double cov = std::max(config.query_or_target_cover, config.member_cover.get(Cluster::DEFAULT_MEMBER_COVER));
 	const bool triplets = config.edge_format == "triplet", symmetric = config.symmetric;
@@ -151,7 +151,7 @@ void greedy_vertex_cover() {
 	timer.finish();
 	log_rss();
 
-	auto r = Util::Algo::greedy_vertex_cover(edge_array, nullptr, !config.strict_gvc, !config.no_gvc_reassign, (Int)atoi(config.connected_component_depth.front().c_str()));
+	auto r = Util::Algo::greedy_vertex_cover<Int>(edge_array, nullptr, !config.strict_gvc, !config.no_gvc_reassign, (Int)atoi(config.connected_component_depth.front().c_str()));
 
 	timer.go("Building reverse mapping");
 	vector<string> acc(acc2oid.size());

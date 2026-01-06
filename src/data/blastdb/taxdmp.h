@@ -52,7 +52,7 @@ template<typename F>
 inline void read_names_dmp(const std::string& file_name, F& f) {
 	TextInputFile in(file_name);
 	std::string name, type;
-	int64_t id;
+	TaxId id;
 	while (in.getline(), !in.eof()) {
 		if (in.line.empty())
 			continue;

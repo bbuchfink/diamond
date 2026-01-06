@@ -30,7 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <chrono>
 #include <random>
-#include "util/memory_resource.h"
+#include "util/memory/memory_resource.h"
 #include "basic/sequence.h"
 #include "stats/score_matrix.h"
 #include "dp/score_vector.h"
@@ -503,7 +503,7 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 10000llu;
 	high_resolution_clock::time_point t1 = high_resolution_clock::now();
 	vector<MatrixFloat> mat_final(TRUE_AA * TRUE_AA);
-	int iteration_count;
+	//int iteration_count;
 	const MatrixFloat* joint_probs = (const MatrixFloat*)(Stats::blosum62.joint_probs);
 	auto row_probs = Stats::composition(s1), col_probs = Stats::composition(s2);
 	/*f or (int i = 0; i < 20; ++i)

@@ -49,12 +49,16 @@ struct HitField {
         data_.assign(query_count * words_per_query_, 0ULL);
     }
 
-    void set(size_t query, size_t target, bool v) noexcept {
+    void set(uint_fast32_t query, uint_fast32_t target, bool v) noexcept {
         const size_t bit = (query << shift_) | target;
         const size_t w = bit >> 6;
         const uint64_t m = 1ULL << (bit & 63);
         uint64_t& word = data_[w];
+#ifdef _MSC_VER
+        word ^= ((0 - (uint64_t)v) ^ word) & m;
+#else
         word ^= (-(uint64_t)v ^ word) & m;
+#endif       
     }
 
     const vector<uint_fast32_t>& hits(size_t query) {

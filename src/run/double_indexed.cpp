@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -335,15 +335,15 @@ static void run_query_iteration(const unsigned query_iteration,
 	log_rss();
 	bool mp_last_chunk = false;
 	//const bool lazy_masking = config.algo == ::Config::Algo::QUERY_INDEXED && (config.masking == 1 || config.target_seg == 1) && (config.global_ranking_targets == 0);
-	SequenceFile::LoadFlags load_flags = SequenceFile::LoadFlags::SEQS;
-	if (!flag_any(db_file.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY) || config.no_self_hits)
-		load_flags |= SequenceFile::LoadFlags::TITLES;
+	db_file.flags() |= SequenceFile::Flags::SEQS;
+	if ((!flag_any(db_file.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY) && bool(options.output_format->flags & Output::Flags::SSEQID)) || config.no_self_hits)
+		db_file.flags() |= SequenceFile::Flags::TITLES;
 	if (options.lazy_masking)
-		load_flags |= SequenceFile::LoadFlags::LAZY_MASKING;
+		db_file.flags() |= SequenceFile::Flags::LAZY_MASKING;
 	if (bool(options.output_format->flags & Output::Flags::FULL_TITLES))
-		load_flags |= SequenceFile::LoadFlags::FULL_TITLES;
+		db_file.flags() |= SequenceFile::Flags::FULL_TITLES;
 	if (bool(options.output_format->flags & Output::Flags::ALL_SEQIDS))
-		load_flags |= SequenceFile::LoadFlags::ALL_SEQIDS;
+		db_file.flags() |= SequenceFile::Flags::ALL_SEQIDS;
 
 	if (config.multiprocessing) {
 		db_file.set_seqinfo_ptr(0);
@@ -365,7 +365,7 @@ static void run_query_iteration(const unsigned query_iteration,
 
 			P->log("SEARCH BEGIN " + std::to_string(options.current_query_block) + " " + std::to_string(chunk.i));
 
-			options.target.reset(db_file.load_seqs((size_t)(0), &options.db_filter->oid_filter, load_flags, chunk));
+			options.target.reset(db_file.load_seqs((size_t)(0), &options.db_filter->oid_filter, chunk));
 			options.current_ref_block = chunk.i;
 			options.blocked_processing = true;
 			if (!config.mp_self || chunk.i >= options.current_query_block)
@@ -415,7 +415,11 @@ static void run_query_iteration(const unsigned query_iteration,
 			}
 			else {
 				timer.go("Loading reference sequences");
-				options.target.reset(db_file.load_seqs(config.block_size(), &options.db_filter->oid_filter, load_flags));
+				options.target.reset(db_file.load_seqs(config.block_size(), &options.db_filter->oid_filter));
+				const auto t = timer.microseconds();
+				timer.finish();				
+				if(options.target->raw_bytes() > 0)
+					message_stream << "Loaded " << options.target->raw_bytes() << " bytes from disk at " << ((double)options.target->raw_bytes() / MEGABYTES / t * 1e6) << " MB/s" << endl;
 			}
 			if (options.current_ref_block == 0) {
 				const int64_t db_seq_count = options.db_filter ? options.db_filter->oid_filter.one_count() : options.db->sequence_count();
@@ -613,6 +617,14 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		db_file->create_partition_balanced((size_t)(config.chunk_size*1e9));
 	}
 
+	SequenceFile::Flags qflags = SequenceFile::Flags::ALL;
+	if (bool(options.output_format->flags & Output::Flags::FULL_TITLES))
+		qflags |= SequenceFile::Flags::FULL_TITLES;
+	if (bool(options.output_format->flags & Output::Flags::ALL_SEQIDS))
+		qflags |= SequenceFile::Flags::ALL_SEQIDS;
+	if (config.store_query_quality)
+		qflags |= SequenceFile::Flags::QUALITY;
+
 	TaskTimer timer("Opening the input file", true);
 	if (!options.self) {
 		if (config.query_file.empty() && !options.query_file) {
@@ -620,37 +632,32 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			config.query_file.push_back("");
 		}
 		if (!options.query_file)
-			options.query_file.reset(new FastaFile(config.query_file, SequenceFile::Metadata(), SequenceFile::Flags(), input_value_traits));
+			options.query_file.reset(new FastaFile(config.query_file, qflags, input_value_traits));
 	}
 
 	options.current_query_block = 0;
 	OId query_file_offset = 0;
-	SequenceFile::LoadFlags load_flags = SequenceFile::LoadFlags::ALL;
-	if (bool(options.output_format->flags & Output::Flags::FULL_TITLES))
-		load_flags |= SequenceFile::LoadFlags::FULL_TITLES;
-	if (bool(options.output_format->flags & Output::Flags::ALL_SEQIDS))
-		load_flags |= SequenceFile::LoadFlags::ALL_SEQIDS;
-	if (config.store_query_quality)
-		load_flags |= SequenceFile::LoadFlags::QUALITY;
-	if (config.command == ::Config::blastn)
-		load_flags |= SequenceFile::LoadFlags::DNA_PRESERVATION;
+		
 	if (config.multiprocessing && config.mp_init) {
 		TaskTimer timer("Counting query blocks", true);
 
 		size_t block_count = 0;
 		do {
 			if (options.self) {
-				db_file->set_seqinfo_ptr(query_file_offset);				
-				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), &options.db_filter->oid_filter, load_flags));
+				db_file->set_seqinfo_ptr(query_file_offset);
+				db_file->flags() |= qflags;
+				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), &options.db_filter->oid_filter));
 				query_file_offset = db_file->tell_seq();
-			} else
-				options.query.reset(options.query_file->load_seqs((int64_t)(config.chunk_size * 1e9), nullptr, load_flags));
+			}
+			else
+				options.query.reset(options.query_file->load_seqs((int64_t)(config.chunk_size * 1e9), nullptr));
 			++block_count;
 		} while (!options.query->empty());
 		if (options.self) {
 			db_file->set_seqinfo_ptr(0);
 			query_file_offset = 0;
-		} else {
+		}
+		else {
 			options.query_file->set_seqinfo_ptr(0);
 		}
 
@@ -682,12 +689,13 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			db_file->set_seqinfo_ptr(query_file_offset);
 			timer.finish();
 			timer.go("Loading query sequences");
-			options.query.reset(db_file->load_seqs(config.block_size(), &options.db_filter->oid_filter, load_flags));
+			db_file->flags() |= qflags;
+			options.query.reset(db_file->load_seqs(config.block_size(), &options.db_filter->oid_filter));
 			query_file_offset = db_file->tell_seq();
 		}
 		else {
 			timer.go("Loading query sequences");
-			options.query.reset(options.query_file->load_seqs(config.block_size(), nullptr, load_flags));
+			options.query.reset(options.query_file->load_seqs(config.block_size(), nullptr));
 		}
 		timer.finish();
 
@@ -777,18 +785,16 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
 	const bool taxon_culling = config.taxon_k != 0;
-	SequenceFile::Metadata metadata_flags = SequenceFile::Metadata();
-	if (cfg.output_format->needs_taxon_id_lists || taxon_filter || taxon_culling)
-		metadata_flags |= SequenceFile::Metadata::TAXON_MAPPING;
-	if (cfg.output_format->needs_taxon_nodes || taxon_filter || taxon_culling)
-		metadata_flags |= SequenceFile::Metadata::TAXON_NODES;
-	if (cfg.output_format->needs_taxon_scientific_names)
-		metadata_flags |= SequenceFile::Metadata::TAXON_SCIENTIFIC_NAMES;
-	if (cfg.output_format->needs_taxon_ranks || taxon_culling)
-		metadata_flags |= SequenceFile::Metadata::TAXON_RANKS;
-
-	TaskTimer timer;
 	SequenceFile::Flags flags(SequenceFile::Flags::NEED_LETTER_COUNT);
+	if (cfg.output_format->needs_taxon_id_lists || taxon_filter || taxon_culling)
+		flags |= SequenceFile::Flags::TAXON_MAPPING;
+	if (cfg.output_format->needs_taxon_nodes || taxon_filter || taxon_culling)
+		flags |= SequenceFile::Flags::TAXON_NODES;
+	if (cfg.output_format->needs_taxon_scientific_names)
+		flags |= SequenceFile::Flags::TAXON_SCIENTIFIC_NAMES;
+	if (cfg.output_format->needs_taxon_ranks || taxon_culling)
+		flags |= SequenceFile::Flags::TAXON_RANKS;
+
 	if (flag_any(cfg.output_format->flags, Output::Flags::ALL_SEQIDS))
 		flags |= SequenceFile::Flags::ALL_SEQIDS;
 	if (flag_any(cfg.output_format->flags, Output::Flags::FULL_TITLES) || config.no_self_hits)
@@ -804,6 +810,8 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 	if (!config.seqidlist.empty())
 		flags |= SequenceFile::Flags::NEED_LENGTH_LOOKUP;
 
+	TaskTimer timer;
+
 	if (db) {
 		cfg.db = db;
 		if (!query)
@@ -811,7 +819,7 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 	}
 	else {
 		timer.go("Opening the database");
-		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, metadata_flags, value_traits));
+		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, value_traits));
 		timer.finish();
 	}
 	if (config.multiprocessing && cfg.db->type() == SequenceFile::Type::FASTA)

@@ -97,7 +97,7 @@ int run() {
 	TaskTimer timer("Generating test dataset");
 	FastaFile proteins("test1", true, FastaFile::WriteAccess());
 	
-	shared_ptr<SequenceFile> query_file(new FastaFile("test2", true, FastaFile::WriteAccess())), db(new FastaFile("test3", true, FastaFile::WriteAccess()));
+	shared_ptr<SequenceFile> query_file(new FastaFile("test2", true, FastaFile::WriteAccess(), SequenceFile::Flags::ALL)), db(new FastaFile("test3", true, FastaFile::WriteAccess(), SequenceFile::Flags::ALL));
 	load_seqs(*query_file);
 	load_seqs(*db);
 	timer.finish();

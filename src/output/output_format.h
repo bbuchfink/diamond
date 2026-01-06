@@ -49,7 +49,7 @@ struct Info {
 	SequenceFile* db;
 	TextBuffer& out;
 	Util::Seq::AccessionParsing acc_stats;
-	int64_t db_seqs, db_letters;
+	uint64_t db_seqs, db_letters;
 };
 
 }

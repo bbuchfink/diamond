@@ -56,7 +56,7 @@ void realign() {
 		dynamic_cast<TabularFormat*>(output_format.get())->output_header(out, true);
 
 	timer.go("Opening the database");
-	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING, SequenceFile::Metadata()));
+	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING));
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
 	config.max_evalue = DBL_MAX;
 	timer.finish();

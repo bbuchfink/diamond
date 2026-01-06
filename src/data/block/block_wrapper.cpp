@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -33,8 +33,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using std::vector;
 using std::string;
 
-BlockWrapper::BlockWrapper(const Block& block, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
-	SequenceFile(SequenceFile::Type::BLOCK, flags, FormatFlags::LENGTH_LOOKUP | FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE, metadata, value_traits),
+BlockWrapper::BlockWrapper(const Block& block, Flags flags, const ValueTraits& value_traits) :
+	SequenceFile(SequenceFile::Type::BLOCK, flags, FormatFlags::LENGTH_LOOKUP | FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE, value_traits),
 	block_(block),
 	oid_(0)
 {
@@ -132,11 +132,11 @@ void BlockWrapper::read_id_data(const int64_t oid, char* dst, size_t len, bool a
 void BlockWrapper::skip_id_data() {
 }
 
-int64_t BlockWrapper::sequence_count() const {
+uint64_t BlockWrapper::sequence_count() const {
 	return block_.seqs().size();
 }
 
-int64_t BlockWrapper::letters() const {
+uint64_t BlockWrapper::letters() const {
 	return block_.seqs().letters();
 }
 

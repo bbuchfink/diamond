@@ -29,30 +29,32 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "output_file.h"
+#include <string>
 
-struct TempFileHandler {
-	void init(const char* path);
-private:
-	const std::string path_;
-};
+struct Temporary {};
 
-extern TempFileHandler temp_file_handler;
+struct File {
 
-struct TempFile : public OutputFile
-{
-
-	TempFile(bool unlink = true);
-	TempFile(const std::string & file_name);
-	TempFile(const TempFileData& d);
-	virtual void finalize() override {}
-	static std::string get_temp_dir();
-	static unsigned n;
-	static uint64_t hash_key;
-	bool unlinked;
-
-	static TempFileData init(bool unlink);
+	File(Temporary);
+	File(const std::string& name);
+	File(const File&) = delete;
+	File& operator= (const File&) = delete;
+	File(File&& f) noexcept;
+	File& operator=(File&& f) noexcept;
+	void close();
+	~File();
+	void write(const void* ptr, size_t n);
+	void seek(int64_t p, int origin);
+	int64_t tell();
+	int64_t size();
+	FILE* file();
+	void read(void* ptr, size_t n);
+	const char* read(size_t n);
 
 private:
+
+	FILE* file_ = nullptr;
+	bool auto_delete_, unlinked_;
+	std::string file_name_;
 
 };

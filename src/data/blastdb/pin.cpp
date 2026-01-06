@@ -28,60 +28,177 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <set>
 #include <assert.h>
 #include "volume.h"
 #include "ber.h"
 
-using ByteView = MappedFile::View;
+using std::set;
+using std::vector;
 using std::runtime_error;
+using std::string;
+using std::unordered_map;
 
-PinIndex Volume::ParsePinFile(const MappedFile& mapping)
+PinIndex Volume::ParsePinFile(File& mapping, bool load_index)
 {
-    const ByteView data = mapping.view();
-    std::size_t offset = 0;
+    size_t offset = 0;
 
-    PinIndex index;
-    index.version = ReadBE32(data, offset);
+    PinIndex index;    
+    index.version = ReadBE32(mapping);
     if (index.version != 4 && index.version != 5) {
         throw runtime_error("Unsupported database format version: " + std::to_string(index.version));
     }
 
-    const std::uint32_t seq_type_flag = ReadBE32(data, offset);
+    const uint32_t seq_type_flag = ReadBE32(mapping);
     index.is_protein = (seq_type_flag == 1);
 
-    if (index.version == 5) {
-        index.volume_number = ReadBE32(data, offset);
-    }
+    if (index.version == 5)
+        index.volume_number = ReadBE32(mapping);
+    index.title = ReadPascalString(mapping);
 
-    index.title = ReadPascalString(data, offset);
+    if (index.version == 5)
+        index.lmdb_file = ReadPascalString(mapping);
 
-    if (index.version == 5) {
-        index.lmdb_file = ReadPascalString(data, offset);
-    }
+    index.date = ReadPascalString(mapping);
+    index.num_oids = ReadBE32(mapping);    
+    index.total_length = ReadLE64(mapping);    
+    index.max_length = ReadBE32(mapping);
+    //index.pin_length = data.size();
+    if (!load_index)
+        return index;
 
-    index.date = ReadPascalString(data, offset);
+    const size_t count = static_cast<std::size_t>(index.num_oids) + 1;
+	index.header_index.reserve(count);
+	index.sequence_index.reserve(count);
+    for (size_t i = 0; i < count; ++i)
+        index.header_index.push_back(ReadBE32(mapping));
 
-    index.num_oids = ReadBE32(data, offset);
-    index.total_length = ReadLE64(data, offset);
-    index.max_length = ReadBE32(data, offset);
-    index.pin_length = data.size();
-
-    const std::size_t count = static_cast<std::size_t>(index.num_oids) + 1;
-    const auto offsets_size = count * sizeof(std::uint32_t);
-    auto reserve_offset_array = [&](std::size_t& target) {
-        if (offset + offsets_size > data.size()) {
-            throw runtime_error("Offset array exceeds PIN file size");
-        }
-        target = offset;
-        offset += offsets_size;
-        };
-
-    reserve_offset_array(index.header_offsets_offset);
-    reserve_offset_array(index.sequence_offsets_offset);
+    for (size_t i = 0; i < count; ++i)
+        index.sequence_index.push_back(ReadBE32(mapping));
 
     if (!index.is_protein) {
-        reserve_offset_array(index.ambiguity_offsets_offset);
+        //reserve_offset_array(index.ambiguity_offsets_offset);
     }
 
     return index;
+}
+
+Volume::Volume(const string& path, int idx, OId begin, OId end, bool load_index) :
+    phr_mapping_(path + ".phr"),
+    psq_mapping_(path + ".psq"),
+    idx(idx),
+    begin(begin),
+    end(end)
+{
+	File pin(path + ".pin");
+    index_ = Volume::ParsePinFile(pin, load_index);
+    pin.close();        
+}
+
+Volume::RawChunk* Volume::raw_chunk(size_t letters, SequenceFile::Flags flags) {
+    uint32_t begin = hdr_ptr_;
+    if (!bool(flags & SequenceFile::Flags::SEQS)) {
+        if(seq_ptr_ != 0)
+			throw runtime_error("Volume::raw_chunk");
+    } else if (!bool(flags & SequenceFile::Flags::TITLES | flags & SequenceFile::Flags::TAXON_MAPPING)) {
+        if (hdr_ptr_ != 0)
+            throw runtime_error("Volume::raw_chunk");
+		begin = seq_ptr_;
+    }
+    else if (hdr_ptr_ != seq_ptr_)
+        throw runtime_error("Cannot read raw chunk: last accessed header and sequence OIDs do not match");
+    uint32_t end = begin;
+    size_t l = 0;
+    while (end < index_.num_oids && l < letters) {
+        l += length(end);
+        ++end;
+    }
+    RawChunk* chunk = new RawChunk();
+    chunk->letters_ = l;
+	chunk->begin_ = begin + this->begin;
+    chunk->end_ = end + this->begin;
+    const uint32_t n = end - begin;
+    if (n == 0)
+        return chunk;
+    if (bool(flags & SequenceFile::Flags::TITLES | flags & SequenceFile::Flags::TAXON_MAPPING)) {
+        chunk->phr_index.assign(index_.header_index.begin() + hdr_ptr_, index_.header_index.begin() + hdr_ptr_ + n + 1);
+        chunk->phr_data = raw_deflines(n);
+    }
+    if (bool(flags & SequenceFile::Flags::SEQS)) {
+        chunk->seq_index.assign(index_.sequence_index.begin() + seq_ptr_, index_.sequence_index.begin() + seq_ptr_ + n + 1);
+        chunk->seq_data = raw_sequence(n);
+    }
+    return chunk;
+}
+
+static bool acc_filter(const vector<BlastDefLine>& deflines, unordered_map<std::string, bool>& accs) {
+    for (const auto& d : deflines) {
+        for (const auto& s : d.seqids) {
+            auto it = accs.find(s.value);
+            if (it == accs.end() && (s.version || s.chain))
+                it = accs.find(format_seqid(s));
+            if (it != accs.end()) {
+                it->second = true;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+DecodedPackage* Volume::RawChunk::decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<std::string, bool>* accs) const {
+    assert(filter == nullptr || accs == nullptr);
+    DecodedPackage* pkg = new DecodedPackage();
+    pkg->no = no;
+	const size_t n = end_ - begin_;
+    const char* seq_ptr = seq_data.data(), *phr_ptr = phr_data.data();
+    const bool titles = bool(flags & SequenceFile::Flags::TITLES), seqs = bool(flags & SequenceFile::Flags::SEQS), taxids = bool(flags & SequenceFile::Flags::TAXON_MAPPING),
+        full_titles = bool(flags & SequenceFile::Flags::FULL_TITLES), all_seqids = bool(flags & SequenceFile::Flags::ALL_SEQIDS);
+    pkg->oids.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        const OId oid = begin_ + i;
+        bool f = !filter || filter->get(oid);
+        
+        if (titles || taxids || accs) {
+            const size_t lhdr = phr_index[i + 1] - phr_index[i];
+            if (f || accs) {
+                const vector<BlastDefLine> deflines = decode_deflines(phr_ptr, lhdr, all_seqids, full_titles, taxids);
+                if (accs)
+                    f = acc_filter(deflines, *accs);
+                if (f && titles) {
+                    const string title = build_title(deflines, "\1", true);
+                    pkg->ids.push_back(title.begin(), title.end());
+                }
+                if (f && taxids) {
+                    set<TaxId> s;
+                    for (auto j = deflines.begin(); j != deflines.end(); ++j)
+                        if (j->taxid)
+                            s.insert(j->taxid.value());
+                    for (TaxId t : s)
+                        pkg->taxids.emplace_back(oid, t);
+                }
+            }
+            phr_ptr += lhdr;
+        }
+           
+        if (seqs) {
+            const size_t lseq = seq_index[i + 1] - seq_index[i];
+            if (f) {
+                const vector<Letter> seq = decode_protein_sequence(seq_ptr, lseq);
+                pkg->seqs.push_back(seq.begin(), seq.end());
+            }
+            seq_ptr += lseq;
+        }
+
+        if (f)
+            pkg->oids.push_back(oid);
+    }
+    return pkg;
+}
+
+void Volume::rewind() {
+    hdr_ptr_ = 0;
+    seq_ptr_ = 0;
+	phr_mapping_.seek(0, SEEK_SET);
+	psq_mapping_.seek(0, SEEK_SET);
 }

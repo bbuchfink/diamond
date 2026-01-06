@@ -28,33 +28,66 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
-#pragma once
-
-#if HAVE_MEMORY_RESOURCE
-#include <memory_resource>
-#else
-#include <list>
 #include <vector>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <functional>
+#include <exception>
 
-namespace std { namespace pmr {
+struct SimpleThreadPool {
 
-struct monotonic_buffer_resource {};
-
-template<typename T>
-struct list : public std::list<T> {
-    list(monotonic_buffer_resource*):
-        std::list<T>()
-    { }
-};
-
-template<typename T>
-struct vector : public std::vector<T> {
-    vector(monotonic_buffer_resource*) :
-        std::vector<T>()
-    {
+    const std::atomic<bool>& stop() const {
+        return stop_flag;
     }
+
+    ~SimpleThreadPool() {
+        stop_flag = true;
+        for (auto& t : threads) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+    }
+
+    template <typename Func>
+    void spawn(Func&& func) {
+        std::lock_guard<std::mutex> lock(data_mutex);
+
+        threads.emplace_back([this, task = std::forward<Func>(func)]() {
+            try {
+                task(static_cast<const std::atomic<bool>&>(stop_flag));
+            }
+            catch (...) {
+                std::lock_guard<std::mutex> lock(data_mutex);
+                if (!first_exception) {
+                    first_exception = std::current_exception();
+                    stop_flag = true;
+                }
+            }
+            });
+    }
+
+    void join_all() {
+        for (auto& t : threads) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+        if (first_exception) {
+            std::rethrow_exception(first_exception);
+        }
+    }
+
+    void request_stop() {
+        stop_flag = true;
+    }
+
+private:
+
+    std::vector<std::thread> threads;
+    std::atomic<bool> stop_flag{ false };
+    std::exception_ptr first_exception = nullptr;
+    std::mutex data_mutex;
+
 };
-
-}}
-
-#endif

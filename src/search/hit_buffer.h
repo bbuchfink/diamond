@@ -36,7 +36,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include "basic/config.h"
 #include "hit.h"
-#include "util/io/temp_file.h"
+#include "util/io/file.h"
 #include "util/io/compressed_buffer.h"
 
 namespace Search {
@@ -133,7 +133,7 @@ struct HitBuffer
 				text_buffer_[bin].finish();
 				if (text_buffer_[bin].size() == 0)
 					return;
-				TmpFile& tmp_file = parent_.tmp_file_[bin];
+				File& tmp_file = parent_.tmp_file_[bin];
 				{
 					std::lock_guard<std::mutex> lock(parent_.bin_mutex_[bin]);
 					tmp_file.write(text_buffer_[bin].data(), text_buffer_[bin].size());
@@ -174,7 +174,7 @@ struct HitBuffer
 				load_worker_->join();
 				delete load_worker_;
 				load_worker_ = nullptr;
-			}			
+			}
 			return std::tuple<Hit*, size_t, Key, Key> { data_next_, data_size_next_, input_range_next_.first, input_range_next_.second };
 		}
 	}
@@ -200,7 +200,7 @@ private:
 	int bins_processed_;
 	int64_t total_disk_size_;
 	std::vector<std::vector<Hit>> hit_buf_;
-	std::vector<TmpFile> tmp_file_;
+	std::vector<File> tmp_file_;
 	std::vector<std::mutex> bin_mutex_;
 	std::atomic_size_t *count_;
 	std::pair<Key, Key> input_range_next_;

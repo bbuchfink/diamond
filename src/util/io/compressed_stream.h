@@ -58,4 +58,4 @@ private:
 	z_stream strm;
 };
 
-size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept;
+size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity);

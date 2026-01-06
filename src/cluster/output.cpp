@@ -123,14 +123,14 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	TaskTimer timer;
 	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, db };
 
-	SequenceFile::LoadFlags flags = SequenceFile::LoadFlags::SEQS;
+	db.flags() |= SequenceFile::Flags::SEQS;
 	if (!cfg.lazy_titles)
-		flags |= SequenceFile::LoadFlags::TITLES;
+		db.flags() |= SequenceFile::Flags::TITLES;
 
 	while (centroid_offset < db.sequence_count()) {
 		timer.go("Loading centroid block");
 		db.set_seqinfo_ptr(centroid_offset);
-		cfg.centroid_block.reset(db.load_seqs(block_size, nullptr, flags));
+		cfg.centroid_block.reset(db.load_seqs(block_size, nullptr));
 		centroid_offset = db.tell_seq();
 
 		db.set_seqinfo_ptr(0);
@@ -145,7 +145,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 				cfg.member_block = cfg.centroid_block;
 			else {
 				timer.go("Loading member block");
-				cfg.member_block.reset(db.load_seqs(block_size, nullptr, flags));
+				cfg.member_block.reset(db.load_seqs(block_size, nullptr));
 			}
 			if (cfg.member_block->empty())
 				break;

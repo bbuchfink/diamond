@@ -78,7 +78,7 @@ static void all_vs_all_self_mutual_cov(const PackedLocId* q, const array<char, 4
 	}
 }
 
-static void FLATTEN stage1_mutual_cov(const PackedLocId* q, int32_t nq, const PackedLocId* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_mutual_cov(const PackedLocId* q, uint_fast32_t nq, const PackedLocId* s, uint_fast32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vq, vs;
@@ -86,15 +86,15 @@ static void FLATTEN stage1_mutual_cov(const PackedLocId* q, int32_t nq, const Pa
 	Container& vq = work_set.vq, & vs = work_set.vs;
 #endif
 
-	const int32_t tile_size = config.tile_size;
+	const uint_fast32_t tile_size = config.tile_size;
 	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 	work_set.stats.inc(Statistics::SEED_HITS, nq * ns);
 	::DISPATCH_ARCH::load_fps(q, nq, vq, work_set.cfg.query->seqs());
-	const int32_t qs = (int32_t)vq.size(), ss = (int32_t)vs.size();
-	for (int32_t i = 0; i < qs; i += tile_size) {
-		for (int32_t j = 0; j < ss; j += tile_size) {
-			const size_t tq = std::min(tile_size, qs - i);
-			const size_t ts = std::min(tile_size, ss - j);
+	const uint_fast32_t qs = (uint_fast32_t)vq.size(), ss = (uint_fast32_t)vs.size();
+	for (uint_fast32_t i = 0; i < qs; i += tile_size) {
+		for (uint_fast32_t j = 0; j < ss; j += tile_size) {
+			const uint_fast32_t tq = std::min(tile_size, qs - i);
+			const uint_fast32_t ts = std::min(tile_size, ss - j);
 			work_set.hits.init(tq, ts);
 			all_vs_all_mutual_cov(q + i, s + j, vq.data() + i, tq, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id, work_set);
 			search_tile(work_set.hits, i, j, q, s, work_set);
@@ -102,7 +102,7 @@ static void FLATTEN stage1_mutual_cov(const PackedLocId* q, int32_t nq, const Pa
 	}
 }
 
-static void FLATTEN stage1_self_mutual_cov(const PackedLocId* q, int32_t nq, const PackedLocId* s, int32_t ns, WorkSet& work_set)
+static void FLATTEN stage1_self_mutual_cov(const PackedLocId* q, uint_fast32_t nq, const PackedLocId* s, uint_fast32_t ns, WorkSet& work_set)
 {
 #ifdef __APPLE__
 	thread_local Container vs;
@@ -113,7 +113,7 @@ static void FLATTEN stage1_self_mutual_cov(const PackedLocId* q, int32_t nq, con
 	::DISPATCH_ARCH::load_fps(s, ns, vs, work_set.cfg.target->seqs());
 
 	//work_set.stats.inc(Statistics::SEED_HITS, ns * (ns - 1) / 2);
-	const int32_t ss = (int32_t)vs.size();
+	const uint_fast32_t ss = (uint_fast32_t)vs.size();
 	work_set.hits.init(ss, ss);
 	all_vs_all_self_mutual_cov(s, vs.data(), ss, work_set.hits, work_set.cfg.hamming_filter_id, work_set);
 	search_tile(work_set.hits, 0, 0, s, s, work_set);

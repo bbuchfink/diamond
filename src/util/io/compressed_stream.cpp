@@ -145,11 +145,11 @@ void ZlibSink::close()
 	prev_->close();
 }
 
-size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
+size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) {
     z_stream zs{};
     int ret = inflateInit2(&zs, 15 + 32);	
     if (ret != Z_OK)
-		hard_fail("inflateInit2");
+		throw std::runtime_error("inflateInit2");
     const size_t inChunkSize = 64 * 1024;
     std::vector<unsigned char> in(inChunkSize);
     unsigned char* outBase = static_cast<unsigned char*>(dst);
@@ -158,7 +158,7 @@ size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 	for (;;) {
 		size_t rd = std::fread(in.data(), 1, in.size(), src);
 		if (std::ferror(src))
-			hard_fail(string("Error reading file: ") + strerror(errno));
+			throw std::runtime_error(string("Error reading file: ") + strerror(errno));
 		zs.next_in = in.data();
 		zs.avail_in = static_cast<uInt>(rd);
 		while (zs.avail_in > 0) {
@@ -171,7 +171,7 @@ size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 				if (z == Z_STREAM_END) {
 					endedLastStream = true;
 #if ZLIB_VERNUM >= 0x1270
-					if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset2"); }
+					if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); throw std::runtime_error("inflateReset2"); }
 #else
 					if (inflateReset(&zs) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset"); }
 #endif
@@ -179,13 +179,13 @@ size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 				}
 				if (z == Z_OK && zs.avail_out == 0) {
 					inflateEnd(&zs);
-					hard_fail("zlib_decompress: output buffer too small");
+					throw std::runtime_error("zlib_decompress: output buffer too small");
 				}
 				if (z == Z_BUF_ERROR && zs.avail_in == 0) {
 					break;
 				}
 				inflateEnd(&zs);
-				hard_fail(std::string("Error during zlib decompression: ") + (zs.msg ? zs.msg : "unknown error"));
+				throw std::runtime_error(std::string("Error during zlib decompression: ") + (zs.msg ? zs.msg : "unknown error"));
 			}
 			zs.next_out = outBase + totalOut;
 			zs.avail_out = outChunk;
@@ -194,9 +194,9 @@ size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 			if (z == Z_STREAM_END) {
 				endedLastStream = true;
 #if ZLIB_VERNUM >= 0x1270
-				if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset2"); }
+				if (inflateReset2(&zs, 15 + 32) != Z_OK) { inflateEnd(&zs); throw std::runtime_error("inflateReset2"); }
 #else
-				if (inflateReset(&zs) != Z_OK) { inflateEnd(&zs); hard_fail("inflateReset"); }
+				if (inflateReset(&zs) != Z_OK) { inflateEnd(&zs); throw std::runtime_error("inflateReset"); }
 #endif
 				continue;
 			}
@@ -209,18 +209,18 @@ size_t zlib_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 				if (zs.avail_in == 0) break;
 				if (zs.avail_out == 0) {
 					inflateEnd(&zs);
-					hard_fail("zlib_decompress: output buffer too small");
+					throw std::runtime_error("zlib_decompress: output buffer too small");
 				}
 			}
 			if (z != Z_OK && z != Z_BUF_ERROR) {
 				inflateEnd(&zs);
-				hard_fail("Error during zlib decompression: " + std::string(zs.msg ? zs.msg : "unknown error"));
+				throw std::runtime_error("Error during zlib decompression: " + std::string(zs.msg ? zs.msg : "unknown error"));
 			}
 		}
 		if (rd == 0) {
 			if (!endedLastStream) {
 				inflateEnd(&zs);
-				hard_fail("Unexpected end of zlib stream");
+				throw std::runtime_error("Unexpected end of zlib stream");
 			}
 			break;
 		}

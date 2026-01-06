@@ -338,7 +338,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	const auto l = [&] {
 		vector<size_t> l;
-		std::transform(TabularFormat::field_def.begin(), TabularFormat::field_def.end(), std::back_inserter(l), [](const auto& p) { return p.second.key.length(); });
+		std::transform(TabularFormat::field_def.begin(), TabularFormat::field_def.end(), std::back_inserter(l), [](const pair<FieldId, OutputField>& p) { return p.second.key.length(); });
 		return l;
 		}();
 	const size_t max_len = *std::max_element(l.begin(), l.end());
@@ -421,6 +421,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("min-query-len", 0, "filter query sequences shorter than this length", min_query_len)
+		("load-threads", 0, "number of CPU threads for file I/O", load_threads, 16)
+		("minichunk", 0, "Mini chunk size for file I/O", minichunk, (size_t)262144)
 		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)
 		("freq-masking", 0, "mask seeds based on frequency", freq_masking)
 		("freq-sd", 0, "number of standard deviations for ignoring frequent seeds", freq_sd_, 0.0)

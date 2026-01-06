@@ -102,10 +102,7 @@ public:
     bool operator!=(const AlignmentAllocator<T, N>& other) const {
         return !(*this == other);
     }
-
-    // Returns true if and only if storage allocated from *this
-    // can be deallocated from other, and vice versa.
-    // Always returns true for stateless allocators.
+    
     bool operator==(const AlignmentAllocator<T, N>& other) const {
         return true;
     }

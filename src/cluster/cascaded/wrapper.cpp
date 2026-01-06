@@ -43,7 +43,6 @@ using std::back_inserter;
 using std::unique_ptr;
 using std::bind;
 using std::function;
-using namespace Util::Tsv;
 
 namespace Cluster {
 
@@ -58,7 +57,7 @@ struct Config {
 		centroids(new FastaFile("", true, FastaFile::WriteAccess())),
 		seqs_processed(0),
 		letters_processed(0),
-		oid_to_centroid_oid(new File(Schema{ Type::INT64, Type::INT64 }, "", Flags::TEMP))
+		oid_to_centroid_oid(new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::INT64, Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::TEMP))
 	{
 	}
 	bool                                linclust;
@@ -71,7 +70,7 @@ struct Config {
 	int64_t                             seqs_processed;
 	int64_t                             letters_processed;
 	std::vector<OId>                    centroid2oid;
-	std::unique_ptr<File>               oid_to_centroid_oid;
+	std::unique_ptr<Util::Tsv::File>    oid_to_centroid_oid;
 };
 
 int64_t seq_mem_use(Loc len, Loc id_len, int c, int min, int sketch_size) {

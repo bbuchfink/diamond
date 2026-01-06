@@ -28,6 +28,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <inttypes.h>
 #include "external.h"
 

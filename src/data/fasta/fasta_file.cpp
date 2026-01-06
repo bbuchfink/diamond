@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -58,13 +58,13 @@ SeqFileFormat guess_format(TextInputFile& file) {
 	}
 }
 
-FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
+FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, const ValueTraits& value_traits):
+	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	oid_(0)
 {
 	if (file_name.size() > 2)
 		throw OperationNotSupported();
-	if (bool(metadata & (Metadata::TAXON_MAPPING | Metadata::TAXON_NODES | Metadata::TAXON_RANKS | Metadata::TAXON_SCIENTIFIC_NAMES)))
+	if (bool(flags & (Flags::TAXON_MAPPING | Flags::TAXON_NODES | Flags::TAXON_RANKS | Flags::TAXON_SCIENTIFIC_NAMES)))
 		throw runtime_error("Fasta database format does not support taxonomic features.");
 	unique_ptr<TextInputFile> input_file(new TextInputFile(file_name.front()));
 	format_ = guess_format(*input_file);
@@ -83,7 +83,7 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Metadata metadat
 }
 
 FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, Metadata(), value_traits),
+	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	out_file_(file_name.empty() ? new TempFile : new OutputFile(file_name, Compressor::NONE, overwrite ? "w+b" : "r+b")),
 	format_(SeqFileFormat::FASTA),
 	oid_(0),
@@ -220,11 +220,11 @@ void FastaFile::skip_id_data() {
 	throw OperationNotSupported();
 }
 
-int64_t FastaFile::sequence_count() const {
+uint64_t FastaFile::sequence_count() const {
 	return seqs_;
 }
 
-int64_t FastaFile::letters() const {
+uint64_t FastaFile::letters() const {
 	return letters_;
 }
 

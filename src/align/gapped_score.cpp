@@ -116,7 +116,7 @@ Match::Match(BlockId target_block_id, const Sequence& seq, std::unique_ptr<::Sta
 }
 
 static void add_dp_targets(const WorkTarget& target,
-	int target_idx,
+	BlockId target_idx,
 	const ::Stats::TargetMatrix* matrix,
 	const Sequence* query_seq,
 	array<DP::Targets, MAX_CONTEXT>& dp_targets,
@@ -206,7 +206,7 @@ vector<Target> align(vector<WorkTarget>& targets, const Sequence* query_seq, con
 			r.back().add_hit(targets[i].hsp[0].front(), query_seq[targets[i].hsp[0].front().frame].length());
 		}
 		else
-			add_dp_targets(targets[i], i, r.back().matrix.get(), query_seq, dp_targets, flags, hsp_values, mode, cfg);
+			add_dp_targets(targets[i], (BlockId)i, r.back().matrix.get(), query_seq, dp_targets, flags, hsp_values, mode, cfg);
 		if (targets[i].matrix)
 			++cbs_targets;
 	}

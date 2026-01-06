@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -48,35 +48,40 @@ using std::string;
 using std::runtime_error;
 using std::numeric_limits;
 using std::set;
-using Diamond::Expected;
+using std::pair;
 
-BlastDB::BlastDB(const string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits) :
-	SequenceFile(Type::BLAST, flags, FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, metadata, value_traits),
+BlastDB::BlastDB(const string& file_name, Flags flags, const ValueTraits& value_traits) :
+	SequenceFile(Type::BLAST, flags, FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP | FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	file_name_(file_name),
+	pal_(file_name),
 	taxon_db_(nullptr),
 	oid_(0),
 	long_seqids_(false),
-	flags_(flags)
+	flags_(flags),
+	volume_(pal_.volumes[0], 0, pal_.oid_index[0], pal_.oid_index[1], true),
+	raw_chunk_no_(0)
 {
-	auto pal = Pal::open(file_name);
-	if(!pal)
-		throw runtime_error("Failed to open BLAST database " + file_name + ": " + pal.error().message);
-	pal_ = pal.value();
 	if (pal_.metadata.find("SEQIDLIST") != pal_.metadata.end()) {
 		flags_ |= Flags::NEED_LENGTH_LOOKUP;
 	}
 	if (pal_.metadata.find("TAXIDLIST") != pal_.metadata.end()) {
-		metadata |= SequenceFile::Metadata::TAXON_MAPPING;
-		metadata |= SequenceFile::Metadata::TAXON_NODES;
+		flags_ |= SequenceFile::Flags::TAXON_MAPPING;
+		flags_ |= SequenceFile::Flags::TAXON_NODES;
 		flags_ |= SequenceFile::Flags::NEED_EARLY_TAXON_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP;
 	}
-	if (bool(metadata & Metadata::TAXON_MAPPING)) {
+	if (bool(flags_ & Flags::TAXON_MAPPING)) {
 		taxon_mapping_.reserve(pal_.sequence_count);
-		if (bool(flags_ & Flags::NEED_EARLY_TAXON_MAPPING)) {
-			for (OId i = 0; i < pal_.sequence_count; ++i) {
-				fetch_seqid(i, false, false);
-			}
+		//if (bool(flags_ & Flags::NEED_EARLY_TAXON_MAPPING)) {
+		const auto flags_now = flags_;
+		flags_ &= ~(Flags::SEQS | Flags::TITLES);
+		for (;;) {
+			pair<Block*, int64_t> b = load_parallel(1000000000, nullptr, nullptr, Chunk(), true);
+			delete b.first;
+			if (b.second == 0)
+				break;
 		}
+		flags_ = flags_now;
+		flags_ &= ~Flags::TAXON_MAPPING;
 	}
 	if (bool(flags_ & Flags::NEED_LENGTH_LOOKUP)) {
 		seq_length_.reserve(pal_.sequence_count);
@@ -88,7 +93,7 @@ BlastDB::BlastDB(const string& file_name, Metadata metadata, Flags flags, const 
 	}
 	string dbdir, dbfile;
 	tie(dbdir, dbfile) = absolute_path(file_name);
-	if (flag_any(metadata, Metadata::TAXON_RANKS)) {
+	if (flag_any(flags_, Flags::TAXON_RANKS)) {
 		const string file = dbdir + PATH_SEPARATOR + "nodes.dmp";
 		if(!exists(file))
 			throw runtime_error("Taxonomy rank information (nodes.dmp) is missing in search path ("
@@ -112,7 +117,7 @@ BlastDB::BlastDB(const string& file_name, Metadata metadata, Flags flags, const 
 			};
 		read_nodes_dmp(file, f);
 	}
-	if (flag_any(metadata, Metadata::TAXON_NODES)) {
+	if (flag_any(flags_, Flags::TAXON_NODES)) {
 		const string dbpath = dbdir + PATH_SEPARATOR + "taxonomy4blast.sqlite3";
 		if(!exists(dbpath))
 			throw runtime_error("Taxonomy database (taxonomy4blast.sqlite3) file not found in path: " + dbpath + ". Make sure that the database was downloaded correctly.");
@@ -125,7 +130,7 @@ BlastDB::BlastDB(const string& file_name, Metadata metadata, Flags flags, const 
 		parent_cache_.resize(max_id + 1, numeric_limits<TaxId>::min());
 		init_cache();
 	}
-	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES)) {
+	if (flag_any(flags_, Flags::TAXON_SCIENTIFIC_NAMES)) {
 		//throw runtime_error("Taxonomy information (scientific names) is missing. Make sure that the BLAST database was downloaded correctly and that taxonomy files (taxdb.bti) are present in the database search paths (current working directory, BLAST database directory, BLASTDB environment variable)");
 		const string file = dbdir + PATH_SEPARATOR + "names.dmp";
 		if (!exists(file))
@@ -149,7 +154,7 @@ void BlastDB::open_volume(OId oid) {
 	if (oid >= volume_.begin && oid < volume_.end)
 		return;
 	const int idx = pal_.volume(oid);
-	volume_ = Volume::Open(pal_.volumes[idx], idx, pal_.oid_index[idx], pal_.oid_index[idx + 1]);
+	volume_ = Volume(pal_.volumes[idx], idx, pal_.oid_index[idx], pal_.oid_index[idx + 1], true);
 }
 
 void BlastDB::print_info() const {
@@ -158,14 +163,14 @@ void BlastDB::print_info() const {
 	message_stream << "volumes: " << pal_.volumes.size() << ", ";
 	message_stream << "sequences: " << sequence_count() << ", ";
 	message_stream << "letters: " << letters() << ')' << endl;
-	if (flag_any(metadata_, Metadata::TAXON_RANKS)) {
+	if (flag_any(flags_, Flags::TAXON_RANKS)) {
 		if (!custom_ranks_.empty())
 			message_stream << "Custom taxonomic ranks in database: " << custom_ranks_.size() << endl;
 		message_stream << "Taxonomic ids assigned to ranks: " << rank_mapping_.size() << endl;
 	}
-	if (flag_any(metadata_, Metadata::TAXON_NODES))
+	if (flag_any(flags_, Flags::TAXON_NODES))
 		message_stream << "Maximum taxid in database: " << parent_cache_.size() - 1 << endl;
-	if (flag_any(metadata_, Metadata::TAXON_SCIENTIFIC_NAMES))
+	if (flag_any(flags_, Flags::TAXON_SCIENTIFIC_NAMES))
 		message_stream << "Extra taxonomic scientific names in names.dmp: " << extra_names_.size() << endl;
 }
 
@@ -220,6 +225,15 @@ void BlastDB::seek_offset(size_t p)
 {
 }
 
+RawChunk* BlastDB::raw_chunk(size_t letters, SequenceFile::Flags flags) {
+	Volume::RawChunk* c = volume_.raw_chunk(letters, flags);
+	c->no = raw_chunk_no_++;
+	OId oid = volume_.begin + volume_.seq_ptr();
+	if (oid < pal_.sequence_count)
+		open_volume(oid);
+	return c;
+}
+
 void BlastDB::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek)
 {
 	*(dst - 1) = Sequence::DELIMITER;
@@ -251,7 +265,7 @@ void BlastDB::skip_id_data()
 
 string BlastDB::fetch_seqid(OId oid, bool all, bool full_titles) {
 	open_volume(oid);
-	bool taxids = flag_any(metadata_, Metadata::TAXON_MAPPING);
+	bool taxids = flag_any(flags_, Flags::TAXON_MAPPING);
 	const uint32_t volume_oid = uint32_t(oid - volume_.begin);
 	const vector<BlastDefLine> deflines = volume_.deflines(volume_oid, all, full_titles, taxids);
 	if (taxids && taxon_mapping_.find(oid) == taxon_mapping_.end()) {
@@ -260,6 +274,12 @@ string BlastDB::fetch_seqid(OId oid, bool all, bool full_titles) {
 				taxon_mapping_.emplace(oid, i->taxid.value());
 	}
 	return build_title(deflines, "\1", all);
+}
+
+void BlastDB::add_taxid_mapping(const std::vector<std::pair<OId, TaxId>>& taxids) {
+	for(const auto& t : taxids) {
+		taxon_mapping_.emplace(t.first, t.second);
+	}
 }
 
 string BlastDB::seqid(OId oid, bool all, bool full_titles)
@@ -284,12 +304,12 @@ vector<Letter> BlastDB::dict_seq(DictId dict_id, const size_t ref_block)
 	return v;
 }
 
-int64_t BlastDB::sequence_count() const
+uint64_t BlastDB::sequence_count() const
 {
 	return pal_.sequence_count;
 }
 
-int64_t BlastDB::letters() const
+uint64_t BlastDB::letters() const
 {
 	return pal_.letters;
 }
@@ -335,9 +355,16 @@ int BlastDB::get_n_partition_chunks()
 	throw OperationNotSupported();
 }
 
-void BlastDB::set_seqinfo_ptr(int64_t i)
+void BlastDB::set_seqinfo_ptr(OId i)
 {
-	oid_ = (int)i;
+	if(i != 0)
+		throw runtime_error("Setting seqinfo pointer to non-zero value is not supported in BLAST databases.");
+	oid_ = i;
+	raw_chunk_no_ = 0;
+	if (volume_.begin == 0)
+		volume_.rewind();
+	else
+		open_volume(0);
 }
 
 void BlastDB::close()
@@ -355,20 +382,17 @@ DbFilter* BlastDB::filter_by_accession(const string& file_name)
 	}
 	in.close();
 
-	for (OId i = 0; i < pal_.sequence_count; ++i) {
-		const vector<BlastDefLine> deflines = this->deflines(i, true, false, false);
-		for(const auto& d : deflines) {
-			for(const auto& s : d.seqids) {
-				auto it = accs.find(s.value);
-				if (it == accs.end() && (s.version || s.chain))
-					it = accs.find(format_seqid(s));
-				if (it != accs.end()) {
-					v->oid_filter.set(i);
-					v->letter_count += seq_length(i);
-					it->second = true;
-				}
-			}
+	for (;;) {
+		pair<Block*, int64_t> b = load_parallel(1000000000, nullptr, &accs, Chunk(), false);
+		const BlockId n = b.first->oid_count();
+		for (BlockId i = 0; i < n; ++i) {
+			const OId oid = b.first->block_id2oid(i);
+			v->oid_filter.set(oid);
+			v->letter_count += seq_length(oid);
 		}
+		delete b.first;
+		if (b.second == 0)
+			break;
 	}
 
 	if (!config.skip_missing_seqids) {
@@ -509,26 +533,4 @@ void BlastDB::init_write() {
 
 void BlastDB::write_seq(const Sequence& seq, const string& id) {
 	throw OperationNotSupported();
-}
-
-StringSet BlastDB::load_ids(OId begin, OId end) const {
-	return StringSet();
-	/*auto it = volumes_.lower_bound(begin);
-	if(it == volumes_.end())
-		throw runtime_error("No volume found for OID " + std::to_string(begin));
-	Phr phr(it->second + ".phr", it->second + ".pin");
-	StringSet ids;
-	for (OId i = 0; i < phr.size(); ++i) {
-		ids.reserve(phr.len(i));
-	}
-	ids.finish_reserve();
-	vector<pair<const uint8_t*, size_t>> titles;
-	vector<string> seqids;
-	vector<uint64_t> taxids;
-	for (OId i = 0; i < phr.size(); ++i) {
-		if(!phr.parse_record(i, titles, seqids, taxids))
-			throw runtime_error("Failed to parse PHR record with OID " + std::to_string(i) + " in BLAST database.");
-		ids.assign(i, seqids[0].begin(), seqids[0].end());
-	}
-	return ids;*/
 }

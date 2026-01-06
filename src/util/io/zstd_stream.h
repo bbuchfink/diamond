@@ -56,4 +56,4 @@ private:
 	bool eos_;
 };
 
-size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept;
+size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity);

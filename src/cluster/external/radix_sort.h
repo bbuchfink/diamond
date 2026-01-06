@@ -58,7 +58,7 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 			in.close();
 			const T* end = data.get() + n;
 			for (const T* ptr = data.get(); ptr < end; ++ptr) {
-				const uint64_t radix = (ptr->key() >> shift) & (RADIX_COUNT - 1);
+				const int radix = (ptr->key() >> shift) & (RADIX_COUNT - 1);
 				buffers.write(radix, *ptr);
 			}
 		}
@@ -83,13 +83,13 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 	const std::string base_path = Cluster::base_path(buckets.front()),
 		queue_path = base_path + PATH_SEPARATOR + "radix_sort_queue",
 		result_path = base_path + PATH_SEPARATOR + "radix_sort_out";
-	const int64_t size_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
+	const uint64_t size_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
 	Atomic queue(queue_path);
 	FileStack out(result_path);
 	int64_t i, buckets_processed = 0;
 	while (i = queue.fetch_add(), i < (int64_t)buckets.size()) {
 		VolumedFile bucket(buckets[i]);
-		const int64_t data_size = bucket.records() * sizeof(T);
+		const size_t data_size = bucket.records() * sizeof(T);
 		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.records()).c_str(), Util::String::format(data_size).c_str());
 		if (data_size > size_limit) {
 			const std::vector<std::string> v = radix_cluster<T>(job, bucket, path(buckets[i]), bits_unsorted);

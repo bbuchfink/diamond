@@ -37,8 +37,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Search { namespace DISPATCH_ARCH {
 
-typedef void Stage1KernelPackedLoc(const ::PackedLoc*, ::int32_t, const ::PackedLoc*, ::int32_t, ::Search::WorkSet&);
-typedef void Stage1KernelPackedLocId(const ::PackedLocId*, ::int32_t, const ::PackedLocId*, ::int32_t, ::Search::WorkSet&);
+typedef void Stage1KernelPackedLoc(const ::PackedLoc*, ::uint_fast32_t, const ::PackedLoc*, ::uint_fast32_t, ::Search::WorkSet&);
+typedef void Stage1KernelPackedLocId(const ::PackedLocId*, ::uint_fast32_t, const ::PackedLocId*, ::uint_fast32_t, ::Search::WorkSet&);
 
 static Stage1KernelPackedLocId* stage1_dispatch(const Search::Config* cfg, PackedLocId) {
 	if (config.lin_stage1) {

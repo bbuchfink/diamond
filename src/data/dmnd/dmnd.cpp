@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -138,35 +138,35 @@ void DatabaseFile::init(Flags flags)
 	pos_array_offset = ref_header.pos_array_offset;
 }
 
-DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags flags, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::DMND, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, metadata, value_traits),
+DatabaseFile::DatabaseFile(const string &input_file, Flags flags, const ValueTraits& value_traits):
+	SequenceFile(SequenceFile::Type::DMND, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
 	InputFile(auto_append_extension_if_exists(input_file, FILE_EXTENSION), InputFile::BUFFERED),
 	temporary(false)
 {
 	init(flags);
 
 	vector<string> e;
-	if (flag_any(metadata, Metadata::TAXON_MAPPING) && !has_taxon_id_lists())
+	if (flag_any(flags, Flags::TAXON_MAPPING) && !has_taxon_id_lists())
 		e.push_back("taxonomy mapping information (--taxonmap option)");
-	if (flag_any(metadata, Metadata::TAXON_NODES) && !has_taxon_nodes())
+	if (flag_any(flags, Flags::TAXON_NODES) && !has_taxon_nodes())
 		e.push_back("taxonomy nodes information (--taxonnodes option)");
-	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES) && !has_taxon_scientific_names())
+	if (flag_any(flags, Flags::TAXON_SCIENTIFIC_NAMES) && !has_taxon_scientific_names())
 		e.push_back("taxonomy names information (--taxonnames option)");
-	if (flag_any(metadata, Metadata::TAXON_RANKS) && build_version() < 131)
+	if (flag_any(flags, Flags::TAXON_RANKS) && build_version() < 131)
 		e.push_back("taxonomy ranks information (database needs to be built with diamond version >= 0.9.30");
 
 	if (!e.empty())
 		throw std::runtime_error("Options require taxonomy information included in the database. Please use the respective options to build this information into the database when running diamond makedb: " + join(", ", e.begin(), e.end()));
 
-	if (flag_any(metadata, Metadata::TAXON_MAPPING))
+	if (flag_any(flags, Flags::TAXON_MAPPING))
 		taxon_list_.reset(new TaxonList(seek(header2.taxon_array_offset), ref_header.sequences, header2.taxon_array_size));
 
-	if (flag_any(metadata, Metadata::TAXON_SCIENTIFIC_NAMES)) {
+	if (flag_any(flags, Flags::TAXON_SCIENTIFIC_NAMES)) {
 		seek(header2.taxon_names_offset);
 		deserialize(*this, taxon_scientific_names_);
 	}
 
-	if (flag_any(metadata, Metadata::TAXON_NODES)) {
+	if (flag_any(flags, Flags::TAXON_NODES)) {
 		taxon_nodes_.reset(new TaxonomyNodes(seek(header2.taxon_nodes_offset), ref_header.build));
 		init_cache();
 	}
@@ -176,7 +176,7 @@ DatabaseFile::DatabaseFile(const string &input_file, Metadata metadata, Flags fl
 }
 
 DatabaseFile::DatabaseFile(TempFile &tmp_file, const ValueTraits& value_traits):
-	SequenceFile(SequenceFile::Type::DMND, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, Metadata(), value_traits),
+	SequenceFile(SequenceFile::Type::DMND, Flags::NONE, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS | FormatFlags::SEEKABLE | FormatFlags::LENGTH_LOOKUP, value_traits),
 	InputFile(tmp_file, 0),
 	temporary(true)
 {
@@ -242,7 +242,7 @@ void DatabaseFile::make_db()
 	TaskTimer timer("Opening the database file", true);
 
 	value_traits = (config.dbtype == SequenceType::amino_acid) ? amino_acid_traits : nucleotide_traits;
-    FastaFile db_file({ input_file_name }, Metadata (), Flags::NONE, value_traits);
+    FastaFile db_file({ input_file_name }, Flags::NONE, value_traits);
 
     unique_ptr<OutputFile> out(new OutputFile(config.database));
 	ReferenceHeader header;
@@ -254,10 +254,10 @@ void DatabaseFile::make_db()
 	size_t letters = 0, n = 0, n_seqs = 0, total_seqs = 0;
 	uint64_t offset = out->tell();
 
-    LoadFlags flags = SequenceFile::LoadFlags::ALL;
+	db_file.flags() |= SequenceFile::Flags::ALL;
     if (config.dbtype == SequenceType::nucleotide){
         header.db_version = ReferenceHeader::current_db_version_nucl;
-        flags |= SequenceFile::LoadFlags::DNA_PRESERVATION;
+        db_file.flags() |= SequenceFile::Flags::DNA_PRESERVATION;
     }
 
     Block* block;
@@ -267,7 +267,7 @@ void DatabaseFile::make_db()
 	try {
 		while (true) {
 			timer.go("Loading sequences");
-			block = db_file.load_seqs((int64_t)1e9, nullptr, flags);
+			block = db_file.load_seqs((int64_t)1e9, nullptr);
 			if (block->empty()) {
 				delete block;
 				break;
@@ -543,11 +543,11 @@ void DatabaseFile::skip_id_data() {
 	if (!seek_forward('\0')) throw std::runtime_error("Unexpected end of file.");
 }
 
-int64_t DatabaseFile::sequence_count() const {
+uint64_t DatabaseFile::sequence_count() const {
 	return ref_header.sequences;
 }
 
-int64_t DatabaseFile::letters() const {
+uint64_t DatabaseFile::letters() const {
 	return ref_header.letters;
 }
 
@@ -629,7 +629,7 @@ void DatabaseFile::read_seqid_list() {
 	vector<Letter> seq;
 	string id;
 	init_seq_access();
-	for (int64_t n = 0; n < sequence_count(); ++n) {
+	for (uint64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
 		const char* msg = Util::Seq::fix_title(id);
 		if (msg)

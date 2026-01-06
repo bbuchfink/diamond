@@ -63,7 +63,7 @@ static Int neighbor_count(It begin, It end, const vector<Int>& centroids) {
 }
 
 template<typename Int, typename It>
-static Int neighbor_count(Int node, It begin, It end, const vector<Int>& centroids, const SuperBlockId* member_counts) {
+static Int neighbor_count(Int node, It begin, It end, const vector<Int>& centroids, const Int* member_counts) {
 	Int n = member_counts[node];
 	for (It i = begin; i != end; ++i)
 		if (centroids[i->node2] == -1)
@@ -117,7 +117,7 @@ void make_cluster_cc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& cent
 }
 
 template<typename Int>
-vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBlockId* member_counts, bool merge_recursive, bool reassign, Int connected_component_depth) {
+vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const Int* member_counts, bool merge_recursive, bool reassign, Int connected_component_depth) {
 	TaskTimer timer("Computing edge counts");
 	priority_queue<pair<Int, Int>> q;
 	vector<Int> centroids(neighbors.size(), -1);
@@ -167,7 +167,7 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const SuperBloc
 	return centroids;
 }
 
-template vector<int32_t> greedy_vertex_cover<int32_t>(FlatArray<Edge<int32_t>>&, const SuperBlockId*, bool, bool, int32_t);
-template vector<int64_t> greedy_vertex_cover<int64_t>(FlatArray<Edge<int64_t>>&, const SuperBlockId*, bool, bool, int64_t);
+template vector<uint32_t> greedy_vertex_cover<uint32_t>(FlatArray<Edge<uint32_t>>&, const uint32_t*, bool, bool, uint32_t);
+template vector<uint64_t> greedy_vertex_cover<uint64_t>(FlatArray<Edge<uint64_t>>&, const uint64_t*, bool, bool, uint64_t);
 
 }}

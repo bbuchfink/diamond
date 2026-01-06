@@ -29,52 +29,58 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "volume.h"
-#include "util/system.h"
 
 using std::vector;
-using ByteView = MappedFile::View;
 using std::out_of_range;
 using std::runtime_error;
 
-vector<Letter> DecodeProteinSequence(const ByteView& data, std::uint32_t start, std::uint32_t end)
+vector<Letter> decode_protein_sequence(const char* data, size_t len)
 {
-    if (start > end || end > data.size()) {
-        throw out_of_range("Sequence offsets exceed sequence file length");
-    }
-
     vector<Letter> decoded;
-    decoded.reserve(end - start);
-    for (std::uint32_t pos = start; pos < end; ++pos) {
-        const uint8_t aa = data[pos];
+    decoded.reserve(len);
+    for (size_t i = 0; i < len; ++i) {
+        const uint8_t aa = data[i];
         if (aa == '\0') {
-            break;
+            if (i == 0)
+                continue;
+            else if (i == len - 1)
+                break;
+            else
+				throw runtime_error("Unexpected null terminator in sequence data");
         }
         if (aa >= sizeof(NCBI_TO_STD) / sizeof(NCBI_TO_STD[0]))
-            hard_fail("Invalid amino acid code in sequence data");
+            throw runtime_error("Invalid amino acid code in sequence data");
         decoded.push_back(NCBI_TO_STD[aa]);
     }
     return decoded;
 }
 
-vector<Letter> Volume::sequence(std::uint32_t oid) const
+vector<Letter> Volume::sequence(uint32_t oid)
 {
     if (oid >= index_.num_oids) {
         throw out_of_range("OID exceeds number of sequences in volume");
     }
 
-    const ByteView pin_view = pin_mapping_.view();
-    const ByteView psq_view = psq_mapping_.view();
-    const std::uint32_t start = read_offset(pin_view, index_.sequence_offsets_offset, oid);
-    const std::uint32_t end = read_offset(pin_view, index_.sequence_offsets_offset, oid + 1);
+    const uint32_t start = index_.sequence_index[oid];
+    const uint32_t end = index_.sequence_index[oid + 1];
 
     if (!index_.is_protein) {
         throw runtime_error("Nucleotide sequence decoding is not supported yet");
     }
-
-    return DecodeProteinSequence(psq_view, start, end);
+    if (oid != seq_ptr_)
+        psq_mapping_.seek(start, SEEK_SET);
+    seq_ptr_ = oid + 1;
+    return decode_protein_sequence(psq_mapping_.read(end - start), end - start);
 }
 
-Loc Volume::length(uint32_t oid) const {
-    const ByteView pin_view = pin_mapping_.view();
-    return read_offset(pin_view, index_.sequence_offsets_offset, oid + 1) - read_offset(pin_view, index_.sequence_offsets_offset, oid) - 1;
+vector<char> Volume::raw_sequence(uint32_t count) {
+    const size_t n = index_.sequence_index[seq_ptr_ + count] - index_.sequence_index[seq_ptr_];
+    vector<char> v(n);
+    psq_mapping_.read(v.data(), n);
+    seq_ptr_ += count;
+    return v;
+}
+
+Loc Volume::length(uint32_t oid) const noexcept {
+    return index_.sequence_index[oid + 1] - index_.sequence_index[oid] - 1;
 }

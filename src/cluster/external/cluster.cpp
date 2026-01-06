@@ -28,6 +28,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <numeric>
 #include "basic/config.h"
 #include "external.h"
@@ -203,7 +208,7 @@ string cluster(Job& job, const vector<string>& edges, const VolumedFile& volumes
 	const string assignment_file = output_file->bucket(0);
 	output_file.reset();
 	Atomic finished(clustering_path + PATH_SEPARATOR + "finished");
-	const int f = finished.fetch_add(buckets_processed);
+	const int64_t f = finished.fetch_add(buckets_processed);
 	Atomic closure_finished(clustering_path + PATH_SEPARATOR + "closure_finished");
 	if (f + buckets_processed < (int)edges.size())
 		closure_finished.await(1);

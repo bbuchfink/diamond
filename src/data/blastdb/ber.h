@@ -29,36 +29,27 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "util/io/mmap.h"
+#include "util/io/file.h"
 
-using Byte = std::uint8_t;
-using ByteView = MappedFile::View;
-
-inline std::uint32_t ReadBE32(const ByteView& buffer, std::size_t& offset)
+inline uint32_t ReadBE32(File& file)
 {
-    if (offset + 4 > buffer.size()) {
-        throw std::runtime_error("Unexpected end of file while reading 32-bit value");
-    }
-
-    std::uint32_t value = 0;
+    uint8_t buf[4];
+    file.read(buf, 4);
+    uint32_t value = 0;
     for (int i = 0; i < 4; ++i) {
-        value = (value << 8) | buffer[offset + i];
+        value = (value << 8) | buf[i];
     }
-    offset += 4;
     return value;
 }
 
-inline static std::uint64_t ReadLE64(const ByteView& buffer, std::size_t& offset)
+inline uint64_t ReadLE64(File& file)
 {
-    if (offset + 8 > buffer.size()) {
-        throw std::runtime_error("Unexpected end of file while reading 64-bit value");
-    }
-
-    std::uint64_t value = 0;
+    uint8_t buf[8];
+    file.read(buf, 8);
+    uint64_t value = 0;
     for (int i = 7; i >= 0; --i) {
-        value = (value << 8) | static_cast<std::uint64_t>(buffer[offset + i]);
+        value = (value << 8) | static_cast<uint64_t>(buf[i]);
     }
-    offset += 8;
     return value;
 }
 
@@ -73,14 +64,9 @@ inline int64_t decode_integer(const std::vector<std::uint8_t>& data) {
     return value;
 }
 
-inline std::string ReadPascalString(const ByteView& buffer, std::size_t& offset)
-{
-    const std::uint32_t length = ReadBE32(buffer, offset);
-    if (offset + length > buffer.size()) {
-        throw std::runtime_error("String length exceeds file size");
-    }
-
-    std::string result(reinterpret_cast<const char*>(buffer.data() + offset), length);
-    offset += length;
-    return result;
+inline std::string ReadPascalString(File& file) {
+	const uint32_t l = ReadBE32(file);
+    std::string s(l, '\0');
+    file.read(&s.front(), l);
+    return s;
 }

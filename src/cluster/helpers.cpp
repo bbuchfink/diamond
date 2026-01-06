@@ -70,8 +70,8 @@ pair<FlatArray<Int>, vector<Int>> read(const string& file_name, const SequenceFi
 	return make_flat_array(pairs.begin(), pairs.end(), config.threads_);
 }
 
-template pair<FlatArray<int32_t>, vector<int32_t>> read(const string&, const SequenceFile&, CentroidSorted);
-template pair<FlatArray<int64_t>, vector<int64_t>> read(const string&, const SequenceFile&, CentroidSorted);
+template pair<FlatArray<uint32_t>, vector<uint32_t>> read(const string&, const SequenceFile&, CentroidSorted);
+template pair<FlatArray<uint64_t>, vector<uint64_t>> read(const string&, const SequenceFile&, CentroidSorted);
 
 template<typename Int>
 vector<Int> read(const string& file_name, const SequenceFile& db) {
@@ -100,8 +100,8 @@ vector<Int> read(const string& file_name, const SequenceFile& db) {
 	return v;
 }
 
-template vector<int32_t> read(const string&, const SequenceFile&);
-template vector<int64_t> read(const string&, const SequenceFile&);
+template vector<uint32_t> read(const string&, const SequenceFile&);
+template vector<uint64_t> read(const string&, const SequenceFile&);
 
 template<typename Int>
 vector<Int> member2centroid_mapping(const FlatArray<Int>& clusters, const vector<Int>& centroids) {
@@ -112,7 +112,7 @@ vector<Int> member2centroid_mapping(const FlatArray<Int>& clusters, const vector
 	}
 	return v;
 }
-template vector<int64_t> member2centroid_mapping(const FlatArray<int64_t>&, const vector<int64_t>&);
+template vector<uint64_t> member2centroid_mapping(const FlatArray<uint64_t>&, const vector<uint64_t>&);
 
 template<typename Int>
 pair<FlatArray<Int>, vector<Int>> cluster_sorted(const vector<Int>& mapping) {
@@ -123,8 +123,8 @@ pair<FlatArray<Int>, vector<Int>> cluster_sorted(const vector<Int>& mapping) {
 	return make_flat_array(pairs.begin(), pairs.end(), config.threads_);
 }
 
-template pair<FlatArray<int32_t>, vector<int32_t>> cluster_sorted<int32_t>(const vector<int32_t>&);
-template pair<FlatArray<int64_t>, vector<int64_t>> cluster_sorted<int64_t>(const vector<int64_t>&);
+template pair<FlatArray<uint32_t>, vector<uint32_t>> cluster_sorted<uint32_t>(const vector<uint32_t>&);
+template pair<FlatArray<uint64_t>, vector<uint64_t>> cluster_sorted<uint64_t>(const vector<uint64_t>&);
 
 void output(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
 	unique_ptr<File> sorted1(oid_to_centroid_oid.sort(1, config.threads_));
@@ -153,8 +153,8 @@ void output_mem(File& out, SequenceFile& db, const FlatArray<Int>& clusters, con
 	}
 }
 
-template void output_mem<int32_t>(File&, SequenceFile&, const FlatArray<int32_t>&, const vector<int32_t>&);
-template void output_mem<int64_t>(File&, SequenceFile&, const FlatArray<int64_t>&, const vector<int64_t>&);
+template void output_mem<uint32_t>(File&, SequenceFile&, const FlatArray<uint32_t>&, const vector<uint32_t>&);
+template void output_mem<uint64_t>(File&, SequenceFile&, const FlatArray<uint64_t>&, const vector<uint64_t>&);
 
 template<typename Int>
 void output_mem(File& out, SequenceFile& db, const vector<Int>& mapping) {
@@ -164,8 +164,8 @@ void output_mem(File& out, SequenceFile& db, const vector<Int>& mapping) {
 	output_mem<Int>(out, db, clusters, centroids);
 }
 
-template void output_mem<int32_t>(File&, SequenceFile&, const vector<int32_t>&);
-template void output_mem<int64_t>(File&, SequenceFile&, const vector<int64_t>&);
+template void output_mem<uint32_t>(File&, SequenceFile&, const vector<uint32_t>&);
+template void output_mem<uint64_t>(File&, SequenceFile&, const vector<uint64_t>&);
 
 template<typename Int>
 void output_mem(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
@@ -179,9 +179,9 @@ void output_mem(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
 
 void output_mem(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
 	if (db.sequence_count() > (int64_t)INT32_MAX)
-		output_mem<int64_t>(out, db, oid_to_centroid_oid);
+		output_mem<uint64_t>(out, db, oid_to_centroid_oid);
 	else
-		output_mem<int32_t>(out, db, oid_to_centroid_oid);
+		output_mem<uint32_t>(out, db, oid_to_centroid_oid);
 }
 
 template<typename Int>
@@ -196,8 +196,8 @@ pair<vector<Int>, vector<Int>> split(const vector<Int>& mapping) {
 	return r;
 }
 
-template pair<vector<int32_t>, vector<int32_t>> split(const vector<int32_t>&);
-template pair<vector<int64_t>, vector<int64_t>> split(const vector<int64_t>&);
+template pair<vector<uint32_t>, vector<uint32_t>> split(const vector<uint32_t>&);
+template pair<vector<uint64_t>, vector<uint64_t>> split(const vector<uint64_t>&);
 
 vector<SuperBlockId> member_counts(const vector<SuperBlockId>& mapping) {
 	vector<SuperBlockId> v(mapping.size(), 0);

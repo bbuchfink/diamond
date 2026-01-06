@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -90,7 +90,7 @@ std::string to_string(const Chunk& c);
 struct DatabaseFile : public SequenceFile, public InputFile
 {
 
-	DatabaseFile(const std::string &file_name, Metadata metadata = Metadata(), Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
+	DatabaseFile(const std::string &file_name, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 	DatabaseFile(TempFile &tmp_file, const ValueTraits& value_traits = amino_acid_traits);
 	static void read_header(InputFile &stream, ReferenceHeader &header);
 	static bool is_diamond_db(const std::string &file_name);
@@ -142,9 +142,9 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) override;
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) override;
 	virtual void skip_id_data() override;
-	virtual int64_t sequence_count() const override;
+	virtual uint64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual int64_t letters() const override;
+	virtual uint64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual std::string taxon_scientific_name(TaxId taxid) const override;

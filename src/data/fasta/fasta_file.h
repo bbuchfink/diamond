@@ -10,7 +10,7 @@ struct FastaFile : public SequenceFile
 
 	struct WriteAccess {};
 
-	FastaFile(const std::vector<std::string> &file_name, Metadata metadata = Metadata(), Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
+	FastaFile(const std::vector<std::string> &file_name, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 	FastaFile(const std::string& file_name, bool overwrite, const WriteAccess&, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 
 	virtual int64_t file_count() const override;
@@ -32,9 +32,9 @@ struct FastaFile : public SequenceFile
 	virtual void read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) override;
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) override;
 	virtual void skip_id_data() override;
-	virtual int64_t sequence_count() const override;
+	virtual uint64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual int64_t letters() const override;
+	virtual uint64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual int build_version() override;

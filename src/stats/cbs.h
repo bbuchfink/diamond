@@ -32,7 +32,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <array>
 #include <vector>
-#include "util/memory_resource.h"
+#include "util/memory/memory_resource.h"
 #include "basic/sequence.h"
 #include "basic/statistics.h"
 #include "standard_matrix.h"

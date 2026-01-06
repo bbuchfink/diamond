@@ -33,16 +33,14 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 #include <vector>
 
-// High-level classification of ASN.1 tags.
-enum class Class : std::uint8_t {
+enum class Class : uint8_t {
     Universal = 0,
     Application = 1,
     ContextSpecific = 2,
     Private = 3,
 };
 
-// Common universal tag numbers for quick identification.
-enum class UniversalTag : std::uint8_t {
+enum class UniversalTag : uint8_t {
     Eoc = 0,
     Boolean = 1,
     Integer = 2,
@@ -64,12 +62,12 @@ enum class UniversalTag : std::uint8_t {
 struct TagInfo {
     Class tagClass{};
     bool constructed{};
-    std::uint32_t tagNumber{};
+    uint32_t tagNumber{};
 };
 
 struct Node {
     TagInfo tag;
-    std::vector<std::uint8_t> value;
+    std::vector<uint8_t> value;
     std::vector<Node> children;
 };
 
@@ -78,9 +76,5 @@ class DecodeError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-// Decode the ASN.1 data contained in [data, data + length). The function
-// returns a list of nodes corresponding to the top-level TLVs found in the
-// buffer. Constructed types are recursively decoded and stored in the
-// children vector while primitive types retain their raw value bytes.
 std::vector<Node> decode(const char *data, std::size_t length);
 void print_node(const Node& node, std::ostream& os, int depth = 0);

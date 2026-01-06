@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thread>
 #define _REENTRANT
 #include "ips4o/ips4o.hpp"
+#include "util/parallel/simple_thread_pool.h"
 #include "blastdb/blastdb.h"
 #include "sequence_file.h"
 #include "masking/masking.h"
@@ -45,6 +46,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/string/tokenizer.h"
 #include "util/tsv/tsv.h"
 #include "util/log_stream.h"
+#include "util/data_structures/queue.h"
 
 using std::string;
 using std::endl;
@@ -62,7 +64,9 @@ using std::unique_ptr;
 using std::function;
 using std::vector;
 using std::set;
-using namespace Util::Tsv;
+using std::unordered_map;
+using std::map;
+using std::atomic;
 
 static constexpr int64_t CHECK_FOR_DNA_COUNT = 10;
 const char* const SequenceFile::SEQID_HDR = "seqid";
@@ -105,7 +109,98 @@ std::string SequenceFile::taxon_scientific_name(TaxId taxid) const {
 	throw OperationNotSupported();
 }
 
-pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk) {
+void SequenceFile::add_taxid_mapping(const vector<pair<OId, TaxId>>& taxids) {
+	throw OperationNotSupported();
+}
+
+int SequenceFile::raw_chunk_no() const {
+	throw OperationNotSupported();
+}
+
+pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, const BitVector* filter, unordered_map<string, bool>* accs, const Chunk& chunk, bool load_taxids) {
+	assert(chunk.n_seqs == 0);
+	assert(config.threads_ > 0);
+	const size_t letters = config.minichunk;
+	const int t = std::min(config.load_threads, config.threads_), p = t >= 3 ? t - 2 : 1;
+	const int raw_chunk_start = raw_chunk_no();
+	int64_t seqs = 0;
+	Block* block = new Block();
+	Queue<RawChunk*> queue(p * 4, 1, p, nullptr);
+	Queue<DecodedPackage*> output_queue(p * 4, p, 1, nullptr);
+	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS),
+		load_titles = flag_any(flags(), SequenceFile::Flags::TITLES);
+	SimpleThreadPool pool;
+	auto worker = [&](const atomic<bool>& stop) {
+		while (!stop) {
+			RawChunk* c;
+			if (!queue.wait_and_dequeue(c))
+				break;
+			DecodedPackage* pkg = c->decode(flags(), filter, accs);
+			output_queue.enqueue(pkg);
+			delete c;
+		}
+		output_queue.close();
+		};
+	auto writer = [&](const atomic<bool>& stop) {
+		int next = raw_chunk_start;
+		map<int, DecodedPackage*> backlog;
+		while (!stop) {
+			DecodedPackage* pkg;
+			if (!output_queue.wait_and_dequeue(pkg))
+				break;
+			backlog.emplace(pkg->no, pkg);
+			while (!backlog.empty() && backlog.begin()->first == next) {
+				pkg = backlog.begin()->second;
+				const size_t n_seqs = pkg->seqs.size();
+				seqs += n_seqs;
+				if (load_seqs) {
+					block->seqs_.append(pkg->seqs);
+				}
+				if (load_titles) {
+					block->ids_.append(pkg->ids);
+				}
+				if (load_taxids) {
+					add_taxid_mapping(pkg->taxids);
+				}
+				block->block2oid_.insert(block->block2oid_.end(), pkg->oids.begin(), pkg->oids.end());
+				delete pkg;
+				backlog.erase(backlog.begin());
+				++next;
+			}
+		}
+		if (!backlog.empty())
+			throw runtime_error("SequenceFile::load_parallel");
+		};
+	for (int i = 0; i < p; ++i)
+		pool.spawn(worker);
+	pool.spawn(writer);
+	uint64_t block_letters = 0;
+	RawChunk* rc;
+	uint64_t bytes = 0;
+	const Flags load_flags = flags() | (accs ? Flags::TITLES : Flags::NONE);
+	do {
+		rc = raw_chunk(std::min(letters, max_letters - block_letters), load_flags);
+		if (rc->empty()) {
+			delete rc;
+			break;
+		}
+		block_letters += rc->letters();
+		bytes += rc->bytes();
+		queue.enqueue(rc);
+	} while (!pool.stop() && block_letters < max_letters);
+	queue.close();
+	pool.join_all();
+	if (seqs > 0) {
+		if (load_seqs)
+			block->seqs().finish_reserve();
+		if (load_titles)
+			block->ids().finish_reserve();
+	}
+	block->raw_bytes_ = bytes;
+	return { block, seqs };
+}
+
+pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, const BitVector* filter, const Chunk& chunk) {
 	init_seqinfo_access();
 
 	OId database_id = tell_seq();
@@ -129,13 +224,13 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 		SeqInfo r_next = read_seqinfo();
 		if (!use_filter || filter->get(database_id)) {
 			letters += r.seq_len;
-			if (flag_any(flags, LoadFlags::SEQS)) {
+			if (flag_any(flags(), SequenceFile::Flags::SEQS)) {
 				block->seqs_.reserve(r.seq_len);
 			}
-			if (flag_any(flags, LoadFlags::TITLES)) {
+			if (flag_any(flags(), SequenceFile::Flags::TITLES)) {
 				const size_t id_len = this->id_len(r, r_next);
 				id_letters += id_len;
-				if (flag_any(flags, LoadFlags::SEQS))
+				if (flag_any(flags(), SequenceFile::Flags::SEQS))
 					block->ids_.reserve(id_len);
 			}
 			++filtered_seq_count;
@@ -158,12 +253,12 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 
 	if (seqs == 0 || filtered_seq_count == 0)
 		return { block, seqs_processed };
-	const bool full_titles = bool(flags & LoadFlags::FULL_TITLES);
-	const bool all_seqids = bool(flags & LoadFlags::ALL_SEQIDS);
+	const bool full_titles = bool(flags() & SequenceFile::Flags::FULL_TITLES);
+	const bool all_seqids = bool(flags() & SequenceFile::Flags::ALL_SEQIDS);
 
-	if (flag_any(flags, LoadFlags::SEQS)) {
+	if (flag_any(flags(), SequenceFile::Flags::SEQS)) {
 		block->seqs_.finish_reserve();
-		if (flag_any(flags, LoadFlags::TITLES)) block->ids_.finish_reserve();
+		if (flag_any(flags(), SequenceFile::Flags::TITLES)) block->ids_.finish_reserve();
 
 		static const size_t MAX_LOAD_SIZE = 2 * GIGABYTES;
 		if (use_filter && !flag_all(format_flags_, FormatFlags::SEEKABLE))
@@ -177,7 +272,7 @@ pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, cons
 			}
 			const size_t l = block->seqs_.length(i);
 			read_seq_data(block->seqs_.ptr(i), l, offset, seek);
-			if (flag_any(flags, LoadFlags::TITLES))
+			if (flag_any(flags(), SequenceFile::Flags::TITLES))
 				read_id_data(block->block2oid_[i], block->ids_.ptr(i), block->ids_.length(i), all_seqids, full_titles);
 			else
 				skip_id_data();
@@ -199,15 +294,15 @@ static int frame_mask() {
 	throw std::runtime_error("frame_mask");
 }
 
-std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, const BitVector* filter, LoadFlags flags) {
+std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, const BitVector* filter) {
 	static const char* DNA_ERR = "The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.";
 	vector<Letter> seq;
 	string id;
 	vector<char> qual;
 	int64_t letters = 0, seq_count = 0;
 	Block* block = new Block();
-	const bool load_seqs = flag_any(flags, LoadFlags::SEQS), load_titles = flag_any(flags, LoadFlags::TITLES), preserve_dna = flag_any(flags,LoadFlags::DNA_PRESERVATION);
-	vector<char>* q = flag_any(flags, LoadFlags::QUALITY) ? &qual : nullptr;
+	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS), load_titles = flag_any(flags(), SequenceFile::Flags::TITLES), preserve_dna = flag_any(flags(), SequenceFile::Flags::DNA_PRESERVATION);
+	vector<char>* q = flag_any(flags(), SequenceFile::Flags::QUALITY) ? &qual : nullptr;
 	OId oid = tell_seq();
 	const bool first_block = oid == 0;
 	const int frame_mask = ::frame_mask();
@@ -251,25 +346,28 @@ size_t SequenceFile::dict_block(const size_t ref_block)
 	return config.multiprocessing ? ref_block : 0;
 }
 
-Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filter, LoadFlags flags, const Chunk& chunk)
+Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filter, const Chunk& chunk)
 {
-	if(max_letters == 0)
-		seek_chunk(chunk);	
+	if (max_letters == 0)
+		seek_chunk(chunk);
 
 	Block* block;
 	int64_t seqs_processed;
-	if(flag_any(format_flags_, FormatFlags::LENGTH_LOOKUP))
-		tie(block, seqs_processed) = load_twopass(max_letters, filter, flags, chunk);
+	if (type_ == Type::BLAST) {
+		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
+	}
+	else if (flag_any(format_flags_, FormatFlags::LENGTH_LOOKUP))
+		tie(block, seqs_processed) = load_twopass(max_letters, filter, chunk);
 	else {
 		if (chunk.n_seqs)
 			throw OperationNotSupported();
-		tie(block, seqs_processed) = load_onepass(max_letters, filter, flags);
+		tie(block, seqs_processed) = load_onepass(max_letters, filter);
 	}
 
 	if (block->empty())
 		return block;
 
-	if (flag_any(flags, LoadFlags::LAZY_MASKING))
+	if (flag_any(flags(), SequenceFile::Flags::LAZY_MASKING))
 		block->masked_.resize(block->seqs_.size(), false);
 	//block->seqs_.print_stats();
 	return block;
@@ -313,7 +411,7 @@ void SequenceFile::get_seq()
 	size_t letters = 0;
 	TextBuffer buf;
 	OutputFile out(config.output_file);
-	for (int64_t n = 0; n < sequence_count(); ++n) {
+	for (uint64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
 		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str()));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
@@ -348,7 +446,7 @@ Util::Tsv::File* SequenceFile::make_seqid_list() {
 	vector<Letter> seq;
 	string id;
 	init_seq_access();
-	for (int64_t n = 0; n < sequence_count(); ++n) {
+	for (uint64_t n = 0; n < sequence_count(); ++n) {
 		read_seq(seq, id);
 		f->write_record(Util::Seq::seqid(id.c_str()));
 	}
@@ -374,17 +472,17 @@ static bool is_blast_db(const string& path) {
 	return false;
 }
 
-SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags, Metadata metadata, const ValueTraits& value_traits) {
+SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags, const ValueTraits& value_traits) {
 	if (path.size() == 1) {
 		if (is_blast_db(path.front()))
-			return new BlastDB(path.front(), metadata, flags, value_traits);
+			return new BlastDB(path.front(), flags, value_traits);
 		const string a = auto_append_extension_if_exists(path.front(), DatabaseFile::FILE_EXTENSION);
 		if (DatabaseFile::is_diamond_db(a))
-			return new DatabaseFile(a, metadata, flags, value_traits);
+			return new DatabaseFile(a, flags, value_traits);
 	}
 	if (!flag_any(flags, Flags::NO_FASTA)) {
 		//message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
-		return new FastaFile(path, metadata, flags, value_traits);
+		return new FastaFile(path, flags, value_traits);
 	}
 	throw std::runtime_error("Sequence file does not have a supported format.");
 }
@@ -550,20 +648,15 @@ double SequenceFile::dict_self_aln_score(const size_t dict_id, const size_t ref_
 	return dict_self_aln_score_[b][dict_id];
 }
 
-SequenceFile::SequenceFile(Type type, Flags flags, FormatFlags format_flags, Metadata metadata, const ValueTraits& value_traits):
+SequenceFile::SequenceFile(Type type, Flags flags, FormatFlags format_flags, const ValueTraits& value_traits):
 	flags_(flags),
 	format_flags_(format_flags),
-	value_traits_(value_traits),	
-	metadata_(metadata),
+	value_traits_(value_traits),
 	type_(type)
 {
 	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
 		//seqid_file_.reset(new File(Schema{ ::Type::INT64, ::Type::STRING }, "", ::Flags::TEMP)); // | ::Flags::RECORD_ID_COLUMN));
-		seqid_file_.reset(new File(Schema{ ::Type::STRING }, "", ::Flags::TEMP));
-}
-
-SequenceFile::Metadata SequenceFile::metadata() const {
-	return metadata_;
+		seqid_file_.reset(new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::STRING }, "", Util::Tsv::Flags::TEMP));
 }
 
 void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
@@ -839,9 +932,9 @@ void SequenceFile::add_seqid_mapping(const std::string& id, OId oid) {
 	}
 }
 
-vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t block_size, function<int64_t(Loc)>& seq_size) {
+vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> SequenceFile::length_sort(int64_t block_size, function<int64_t(Loc)>& seq_size) {
 	static const int64_t MIN_BLOCK_SIZE = 1;
-	vector<tuple<FastaFile*, vector<OId>, File*>> files;
+	vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> files;
 	init_seq_access();
 	vector<Letter> seq;
 	string id;
@@ -878,7 +971,7 @@ vector<tuple<FastaFile*, vector<OId>, File*>> SequenceFile::length_sort(int64_t 
 	for (int i = 0; i < block; ++i) {
 		//files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
 		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP), vector<OId>(),
-			new File(Schema{ ::Type::INT64 }, "", ::Flags::TEMP));
+			new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::TEMP));
 		get<0>(files.back())->init_write();
 	}
 	init_seq_access();
@@ -1077,4 +1170,8 @@ void SequenceFile::init_taxon_output_fields() {
 		TabularFormat::field_callbacks[next].match = std::bind(callback, _1, _2, _3, Rank(i));
 		TabularFormat::field_callbacks[next].query_intro = star;
 	}
+}
+
+RawChunk* SequenceFile::raw_chunk(size_t letters, SequenceFile::Flags flags) {
+	throw OperationNotSupported();
 }

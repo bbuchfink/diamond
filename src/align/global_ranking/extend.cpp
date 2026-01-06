@@ -94,7 +94,8 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	TaskTimer timer("Loading reference sequences");
 	InputFile query_list(merged_query_list);
 	db.set_seqinfo_ptr(0);
-	cfg.target.reset(db.load_seqs(INT64_MAX, &ranking_db_filter, SequenceFile::LoadFlags::SEQS));
+	db.flags() |= SequenceFile::Flags::SEQS;
+	cfg.target.reset(db.load_seqs(INT64_MAX, &ranking_db_filter));
 	TargetMap db2block_id;
 	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);
@@ -181,12 +182,12 @@ void extend(Search::Config& cfg, Consumer& out) {
 	const BitVector filter = db_filter(*cfg.ranking_table, cfg.db->sequence_count());
 	timer.go("Loading target sequences");
 	cfg.db->set_seqinfo_ptr(0);
-	auto flags = SequenceFile::LoadFlags::SEQS;
+	cfg.db->flags() |= SequenceFile::Flags::SEQS;
 	if (!flag_any(cfg.db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))
-		flags |= SequenceFile::LoadFlags::TITLES;
+		cfg.db->flags() |= SequenceFile::Flags::TITLES;
 	if (bool(cfg.output_format->flags & Output::Flags::FULL_TITLES))
-		flags |= SequenceFile::LoadFlags::FULL_TITLES;
-	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, &filter, flags));
+		cfg.db->flags() |= SequenceFile::Flags::FULL_TITLES;
+	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, &filter));
 	TargetMap db2block_id;
 	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);

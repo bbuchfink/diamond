@@ -172,10 +172,10 @@ void ZstdSource::rewind()
 	init();
 }
 
-size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
+size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) {
 	ZSTD_DCtx* dctx = ZSTD_createDCtx();
 	if (!dctx)
-		hard_fail("ZSTD_createDCtx");
+		throw std::runtime_error("ZSTD_createDCtx");
 	const size_t inChunkSize = ZSTD_DStreamInSize();
 	std::vector<unsigned char> in(inChunkSize);
 	unsigned char* outBase = static_cast<unsigned char*>(dst);
@@ -185,7 +185,7 @@ size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 		const size_t read = std::fread(in.data(), 1, in.size(), src);
 		if (std::ferror(src)) {
 			ZSTD_freeDCtx(dctx);
-			hard_fail(string("Error reading file: ") + strerror(errno));
+			throw std::runtime_error(string("Error reading file: ") + strerror(errno));
 		}
 		ZSTD_inBuffer input{ in.data(), read, 0 };
 		while (input.pos < input.size) {
@@ -193,19 +193,19 @@ size_t zstd_decompress(FILE* src, void* dst, size_t dstCapacity) noexcept {
 			size_t const ret = ZSTD_decompressStream(dctx, &output, &input);
 			if (ZSTD_isError(ret)) {
 				ZSTD_freeDCtx(dctx);
-				hard_fail(ZSTD_getErrorName(ret));
+				throw std::runtime_error(ZSTD_getErrorName(ret));
 			}
 			totalOut += output.pos;
 			lastRet = ret;
 			if (totalOut > dstCapacity) {
 				ZSTD_freeDCtx(dctx);
-				hard_fail("Failed decompressing zstd stream: output buffer too small");
+				throw std::runtime_error("Failed decompressing zstd stream: output buffer too small");
 			}
 		}
 		if (read == 0) {
 			if (lastRet != 0) {
 				ZSTD_freeDCtx(dctx);
-				hard_fail("Failed decompressing zstd stream");
+				throw std::runtime_error("Failed decompressing zstd stream");
 			}
 			break;
 		}

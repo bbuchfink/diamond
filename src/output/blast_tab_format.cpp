@@ -52,6 +52,7 @@ using std::back_inserter;
 using std::vector;
 using std::runtime_error;
 using std::map;
+using std::pair;
 
 map<FieldId, OutputField> TabularFormat::field_def = {
 { FieldId::QSeqId, { FieldId::QSeqId, "qseqid", "cseqid", "Query Seq - id", HspValues::NONE, Flags::IS_STRING } },
@@ -201,8 +202,8 @@ static void print_lineage(int64_t target_oid, SequenceFile& db, TextBuffer& out,
 
 map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
     map<FieldId, FieldCallbacks> callbacks;
-    for (const auto& [id, field] : TabularFormat::field_def) {
-        callbacks.emplace(id, FieldCallbacks{ make_invalid_match_handler(field.key), make_invalid_intro_handler(field.key) });
+    for (const auto& f : TabularFormat::field_def) {
+        callbacks.emplace(f.first, FieldCallbacks{ make_invalid_match_handler(f.second.key), make_invalid_intro_handler(f.second.key) });
     }
 
     callbacks[FieldId::QSeqId].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
@@ -661,7 +662,7 @@ TabularFormat::TabularFormat(bool json) :
         return;
     }
     for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
-        auto it = std::find_if(field_def.begin(), field_def.end(), [i](const auto& f) {return f.second.key == *i; });
+        auto it = std::find_if(field_def.begin(), field_def.end(), [i](const pair<FieldId, OutputField>& f) {return f.second.key == *i; });
         if (it == field_def.end())
             throw std::runtime_error(string("Invalid output field: ") + *i);
         const FieldId id = it->first;

@@ -63,7 +63,8 @@ struct SeedEntry {
 };
 
 void get_pairs_uni_cov(KeyMergeIterator<const SeedEntry*, SeedEntry::Key>& it, BufferArray& buffers) {
-	const int64_t rep_oid = it.begin()->oid, radix = MurmurHash()(rep_oid) & (RADIX_COUNT - 1);
+	const int64_t rep_oid = it.begin()->oid;
+	const int radix = MurmurHash()(rep_oid) & (RADIX_COUNT - 1);
 	const int32_t rep_len = it.begin()->len;
 	for (auto j = it.begin() + 1; j < it.end(); ++j) {
 		if (rep_oid == j->oid)
@@ -88,7 +89,7 @@ void get_pairs_mutual_cov(KeyMergeIterator<const SeedEntry*, SeedEntry::Key>& it
 		const int32_t qpos = i + (j1 - j) / 2;
 		const int64_t rep_oid = begin[qpos].oid;
 		const int32_t rep_len = begin[qpos].len;
-		const int64_t radix = MurmurHash()(rep_oid) & (RADIX_COUNT - 1);
+		const int radix = int(MurmurHash()(rep_oid) & (RADIX_COUNT - 1));
 		for (int k = j; k < j1; ++k)
 			if (rep_oid != begin[k].oid)
 				buffers.write(radix, PairEntry(rep_oid, begin[k].oid, rep_len, begin[k].len));

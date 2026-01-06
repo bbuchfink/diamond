@@ -135,9 +135,16 @@ class Sorter<Cfg>::Block {
     }
 
  private:
-    using storage_type = typename std::conditional<kInitializedStorage, value_type,
-                                            typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type>::type;
-    storage_type storage_[Cfg::kBlockSize];
+     struct raw_slot {
+         alignas(value_type) unsigned char bytes[sizeof(value_type)];
+     };
+
+     using storage_type = std::conditional_t<kInitializedStorage, value_type, raw_slot>;
+
+     storage_type storage_[Cfg::kBlockSize];
+    //using storage_type = typename std::conditional<kInitializedStorage, value_type,
+    //                                        typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type>::type;
+    //storage_type storage_[Cfg::kBlockSize];
 };
 
 /**

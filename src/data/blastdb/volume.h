@@ -30,39 +30,40 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <vector>
-#include "util/io/mmap.h"
 #include "basic/value.h"
+#include "util/io/file.h"
+#include "util/optional.h"
+#include "../sequence_file.h"
 
 struct SeqId {
     std::string type;
     std::string value;
-    std::optional<std::int64_t> version;
-    std::optional<std::string> chain;
+    optional<int64_t> version;
+    optional<std::string> chain;
 };
 
 struct BlastDefLine {
     std::string title;
     std::vector<SeqId> seqids;
-    std::optional<std::int64_t> taxid;
+    optional<TaxId> taxid;
 };
 
 struct PinIndex {
-    std::uint32_t version = 0;
+    uint32_t version = 0;
     bool is_protein = false;
-    std::uint32_t volume_number = 0; // only meaningful for version 5
+    uint32_t volume_number = 0; // only meaningful for version 5
     std::string title;
     std::string lmdb_file; // version 5 only
     std::string date;
-    std::uint32_t num_oids = 0;
-    std::uint64_t total_length = 0;
-    std::uint32_t max_length = 0;
-    std::size_t header_offsets_offset = 0;
-    std::size_t sequence_offsets_offset = 0;
-    std::size_t ambiguity_offsets_offset = 0; // nucleotide only
-    std::size_t pin_length = 0;
+    uint32_t num_oids = 0;
+    uint64_t total_length = 0;
+    uint32_t max_length = 0;
+    std::vector<uint32_t> header_index;
+    std::vector<uint32_t> sequence_index;
+    size_t ambiguity_offsets_offset = 0; // nucleotide only
+    size_t pin_length = 0;
 };
 
 std::string build_title(const std::vector<BlastDefLine>& deflines, const char* delimiter, bool all);
@@ -70,26 +71,55 @@ std::string format_seqid(const SeqId& id);
 
 class Volume {
 public:
-    Volume() = default;
-    static Volume Open(const std::string& path, int idx, OId begin, OId end);
 
+    struct RawChunk : public ::RawChunk {
+        virtual bool empty() const override {
+            return end_ <= begin_;
+        }
+        virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, std::unordered_map<std::string, bool>* accs) const override;
+        virtual OId begin() const noexcept override {
+            return begin_;
+        }
+        virtual OId end() const noexcept override {
+            return end_;
+        }
+        virtual size_t letters() const noexcept override {
+            return letters_;
+		}
+        virtual size_t bytes() const noexcept override {
+			return seq_data.size() + phr_data.size();
+        }
+		virtual ~RawChunk() override = default;
+        std::vector<char> seq_data, phr_data;
+		std::vector<uint32_t> seq_index, phr_index;
+        OId begin_, end_;
+        size_t letters_;
+    };
+
+    Volume(const std::string& path, int idx, OId begin, OId end, bool load_index);
     const PinIndex& index() const { return index_; }
-
-    std::vector<BlastDefLine> deflines(uint32_t oid, bool all, bool full_titles, bool taxids) const;
-    std::vector<Letter> sequence(uint32_t oid) const;
-	Loc length(uint32_t oid) const;
-    size_t id_len(uint32_t oid) const;
+    std::vector<BlastDefLine> deflines(uint32_t oid, bool all, bool full_titles, bool taxids);
+    std::vector<Letter> sequence(uint32_t oid);
+    std::vector<char> raw_sequence(uint32_t count);
+    std::vector<char> raw_deflines(uint32_t count);
+	Loc length(uint32_t oid) const noexcept;
+    size_t id_len(uint32_t oid) const noexcept;
+    RawChunk* raw_chunk(size_t letters, SequenceFile::Flags flags);
+	uint32_t seq_ptr() const noexcept { return seq_ptr_; }
+    void rewind();
     int idx;
-    OId begin = 0, end = 0;
+    OId begin = 0, end = 0;    
 
 private:
-    Volume(PinIndex index, MappedFile pin_mapping, MappedFile phr_mapping, MappedFile psq_mapping, int idx, OId begin, OId end);
-    static PinIndex ParsePinFile(const MappedFile& mapping);
-    uint32_t read_offset(const MappedFile::View& view, size_t base_offset, uint32_t index) const;
-
-    MappedFile pin_mapping_;
+    Volume(PinIndex index, File&& phr, File&& psq, int idx, OId begin, OId end);
+    static PinIndex ParsePinFile(File& mapping, bool index);
+    
     PinIndex index_;
-    MappedFile phr_mapping_;
-    MappedFile psq_mapping_;
+    File phr_mapping_;
+    File psq_mapping_;
+    uint32_t seq_ptr_ = 0, hdr_ptr_ = 0;
     
 };
+
+std::vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool all, bool full_titles, bool taxids);
+std::vector<Letter> decode_protein_sequence(const char* data, size_t len);

@@ -35,6 +35,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "hit_buffer.h"
 #include "basic/config.h"
 #include "util/log_stream.h"
+#include "util/io/output_file.h"
 
 using std::vector;
 using std::string;
@@ -64,8 +65,8 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 			hit_buf_.emplace_back();
 			hit_buf_.back().reserve(GIGABYTES / sizeof(Hit));
 		}
-		else {
-			tmp_file_.emplace_back();
+		else {			
+			tmp_file_.push_back(File(Temporary()));
 		}
 		count_[i].store(0, std::memory_order_relaxed);
 	}
@@ -73,6 +74,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 
 bool HitBuffer::load(size_t max_size) {
 	max_size = std::max(max_size, (size_t)1);
+	data_size_next_ = 0;
 	auto worker = [this](int end) {
 		Hit* out = data_next_;
 		for (; bins_processed_ < end; ++bins_processed_) {
@@ -81,7 +83,6 @@ bool HitBuffer::load(size_t max_size) {
 		}
 		};
 	if (bins_processed_ == bins()) {
-		data_next_ = nullptr;
 		return false;
 	}
 	size_t size = count_[bins_processed_], current_size;
@@ -89,6 +90,7 @@ bool HitBuffer::load(size_t max_size) {
 	int end = bins_processed_ + 1;
 	if (!config.trace_pt_membuf) {
 		size_t disk_size = tmp_file_[bins_processed_].size();
+		// consider using more bins here
 		while (end < bins() && (size + (current_size = count_[end])) * sizeof(Hit) < max_size && (end - bins_processed_ == 0)) {
 			size += current_size;
 			disk_size += tmp_file_[end].size();
@@ -139,6 +141,7 @@ void HitBuffer::alloc_buffer() {
 	}
 #ifdef _MSC_VER
 	data_next_ = new Hit[max_size];
+	mmap_ = false;
 #else
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 #ifdef MAP_HUGETLB
@@ -147,6 +150,7 @@ void HitBuffer::alloc_buffer() {
 	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
 	if (data_next_ == MAP_FAILED) {
 		data_next_ = new Hit[max_size];
+		mmap_ = false;
 	}
 	else
 		mmap_ = true;

@@ -142,13 +142,13 @@ struct DAAFile
 	uint64_t diamond_build() const
 	{ return h2_.diamond_build; }
 
-	int64_t db_seqs() const
+	uint64_t db_seqs() const
 	{ return h2_.db_seqs; }
 
 	uint64_t db_seqs_used() const
 	{ return h2_.db_seqs_used; }
 
-	int64_t db_letters() const
+	uint64_t db_letters() const
 	{ return h2_.db_letters; }
 
 	const char* score_matrix() const

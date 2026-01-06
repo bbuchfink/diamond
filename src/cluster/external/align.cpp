@@ -28,6 +28,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <unordered_map>
 #include "basic/config.h"
 #include "external.h"
@@ -61,7 +66,7 @@ static void align_rep(ThreadPool& tp, const ChunkSeqs& chunk_seqs, vector<PairEn
 	for (auto i = begin; i < end; ++i) {
 		const Sequence member = chunk_seqs[i->member_oid];
 		const int bin = DP::BandedSwipe::bin(HspValues::COORDS, rep.length(), 0, 0, (int64_t)rep.length() * (int64_t)member.length(), 0, 0);
-		targets[bin].emplace_back(member, member.length(), i - begin);
+		targets[bin].emplace_back(member, member.length(), BlockId(i - begin));
 		max_len = std::max(max_len, member.length());
 	}
 	DP::Params params{ rep, nullptr, Frame(0), rep.length(), nullptr, DP::Flags::FULL_MATRIX, false, max_len,
@@ -82,13 +87,13 @@ static void align_rep(ThreadPool& tp, const ChunkSeqs& chunk_seqs, vector<PairEn
 		else if (h.subject_cover_percent(member.length()) >= config.mutual_cover.get_present() && h.query_cover_percent(rep.length()) >= config.mutual_cover.get_present()) {
 			int64_t oid1 = rep_oid;
 			int64_t oid2 = member_oid;
-			int64_t len1 = rep.length();
-			int64_t len2 = member.length();
+			Loc len1 = rep.length();
+			Loc len2 = member.length();
 			if (oid1 > oid2) {
 				std::swap(oid1, oid2);
 				std::swap(len1, len2);
 			}
-			out.write(MurmurHash()(oid1) & (RADIX_COUNT - 1), Edge(oid1, oid2, len1, len2));
+			out.write(int(MurmurHash()(oid1) & (RADIX_COUNT - 1)), Edge(oid1, oid2, len1, len2));
 		}
 	}
 }
@@ -103,7 +108,7 @@ vector<string> align(Job& job, int chunk_count, int64_t db_size) {
 	Atomic queue(queue_path);
 	int chunk, chunks_processed = 0;
 	while (true) {
-		chunk = queue.fetch_add();
+		chunk = (int)queue.fetch_add();
 		if (chunk >= chunk_count)
 			break;
 		TaskTimer timer("Reading sequence files");

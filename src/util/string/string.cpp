@@ -1,3 +1,33 @@
+/****
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+****/
+// SPDX-License-Identifier: BSD-3-Clause
+
 #include <sstream>
 #include <iomanip>
 #include <stdexcept>
@@ -141,8 +171,25 @@ int32_t convert_string<int32_t>(const char* s) {
 	return (int32_t)i;
 }
 
-std::string format(double number) {
-	const std::vector<std::string> suffixes = { "", "K", "M", "G", "T", "P", "E" };
+template<>
+uint64_t convert_string<uint64_t>(const char* s) {
+	char* end;
+	unsigned long long i = strtoull(s, &end, 10);
+	if ((i == 0 && strcmp(s, "0") != 0) || i == ULLONG_MAX || *end != '\0' || i > numeric_limits<uint64_t>::max())
+		throw runtime_error(string("Error converting integer value: ") + s);
+	return i;
+}
+
+template<>
+uint32_t convert_string<uint32_t>(const char* s) {
+	const int64_t i = convert_string<int64_t>(s);
+	if (i < 0 || i > (int64_t)UINT32_MAX)
+		throw runtime_error(string("Error converting integer value: ") + s);
+	return (uint32_t)i;
+}
+
+string format(double number) {
+	const vector<string> suffixes = { "", "K", "M", "G", "T", "P", "E" };
 
 	if (number == 0) {
 		return "0";
@@ -162,7 +209,7 @@ std::string format(double number) {
 
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(2) << formatted_number;
-	std::string num_str = oss.str();
+	string num_str = oss.str();
 
 	// Trim trailing zeros and decimal point if needed
 	size_t dot_pos = num_str.find('.');
@@ -199,11 +246,15 @@ std::string format(double number) {
 		}
 	}
 
-	std::string result = (is_negative ? "-" : "") + num_str + suffixes[suffix_index];
+	string result = (is_negative ? "-" : "") + num_str + suffixes[suffix_index];
 	return result;
 }
 
-std::string format(int64_t number) {
+string format(int64_t number) {
+	return format((double)number);
+}
+
+string format(size_t number) {
 	return format((double)number);
 }
 

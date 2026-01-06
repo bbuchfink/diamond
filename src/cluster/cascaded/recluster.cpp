@@ -145,7 +145,7 @@ void recluster() {
 	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
 
 	TaskTimer timer("Opening the database");
-	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING, SequenceFile::Metadata()));
+	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING));
 	config.db_size = db->letters();
 	timer.finish();
 	unique_ptr<Util::Tsv::File> out(open_out_tsv());

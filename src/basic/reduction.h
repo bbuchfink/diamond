@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "value.h"
 #include "sequence.h"
-#include "util/memory_resource.h"
+#include "util/memory/memory_resource.h"
 
 struct Reduction
 {

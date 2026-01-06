@@ -53,7 +53,8 @@ using std::numeric_limits;
 Block::Block():
 	source_seqs_(),
 	unmasked_seqs_(),
-	soft_masked_(false)
+	soft_masked_(false),
+	raw_bytes_(0)
 {
 }
 

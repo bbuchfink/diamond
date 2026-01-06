@@ -29,30 +29,37 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#include "output_file.h"
 
-struct TempFileHandler {
-	void init(const char* path);
-private:
-	const std::string path_;
+#if _MSC_VER || __GNUC__ >= 5
+#define HAVE_MEMORY_RESOURCE __has_include(<memory_resource>)
+#endif
+
+#if HAVE_MEMORY_RESOURCE
+#include <memory_resource>
+#else
+#warning "Old compiler missing memory_resource support."
+#include <list>
+#include <vector>
+
+namespace std { namespace pmr {
+
+struct monotonic_buffer_resource {};
+
+template<typename T>
+struct list : public std::list<T> {
+    list(monotonic_buffer_resource*):
+        std::list<T>()
+    { }
 };
 
-extern TempFileHandler temp_file_handler;
-
-struct TempFile : public OutputFile
-{
-
-	TempFile(bool unlink = true);
-	TempFile(const std::string & file_name);
-	TempFile(const TempFileData& d);
-	virtual void finalize() override {}
-	static std::string get_temp_dir();
-	static unsigned n;
-	static uint64_t hash_key;
-	bool unlinked;
-
-	static TempFileData init(bool unlink);
-
-private:
-
+template<typename T>
+struct vector : public std::vector<T> {
+    vector(monotonic_buffer_resource*) :
+        std::vector<T>()
+    {
+    }
 };
+
+}}
+
+#endif

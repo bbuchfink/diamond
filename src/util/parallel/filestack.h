@@ -47,17 +47,17 @@ class FileStack {
 
         size_t size();
 
-        int pop(int & i);
+        int64_t pop(int64_t& i);
         int pop(std::string & buf);
         int pop(std::string & buf, size_t & size_after_pop);
-        int pop_non_locked(std::string & buf);
+        int64_t pop_non_locked(std::string & buf);
 
-        int top(int & i);
+        int64_t top(int64_t& i);
         int top(std::string & buf);
 
         void remove(const std::string & line);
 
-        int64_t push(int i);
+        int64_t push(int64_t i);
         int64_t push(const std::string & buf);
         int64_t push(const std::string & buf, size_t & size_after_push);
         int64_t push_non_locked(const std::string & buf);
@@ -69,7 +69,7 @@ class FileStack {
 
         int lock();
         int unlock();
-        int64_t seek(size_t offset, int mode);
+        int64_t seek(int64_t offset, int mode);
         size_t read(char* buf, size_t size);
         int64_t write(const char* buf, size_t size);
         int truncate(size_t size);
@@ -91,7 +91,7 @@ class FileStack {
         off_t max_line_length;
 
         int pop(std::string &, const bool, size_t &);
-        int pop_non_locked(std::string &, const bool, size_t &);
+        int64_t pop_non_locked(std::string &, const bool, size_t &);
 
         std::mutex mtx_;
 

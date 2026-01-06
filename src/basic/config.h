@@ -73,6 +73,7 @@ struct Config
 
 	string_vector input_ref_file;
 	int	threads_;
+	int load_threads;
 	Option<string> database;
 	string_vector query_file;
 	unsigned	merge_seq_treshold;
@@ -374,6 +375,7 @@ struct Config
 	bool linclust_banded_ext;
 	Loc min_query_len;
 	bool hit_membuf;
+	size_t minichunk;
 
     SequenceType dbtype;
 

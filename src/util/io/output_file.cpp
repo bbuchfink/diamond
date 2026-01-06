@@ -84,7 +84,7 @@ void OutputFile::advise_need() {
 #endif
 }
 
-size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor) noexcept {
+size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor) {
 	switch (compressor) {
 	case Compressor::ZLIB:
 		return zlib_decompress(src, dst, dstCapacity);
@@ -93,6 +93,6 @@ size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compresso
 		return zstd_decompress(src, dst, dstCapacity);
 #endif
 	default:
-		hard_fail("Invalid compressor in decompress");
+		throw std::runtime_error("Invalid compressor in decompress");
 	}
 }

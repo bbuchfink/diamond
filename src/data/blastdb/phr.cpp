@@ -29,7 +29,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <cstdint>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -37,9 +36,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <sstream>
 #include "volume.h"
-#include "util/io/mmap.h"
 #include "ber.h"
 #include "asn1.h"
+#include "util/optional.h"
 
 using std::vector;
 using std::string;
@@ -59,34 +58,35 @@ static std::string TagNameFromNumber(uint32_t num)
     return it != kNames.end() ? it->second : ("unknown-" + std::to_string(num));
 }
 
-uint32_t Volume::read_offset(const ByteView& view, size_t base_offset, uint32_t index) const
-{
-    const size_t position = base_offset + static_cast<size_t>(index) * sizeof(uint32_t);
-    if (position + sizeof(uint32_t) > index_.pin_length || position + sizeof(uint32_t) > view.size()) {
-        throw runtime_error("Offset array exceeds PIN file size");
-    }
-    size_t offset = position;
-    return ReadBE32(view, offset);
-}
-
-Volume::Volume(PinIndex index, MappedFile pin_mapping, MappedFile phr_mapping, MappedFile psq_mapping, int idx, OId begin, OId end)
-    : pin_mapping_(std::move(pin_mapping)),
-    index_(std::move(index)),
-    phr_mapping_(std::move(phr_mapping)),
-    psq_mapping_(std::move(psq_mapping)),
-	idx(idx),
-    begin(begin),
-	end(end)
-{
-}
-
-Volume Volume::Open(const string& path, int idx, OId begin, OId end)
-{
-    MappedFile pin_mapping(path + ".pin");
-    PinIndex index = Volume::ParsePinFile(pin_mapping);
-    MappedFile phr_mapping(path + ".phr");
-    MappedFile psq_mapping(path + ".psq");
-    return Volume(std::move(index), std::move(pin_mapping), std::move(phr_mapping), std::move(psq_mapping), idx, begin, end);
+static void decode_seqid(const Node& node, SeqId& seqid) {
+    for (const Node& n4 : node.children) {
+        switch (n4.tag.tagNumber) {
+        case 1:
+            for (const Node& n5 : n4.children) {
+                switch (n5.tag.tagNumber) {
+                case 26:
+                    seqid.value.assign(n5.value.begin(), n5.value.end());
+                    break;
+                default:
+                    ;
+                }
+            }
+            break;
+        case 3:
+            for (const Node& n5 : n4.children) {
+                switch (n5.tag.tagNumber) {
+                case 2:
+                    seqid.version.emplace(decode_integer(n5.value));
+                    break;
+                default:
+                    ;
+                }
+            }
+            break;
+        default:
+            ;
+        }
+    }    
 }
 
 static SeqId decode_seqid(const Node& node) {
@@ -96,6 +96,8 @@ static SeqId decode_seqid(const Node& node) {
         case 16:
             for (const Node& n2 : n1.children) {
                 switch (n2.tag.tagNumber) {
+                case 0:
+                case 1:
                 case 4:
                 case 5:
                 case 7:
@@ -103,37 +105,12 @@ static SeqId decode_seqid(const Node& node) {
                 case 12:
                 case 15:
                 case 16:
+                    decode_seqid(n2, seqid);
                     for (const Node& n3 : n2.children) {
                         switch (n3.tag.tagNumber) {
                         case 16:
-                            for (const Node& n4 : n3.children) {
-                                switch (n4.tag.tagNumber) {
-                                case 1:
-                                    for (const Node& n5 : n4.children) {
-                                        switch (n5.tag.tagNumber) {
-                                        case 26:
-                                            seqid.value.assign(n5.value.begin(), n5.value.end());
-                                            break;
-                                        default:
-                                            ;
-                                        }
-                                    }
-                                    break;
-                                case 3:
-                                    for (const Node& n5 : n4.children) {
-                                        switch (n5.tag.tagNumber) {
-                                        case 2:
-                                            seqid.version.emplace(decode_integer(n5.value));
-                                            break;
-                                        default:
-                                            ;
-                                        }
-                                    }
-                                    break;
-                                default:
-                                    ;
-                                }
-                            }
+                            decode_seqid(n3, seqid);
+                            break;
                         default:
                             ;
                         }
@@ -206,7 +183,7 @@ static BlastDefLine decode_defline(const Node& node, bool full_titles, bool taxi
             if (taxids) {
                 for (const Node& n2 : n1.children) {
                     if (n2.tag.tagNumber == 2) {
-                        defline.taxid = decode_integer(n2.value);
+                        defline.taxid = (TaxId)decode_integer(n2.value);
                     }
                 }
             }
@@ -220,7 +197,7 @@ static BlastDefLine decode_defline(const Node& node, bool full_titles, bool taxi
 
 //#include <iostream>
 
-static vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool all, bool full_titles, bool taxids) {
+vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool all, bool full_titles, bool taxids) {
     vector<BlastDefLine> out;
 	vector<Node> nodes = decode(header_data, len);
     if (nodes.empty())
@@ -234,27 +211,32 @@ static vector<BlastDefLine> decode_deflines(const char* header_data, size_t len,
     return out;
 }
 
-vector<BlastDefLine> Volume::deflines(std::uint32_t oid, bool all, bool full_titles, bool taxids) const
+vector<BlastDefLine> Volume::deflines(uint32_t oid, bool all, bool full_titles, bool taxids)
 {
-    if (oid >= index_.num_oids) {
+    if (oid >= index_.num_oids)
         throw out_of_range("OID exceeds number of sequences in volume");
-    }
-    const ByteView pin_view = pin_mapping_.view();
-    const size_t offset_index = static_cast<size_t>(oid);
-    const ByteView phr_view = phr_mapping_.view();
-    size_t header_offset = read_offset(pin_view, index_.header_offsets_offset, offset_index);
-    size_t next_header_offset = read_offset(pin_view, index_.header_offsets_offset, offset_index + 1);
-    if (next_header_offset < header_offset || next_header_offset > phr_view.size()) {
+	size_t header_offset = index_.header_index[oid];
+    size_t next_header_offset = index_.header_index[oid + 1];
+    if (next_header_offset < header_offset) {
         throw out_of_range("Header offsets exceed PHR file size");
     }
     const size_t header_length = next_header_offset - header_offset;
-	return decode_deflines(reinterpret_cast<const char*>(phr_view.data() + header_offset), header_length, all, full_titles, taxids);
+    if (oid != hdr_ptr_)
+        phr_mapping_.seek(header_offset, SEEK_SET);
+    hdr_ptr_ = oid + 1;
+	return decode_deflines(phr_mapping_.read(header_length), header_length, all, full_titles, taxids);
  }
 
-size_t Volume::id_len(uint32_t oid) const {
-    const ByteView pin_view = pin_mapping_.view();
-    const size_t offset_index = static_cast<size_t>(oid);
-    return read_offset(pin_view, index_.header_offsets_offset, offset_index + 1) - read_offset(pin_view, index_.header_offsets_offset, offset_index);
+vector<char> Volume::raw_deflines(uint32_t count) {
+	const size_t n = index_.header_index[hdr_ptr_ + count] - index_.header_index[hdr_ptr_];
+    vector<char> v(n);
+	phr_mapping_.read(v.data(), n);
+    hdr_ptr_ += count;
+	return v;
+}
+
+size_t Volume::id_len(uint32_t oid) const noexcept {
+    return index_.header_index[oid + 1] - index_.header_index[oid];
 }
 
 string format_seqid(const SeqId& id) {

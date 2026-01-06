@@ -75,17 +75,18 @@ std::vector<Int2> convert_mapping(const std::vector<Int>& mapping, Int2) {
 }
 
 struct Mapback : public Consumer {
+	static const OId NIL_VALUE = (OId)-1;
 	Mapback(int64_t count) :
-		centroid_id(count, -1)
+		centroid_id(count, NIL_VALUE)
 	{}
 	virtual void consume(const char* ptr, size_t n) {
 		const char* end = ptr + n;
 		const bool mutual_cov = config.mutual_cover.present();
 		const double cutoff = mutual_cov ? config.mutual_cover.get_present() : config.member_cover;
-		OId query = -1;
+		OId query = NIL_VALUE;
 		for(const char* p = ptr; p < end; p += sizeof(Output::Format::Edge::Data)) {
 			const auto edge = *(Output::Format::Edge::Data*)p;
-			assert(query == -1 || query == edge.query);
+			assert(query == NIL_VALUE || query == edge.query);
 			query = edge.query;
 			if (edge.qcovhsp >= cutoff && ((mutual_cov && edge.scovhsp >= cutoff) || !mutual_cov))
 				centroid_id[edge.query] = edge.target;
@@ -93,8 +94,8 @@ struct Mapback : public Consumer {
 	}
 	std::vector<OId> unmapped() const {
 		std::vector<OId> v;
-		for (OId i = 0; i < (OId)centroid_id.size(); ++i)
-			if (centroid_id[i] == -1)
+		for (OId i = 0; i < centroid_id.size(); ++i)
+			if (centroid_id[i] == NIL_VALUE)
 				v.push_back(i);
 		return v;
 	}
@@ -103,7 +104,7 @@ struct Mapback : public Consumer {
 
 template<typename It, typename It2>
 int64_t update_clustering(It clustering, It2 mapping, It2 query_begin, It2 query_end, It2 db_begin) {
-	const int64_t n = query_end - query_begin;
+	const uint64_t n = query_end - query_begin;
 	int64_t k = 0;
 	for (OId i = 0; i < n; ++i)
 		if (mapping[i] >= 0 && clustering[query_begin[i]] != db_begin[mapping[i]]) {

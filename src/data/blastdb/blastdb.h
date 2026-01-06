@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -35,11 +35,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using BlastOid = int;
 
-class sqlite3;
+struct sqlite3;
 
 struct BlastDB : public SequenceFile {
 
-	BlastDB(const std::string& file_name, Metadata metadata, Flags flags, const ValueTraits& value_traits = amino_acid_traits);
+	BlastDB(const std::string& file_name, Flags flags, const ValueTraits& value_traits = amino_acid_traits);
 
 	virtual void print_info() const override;
 	virtual int64_t file_count() const override;
@@ -58,8 +58,8 @@ struct BlastDB : public SequenceFile {
 	virtual std::string seqid(OId oid, bool all, bool full_titles) override;
 	//virtual Loc dict_len(DictId dict_id, const size_t ref_block) override;
 	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block) override;
-	virtual int64_t sequence_count() const override;
-	virtual int64_t letters() const override;
+	virtual uint64_t sequence_count() const override;
+	virtual uint64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
@@ -86,9 +86,13 @@ struct BlastDB : public SequenceFile {
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;
 	virtual ~BlastDB();
-	StringSet load_ids(OId begin, OId end) const;
 	const Pal& pal() const noexcept {
 		return pal_;
+	}
+	virtual RawChunk* raw_chunk(size_t letters, SequenceFile::Flags flags) override;
+	virtual void add_taxid_mapping(const std::vector<std::pair<OId, TaxId>>& taxids) override;
+	virtual int raw_chunk_no() const override {
+		return raw_chunk_no_;
 	}
 
 private:
@@ -103,7 +107,7 @@ private:
 	std::unordered_multimap<OId, TaxId> taxon_mapping_;
 	std::map<std::string, int> custom_ranks_;
 	std::unordered_map<TaxId, int> rank_mapping_;
-	int oid_;
+	OId oid_;
 	const bool long_seqids_;
 	Flags flags_;
 	BitVector oid_filter_;
@@ -111,6 +115,7 @@ private:
 	std::unordered_map<TaxId, std::string> extra_names_;
 	std::map<OId, std::string> volumes_;
 	Volume volume_;
+	int raw_chunk_no_;
 	
 	friend void load_blast_seqid();
 	friend void load_blast_seqid_lin();

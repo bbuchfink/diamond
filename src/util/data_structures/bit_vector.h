@@ -87,13 +87,13 @@ struct BitVector {
 		return data_.empty();
 	}
 
-	int64_t size() const {
+	uint64_t size() const {
 		return size_;
 	}
 
-	std::vector<int64_t> negative_list() const {
-		std::vector<int64_t> v;
-		for (int64_t i = 0; i < size_; ++i)
+	std::vector<uint64_t> negative_list() const {
+		std::vector<uint64_t> v;
+		for (uint64_t i = 0; i < size_; ++i)
 			if (!get(i))
 				v.push_back(i);
 		return v;
@@ -102,6 +102,6 @@ struct BitVector {
 private:
 
 	std::vector<uint64_t> data_;
-	int64_t size_;
+	uint64_t size_;
 
 };

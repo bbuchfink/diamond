@@ -31,6 +31,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #include <atomic>
 #include <stdarg.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <stdio.h>
 #include <vector>
 #include <string>
 #include <mutex>
@@ -155,7 +158,7 @@ struct Job {
 		worker_id_ = worker_id.fetch_add();
 	}
 
-	int worker_id() const {
+	int64_t worker_id() const {
 		return worker_id_;
 	}
 
@@ -163,21 +166,7 @@ struct Job {
 		return base_dir_ + PATH_SEPARATOR + "round" + std::to_string(round == -1 ? round_ : round);
 	}
 
-	void log(const char* format, ...) {
-		char buffer[1024];
-		char* ptr = buffer + snprintf(buffer, 1024, "[%i, %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
-		va_list args;
-		va_start(args, format);
-		int i = vsnprintf(ptr, 1024 - (ptr - buffer), format, args);
-#ifdef WIN32
-		ptr[i++] = '\r';
-#endif
-		ptr[i++] = '\n';
-		ptr[i] = '\0';
-		log_stream << buffer;
-		log_file_->push(buffer);
-		va_end(args);
-	}
+	void log(const char* format, ...);
 
 	void next_round() {
 		++round_;
@@ -188,16 +177,16 @@ struct Job {
 		return round_;
 	}
 
-	void set_round(int volumes, int64_t input_count) {
+	void set_round(size_t volumes, int64_t input_count) {
 		volume_count_.push_back(volumes);
 		input_count_.push_back(input_count);
 	}
 
-	int volume_count(int round) const {
+	size_t volume_count(int round) const {
 		return volume_count_[round];
 	}
 
-	int input_count(int round) const {
+	uint64_t input_count(int round) const {
 		return input_count_[round];
 	}
 
@@ -212,17 +201,18 @@ struct Job {
 private:
 
 	std::string base_dir_;
-	int worker_id_, round_, round_count_;
+	int64_t worker_id_;
+	int round_, round_count_;
 	std::unique_ptr<FileStack> log_file_;
 	std::chrono::system_clock::time_point start_;
-	std::vector<int> volume_count_;
-	std::vector<int64_t> input_count_;
+	std::vector<size_t> volume_count_;
+	std::vector<uint64_t> input_count_;
 
 };
 
 struct FileArray {
 
-	FileArray(const std::string& base_dir, int size, int worker_id, int64_t max_file_size = MAX_FILE_SIZE) :
+	FileArray(const std::string& base_dir, int size, int64_t worker_id, int64_t max_file_size = MAX_FILE_SIZE) :
 		max_file_size(max_file_size),
 		size_(size),
 		worker_id_(worker_id),
@@ -291,7 +281,8 @@ struct FileArray {
 private:
 
 	const int64_t max_file_size;
-	const int size_, worker_id_;
+	const int size_;
+	const int64_t worker_id_;
 	const std::string base_dir;
 	std::vector<OutputFile*> output_files_;
 	std::vector<std::mutex> mtx_;
@@ -361,17 +352,17 @@ private:
 };
 
 struct Volume {
-	Volume(const std::string& path, int64_t oid_begin, int64_t record_count) :
+	Volume(const std::string& path, size_t oid_begin, size_t record_count) :
 		path(path),
 		oid_begin(oid_begin),
 		record_count(record_count)
 	{}
 	std::string path;
-	int64_t oid_begin, record_count;
-	int64_t oid_end() const {
+	size_t oid_begin, record_count;
+	size_t oid_end() const {
 		return oid_begin + record_count;
 	}
-	bool operator<(int64_t oid) const {
+	bool operator<(size_t oid) const {
 		return oid_end() <= oid;
 	}
 };
@@ -390,10 +381,10 @@ struct VolumedFile : public std::vector<Volume> {
 			oid += n;
 		}
 	}
-	int64_t records() const {
+	size_t records() const {
 		return empty() ? 0 : back().oid_end();
 	}
-	std::pair<std::vector<Volume>::const_iterator, std::vector<Volume>::const_iterator> find(int64_t oid_begin, int64_t oid_end) const {
+	std::pair<std::vector<Volume>::const_iterator, std::vector<Volume>::const_iterator> find(int64_t oid_begin, OId oid_end) const {
 		auto it = std::lower_bound(begin(), end(), oid_begin);
 		if (it == end())
 			throw std::runtime_error("OID out of bounds");
@@ -448,11 +439,11 @@ struct InputBuffer {
 			i.join();
 	}
 
-	int64_t size() const {
+	size_t size() const {
 		return size_;
 	}
 
-	int64_t byte_size() const {
+	size_t byte_size() const {
 		return size_ * sizeof(T);
 	}
 
@@ -497,7 +488,7 @@ struct InputBuffer {
 
 private:
 
-	const int64_t size_;
+	const size_t size_;
 	std::unique_ptr<T[]> data_;
 	const Partition<int64_t> part_;
 
@@ -570,15 +561,15 @@ struct ChunkSeqs {
 		seq_file_.remove();
 	}
 
-	int64_t oids() const {
+	size_t oids() const {
 		return oid_count_;
 	}
 
-	int64_t letters() const {
+	size_t letters() const {
 		return letter_count_;
 	}
 
-	int64_t volumes() const {
+	size_t volumes() const {
 		return seq_blocks_.size();
 	}
 

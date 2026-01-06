@@ -144,12 +144,14 @@ int FileStack::unlock() {
 #endif
 }
 
-int64_t FileStack::seek(size_t offset, int mode) {
+int64_t FileStack::seek(int64_t offset, int mode) {
 #ifdef WIN32
-    const DWORD off = SetFilePointer(hFile, offset, NULL, mode == SEEK_END ? FILE_END : FILE_BEGIN);
-    if (off == INVALID_SET_FILE_POINTER)
+    LARGE_INTEGER ptr, o;
+    o.QuadPart = offset;
+    const BOOL ret = SetFilePointerEx(hFile, o, &ptr, mode == SEEK_END ? FILE_END : FILE_BEGIN);
+    if (!ret)
         throw std::runtime_error("Failed to seek");
-    return off;
+    return ptr.QuadPart;
 #else
     return lseek(fd, offset, mode);
 #endif
@@ -158,7 +160,7 @@ int64_t FileStack::seek(size_t offset, int mode) {
 size_t FileStack::read(char* buf, size_t size) {
 #ifdef WIN32
     DWORD n;
-    if (!ReadFile(hFile, buf, size, &n, NULL))
+    if (!ReadFile(hFile, buf, (DWORD)size, &n, NULL))
         throw runtime_error("Error reading file " + file_name_);
     return n;
 #else
@@ -172,7 +174,7 @@ size_t FileStack::read(char* buf, size_t size) {
 int64_t FileStack::write(const char* buf, size_t size) {
 #ifdef WIN32
     DWORD n;
-    if (!WriteFile(hFile, buf, size, &n, NULL))
+    if (!WriteFile(hFile, buf, (DWORD)size, &n, NULL))
         throw std::runtime_error("Error writing file " + file_name_);
     return n;
 #else
@@ -191,14 +193,13 @@ int FileStack::truncate(size_t size) {
 #endif
 }
 
-int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_after_pop) {
+int64_t FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_after_pop) {
     DBG("");
     buf.clear();
     int stat = 0;
-    const off_t size = seek(0, SEEK_END);
+    const int64_t size = seek(0, SEEK_END);
     if (size > 0) {
-        off_t jmp = size - max_line_length;
-        if (jmp < 0) jmp = 0;
+        int64_t jmp = size >= max_line_length ? size - max_line_length : 0;
         seek(jmp, SEEK_SET);
 
         char * raw = new char[max_line_length * sizeof(char)];
@@ -238,7 +239,7 @@ int FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & size_
     }
 }
 
-int FileStack::pop_non_locked(string & buf) {
+int64_t FileStack::pop_non_locked(string & buf) {
     DBG("");
     size_t size_after_pop = numeric_limits<size_t>::max();
     return pop_non_locked(buf, false, size_after_pop);
@@ -251,14 +252,14 @@ int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) 
         lock();
         locked_internally = true;
     }
-    int val = pop_non_locked(buf, keep_flag, size_after_pop);
+    int val = (int)pop_non_locked(buf, keep_flag, size_after_pop);
     if (locked_internally) {
         unlock();
     }
     return val;
 }
 
-int FileStack::pop(string & buf) {
+int FileStack::pop(string& buf) {
     DBG("");
     size_t size_after_pop = numeric_limits<size_t>::max();
     return pop(buf, false, size_after_pop);
@@ -270,30 +271,30 @@ int FileStack::top(string & buf) {
     return pop(buf, true, size_after_pop);
 }
 
-int FileStack::pop(string & buf, size_t & size_after_pop) {
+int FileStack::pop(string& buf, size_t& size_after_pop) {
     DBG("");
     return pop(buf, false, size_after_pop);
 }
 
-int FileStack::pop(int & i) {
+int64_t FileStack::pop(int64_t & i) {
     DBG("");
     string buf;
     size_t size_after_pop = numeric_limits<size_t>::max();
     const int get_status = pop(buf, false, size_after_pop);
     if (get_status > 0) {
-        return i = stoi(buf);
+        return i = std::stoll(buf);
     } else {
         return i = -1;
     }
 }
 
-int FileStack::top(int & i) {
+int64_t FileStack::top(int64_t& i) {
     DBG("");
     string buf;
     size_t size_after_pop = numeric_limits<size_t>::max();
     const int get_status = pop(buf, true, size_after_pop);
     if (get_status > 0) {
-        return i = stoi(buf);
+        return i = std::stoll(buf);
     } else {
         return i = -1;
     }
@@ -306,7 +307,7 @@ void FileStack::remove(const string & line) {
         lock();
         locked_internally = true;
     }
-    const off_t size = seek(0, SEEK_END);
+    const int64_t size = seek(0, SEEK_END);
     seek(0, SEEK_SET);
 
     char * raw = new char[size * sizeof(char)];
@@ -370,7 +371,7 @@ int64_t FileStack::push(const string & buf) {
     return push(buf, size_after_push);
 }
 
-int64_t FileStack::push(int i) {
+int64_t FileStack::push(int64_t i) {
     DBG("");
     string buf = to_string(i);
     return push(buf);

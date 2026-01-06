@@ -38,9 +38,9 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using std::vector;
 using std::string;
 
-constexpr uint8_t kClassMask = 0b1100'0000;
-constexpr uint8_t kConstructedMask = 0b0010'0000;
-constexpr uint8_t kShortTagMask = 0b0001'1111;
+constexpr uint8_t kClassMask = 0xc0;
+constexpr uint8_t kConstructedMask = 0x20;
+constexpr uint8_t kShortTagMask = 0x1f;
 
 static TagInfo parse_tag(const char *data, size_t length, size_t &offset) {
     if (offset >= length) {
@@ -131,14 +131,14 @@ static vector<Node> decode_impl(const char *data, size_t length, size_t &offset,
         node.tag = tag;
 
         if (tag.constructed) {
-            std::size_t end = indefinite ? length : offset + contentLength;
+            size_t end = indefinite ? length : offset + contentLength;
             node.children = decode_impl(data, end, offset, indefinite);
 
             if (!indefinite && offset != end) {
                 throw DecodeError{"constructed element did not consume its content"};
             }
         } else {
-            std::size_t end = indefinite ? length : offset + contentLength;
+            size_t end = indefinite ? length : offset + contentLength;
             if (indefinite) {
                 throw DecodeError{"indefinite length used for primitive value"};
             }
@@ -237,7 +237,7 @@ static std::string decode_oid(const std::vector<std::uint8_t>& data) {
     }
 
     std::ostringstream oss;
-    std::uint8_t first = data.front();
+    uint8_t first = data.front();
     oss << static_cast<int>(first / 40) << '.' << static_cast<int>(first % 40);
 
     std::uint32_t value = 0;

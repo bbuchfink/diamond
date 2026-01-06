@@ -59,7 +59,7 @@ struct HyperLogLog {
             if (r == 0) zeros++;
         }
 
-        if (all_zero) return 0.0;
+        if (all_zero) return 0;
 
         double z = 1.0 / sum;
         double e = alpha * m * m * z;
@@ -95,7 +95,7 @@ private:
     }
 
     void process_hash(uint64_t hash) {
-        uint32_t index = hash >> (64 - p);
+        uint32_t index = uint32_t(hash >> (64 - p));
         uint64_t w = hash & ((1ULL << (64 - p)) - 1);
         uint8_t rho_val = w == 0 ? (64 - p + 1) : (clz(w) - p + 1);
         if (registers[index] < rho_val) {

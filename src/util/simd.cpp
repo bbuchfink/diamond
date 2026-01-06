@@ -28,6 +28,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <stdexcept>
 #include <vector>
 #include "simd.h"
 #include "util/string/string.h"

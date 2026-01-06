@@ -56,6 +56,11 @@ struct Block {
 			throw std::runtime_error("Block::ids()");
 		return ids_;
 	}
+	StringSet& ids() {
+		if (ids_.empty())
+			throw std::runtime_error("Block::ids()");
+		return ids_;
+	}
 	const SequenceSet& source_seqs() const {
 		return source_seqs_;
 	}
@@ -102,6 +107,12 @@ struct Block {
 	bool has_ids() const;
 	BlockId source_seq_count() const;
 	int64_t mem_size() const;
+	uint64_t raw_bytes() const noexcept {
+		return raw_bytes_;
+	}
+	BlockId oid_count() const {
+		return (BlockId)block2oid_.size();
+	}
 
 private:
 
@@ -115,6 +126,7 @@ private:
 	std::mutex mask_lock_;
 	MaskingTable soft_masking_table_;
 	bool soft_masked_;
+	uint64_t raw_bytes_;
 
 	friend struct SequenceFile;
 

@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 struct BlockWrapper : public SequenceFile
 {
 
-	BlockWrapper(const Block& block, Metadata metadata = Metadata(), Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
+	BlockWrapper(const Block& block, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 	
 	virtual int64_t file_count() const override;
 	virtual void create_partition_balanced(int64_t max_letters) override;
@@ -57,9 +57,9 @@ struct BlockWrapper : public SequenceFile
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) override;
 	virtual void skip_id_data() override;
 	virtual std::string seqid(OId oid, bool all, bool full_titles) override;
-	virtual int64_t sequence_count() const override;
+	virtual uint64_t sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual int64_t letters() const override;
+	virtual uint64_t letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual int build_version() override;

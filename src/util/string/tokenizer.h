@@ -159,6 +159,18 @@ struct Tokenizer {
 		p = delimiters.next(end);
 		return *this;
 	}
+	
+	Tokenizer& operator>>(uint64_t& x) {
+		if (!good())
+			throw TokenizerException();
+		char* end;
+		const long long n = strtoll(p, &end, 10);
+		x = (uint64_t)n;
+		if (end == p)
+			throw TokenizerException();
+		p = delimiters.next(end);
+		return *this;
+	}
 
 	Tokenizer& operator>>(int &x) {
 		int64_t y;

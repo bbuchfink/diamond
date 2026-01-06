@@ -32,7 +32,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 #include <map>
-#include "util/expected.h"
 #include "basic/value.h"
 
 struct Pal {
@@ -43,7 +42,7 @@ struct Pal {
 	OId sequence_count;
 	uint64_t letters;
 	int version;
-	[[nodiscard]] Diamond::Expected<Pal, Diamond::Error> static open(const std::string& path);
+	Pal(const std::string& path);
 private:
-	Diamond::Expected<std::vector<std::string>::iterator, Diamond::Error> recurse(const std::string& path, std::vector<std::string>::iterator volume_it);
+	std::vector<std::string>::iterator recurse(const std::string& path, std::vector<std::string>::iterator volume_it);
 };

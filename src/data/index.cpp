@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -47,7 +47,8 @@ void makeindex() {
 	::shapes = ShapeConfig(config.shape_mask.empty() ? Search::shape_codes.at(config.sensitivity) : config.shape_mask, config.shapes);
 	config.algo = Config::Algo::DOUBLE_INDEXED;
 
-	Block* block = db.load_seqs(MAX_LETTERS, nullptr, SequenceFile::LoadFlags::SEQS);
+	db.flags() |= SequenceFile::Flags::SEQS;
+	Block* block = db.load_seqs(MAX_LETTERS, nullptr);
 
 	TaskTimer timer("Building index");
 	HashedSeedSet index(*block, nullptr, 0.0, Search::soft_masking_algo(Search::sensitivity_traits.at(config.sensitivity)));

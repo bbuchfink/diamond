@@ -152,10 +152,10 @@ extern const Letter IUPACAA_TO_STD[32];
 extern const Letter NCBI_TO_STD[28];
 
 using Loc = int32_t;
-using BlockId = int32_t;
-using OId = int_fast64_t;
+using BlockId = uint32_t;
+using OId = uint64_t;
 using DictId = int64_t;
 using Score = int32_t;
 using TaxId = int32_t;
 using CentroidId = OId;
-using SuperBlockId = int32_t;
+using SuperBlockId = uint32_t;

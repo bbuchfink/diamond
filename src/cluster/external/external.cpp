@@ -28,6 +28,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <type_traits>
 #include <string>
 #include "../basic/config.h"
@@ -66,6 +71,22 @@ using std::pmr::monotonic_buffer_resource;
 
 namespace Cluster {
 
+void Job::log(const char* format, ...) {
+	char buffer[1024];
+	char* ptr = buffer + snprintf(buffer, 1024, "[" PRId64 ", %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
+	va_list args;
+	va_start(args, format);
+	int i = vsnprintf(ptr, 1024 - (ptr - buffer), format, args);
+#ifdef WIN32
+	ptr[i++] = '\r';
+#endif
+	ptr[i++] = '\n';
+	ptr[i] = '\0';
+	log_stream << buffer;
+	log_file_->push(buffer);
+	va_end(args);
+}
+
 struct ChunkTableEntry {
 	ChunkTableEntry():
 		oid(),
@@ -81,7 +102,7 @@ struct ChunkTableEntry {
 	bool operator<(const ChunkTableEntry& e) const {
 		return oid < e.oid || (oid == e.oid && chunk < e.chunk);
 	}
-	int64_t oid;
+	OId oid;
 	int32_t chunk;
 };
 
@@ -128,7 +149,8 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 				//SketchIterator it(buf, sh, std::min(sketch_size, std::max((int)std::round(seq.size() * SKETCH_SIZE_RATIO), 1)));
 				SketchIterator it(buf.cbegin(), buf.cend(), sh, sketch_size);
 				while (it.good()) {
-					const uint64_t key = *it, radix = MurmurHash()(key) & (RADIX_COUNT - 1);
+					const uint64_t key = *it;
+					const int radix = MurmurHash()(key) & (RADIX_COUNT - 1);
 					buffers.write(radix, SeedEntry(key, oid, (int32_t)seq.size()));
 					++it;
 				}
@@ -206,7 +228,7 @@ struct SizeCounter {
 
 struct Chunk {
 	Chunk(Atomic& next_chunk, const string& chunks_path):
-		id(next_chunk.fetch_add())
+		id((int32_t)next_chunk.fetch_add())
 	{
 		mkdir(chunks_path + std::to_string(id));
 		pairs_out.reset(new OutputFile(chunks_path + std::to_string(id) + PATH_SEPARATOR + "pairs"));
@@ -222,7 +244,7 @@ struct Chunk {
 	~Chunk() {
 		pairs_out->close();
 	}
-	const int id;
+	const int32_t id;
 	unique_ptr<OutputFile> pairs_out;
 	HyperLogLog size;
 	mutex mtx;
@@ -239,7 +261,8 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 	Atomic queue(base_path + PATH_SEPARATOR + "queue");
 	Atomic next_chunk(base_path + PATH_SEPARATOR + "next_chunk");
 	shared_ptr<Chunk> current_chunk(new Chunk(next_chunk, chunks_path));
-	int64_t bucket, total_pairs = 0, total_distinct_pairs = 0, buckets_processed = 0;
+	int64_t total_pairs = 0, total_distinct_pairs = 0;
+	int64_t bucket, buckets_processed = 0;
 	mutex mtx;
 	while (bucket = queue.fetch_add(), bucket < (int64_t)pair_table.size()) {
 		VolumedFile file(pair_table[bucket]);
@@ -255,14 +278,15 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 			int64_t distinct_pairs = 0, processed = 0;
 			auto it = merge_keys(data.begin(thread_id), data.end(thread_id), PairEntry::Key());
 			while (it.good()) {
-				const int64_t rep_oid = it.begin()->rep_oid, radix = rep_oid >> shift; // Hashing?
+				const int64_t rep_oid = it.begin()->rep_oid;
+				int radix = int(rep_oid >> shift); // Hashing?
 				buffers.write(radix, ChunkTableEntry(rep_oid, my_chunk->id));
 				size.add(rep_oid, it.begin()->rep_len);
 				processed += it.begin()->rep_len;
 				for (auto j = it.begin(); j < it.end(); ++j) {
 					if (j > it.begin() && j->member_oid == (j - 1)->member_oid)
 						continue;
-					const int64_t radix = j->member_oid >> shift;
+					const int radix = int(j->member_oid >> shift);
 					buffers.write(radix, ChunkTableEntry(j->member_oid, my_chunk->id));
 					size.add(j->member_oid, j->member_len);
 					pairs_buffer.emplace_back(rep_oid, j->member_oid);
@@ -292,7 +316,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 							}
 						}
 						if (new_chunk) {
-							buffers.write(rep_oid >> shift, ChunkTableEntry(rep_oid, my_chunk->id));
+							buffers.write(int(rep_oid >> shift), ChunkTableEntry(rep_oid, my_chunk->id));
 							size.add(rep_oid, it.begin()->rep_len);
 							processed += it.begin()->rep_len;
 						}
@@ -325,7 +349,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 	Atomic finished(base_path + PATH_SEPARATOR + "finished");
 	finished.fetch_add(buckets_processed);
 	finished.await(pair_table.size());
-	return { buckets, next_chunk.get() };
+	return { buckets, (int)next_chunk.get() };
 }
 
 static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& chunk_table, int chunk_count) {
@@ -342,7 +366,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 		job.log("Building chunks. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, chunk_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
 		if (data.size() > 0) {
 			ips4o::parallel::sort(data.begin(), data.end(), std::less<ChunkTableEntry>(), config.threads_);
-			const int64_t oid_begin = data.front().oid, oid_end = data.back().oid + 1;
+			const OId oid_begin = data.front().oid, oid_end = data.back().oid + 1;
 			const pair<vector<Volume>::const_iterator, vector<Volume>::const_iterator> volumes = db.find(oid_begin, oid_end);
 			atomic<int64_t> next(0);
 			auto worker = [&]() {
@@ -357,7 +381,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 					unique_ptr<SequenceFile> in(SequenceFile::auto_create({ v.path }));
 					string id;
 					vector<Letter> seq;
-					int64_t file_oid = v.oid_begin;
+					OId file_oid = v.oid_begin;
 					while (file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
 						if (table_ptr->oid > file_oid) {
 							++file_oid;

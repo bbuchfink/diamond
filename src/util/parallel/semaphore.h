@@ -1,5 +1,5 @@
 /****
-Copyright  2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -29,56 +29,58 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-
-#include <cstddef>
-#include <cstdint>
-#include <filesystem>
-#include <stdexcept>
-
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
+#if _MSC_VER || __GNUC__ >= 5
+#define HAVE_SEMAPHORE __has_include(<semaphore>)
 #endif
 
-struct MappedFile {
-    struct View {
-        const std::uint8_t* ptr{ nullptr };
-        std::size_t length{ 0 };
+#if HAVE_SEMAPHORE
+#include <semaphore>
+#else
+#warning "Old compiler missing semaphore support."
 
-        std::size_t size() const { return length; }
-        const std::uint8_t* data() const { return ptr; }
-        const std::uint8_t& operator[](std::size_t index) const { return ptr[index]; }
-    };
+#include <mutex>
+#include <condition_variable>
 
-    MappedFile() = default;
-    explicit MappedFile(const std::filesystem::path& path)
-    {
-        if (!map(path.string().c_str())) {
-            throw std::runtime_error("Unable to open file: " + path.string());
+namespace std {
+
+template <std::ptrdiff_t LeastMaxValue = -1>
+class counting_semaphore {
+private:
+    std::ptrdiff_t counter;
+    std::mutex mtx;
+    std::condition_variable cv;
+
+public:
+    explicit counting_semaphore(std::ptrdiff_t desired = 0) : counter(desired) {}
+    counting_semaphore(const counting_semaphore&) = delete;
+    counting_semaphore& operator=(const counting_semaphore&) = delete;
+
+    void release(std::ptrdiff_t update = 1) {
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            counter += update;
+        }
+        if (update > 1) {
+            cv.notify_all();
+        } else {
+            cv.notify_one();
         }
     }
 
-    MappedFile(const MappedFile&) = delete;
-    MappedFile& operator=(const MappedFile&) = delete;
+    void acquire() {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [this] { return counter > 0; });
+        --counter;
+    }
+    
+    static constexpr std::ptrdiff_t max() noexcept {
+        return LeastMaxValue;
+    }
 
-    MappedFile(MappedFile&& other) noexcept { *this = std::move(other); }
-    MappedFile& operator=(MappedFile&& other) noexcept;
-
-    ~MappedFile() { unmap(); }
-
-    bool map(const std::filesystem::path& path) { return map(path.string().c_str()); }
-    void unmap();
-
-    View view() const { return { data_, size_ }; }
-
-private:
-    bool map(const char* path);
-
-    const std::uint8_t* data_{ nullptr };
-    std::size_t size_{ 0 };
-#if defined(_WIN32)
-    HANDLE hFile{ INVALID_HANDLE_VALUE };
-    HANDLE hMap{ nullptr };
-#endif
 };
+
+using binary_semaphore = counting_semaphore<1>;
+
+}
+
+#endif

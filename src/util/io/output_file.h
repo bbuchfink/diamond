@@ -52,4 +52,4 @@ protected:
 
 };
 
-size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor) noexcept;
+size_t decompress(FILE* src, void* dst, size_t dstCapacity, Compressor compressor);
