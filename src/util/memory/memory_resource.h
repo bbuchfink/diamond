@@ -30,7 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#if _MSC_VER || __GNUC__ >= 5
+#if _MSC_VER || __GNUC__ >= 5 || __clang__
 #define HAVE_MEMORY_RESOURCE __has_include(<memory_resource>)
 #endif
 

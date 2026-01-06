@@ -5,7 +5,7 @@
 - Fixed CMake 2.8 errors.
 - Fixed compiler errors for GCC 4.8.5.
 - Added the `--load-threads` option to set number of CPU threads for file I/O.
-- Added the `--minichunk` option to set chunk size for file I/O".
+- Added the `--minichunk` option to set chunk size for file I/O.
 - Fixed a race condition (present since v2.1.15).
 - Fixed a memory leak (present since v2.1.15).
 - Added deduplication for the `staxids` output field for BLAST databases.
