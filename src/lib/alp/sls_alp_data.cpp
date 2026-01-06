@@ -36,6 +36,7 @@ Contents: Input data for the ascending ladder points simulation
 // Modified by Benjamin Buchfink
 
 #include <iostream>
+#include <errno.h>
 #include "sls_alp_data.hpp"
 
 using std::string;

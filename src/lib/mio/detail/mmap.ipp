@@ -26,6 +26,7 @@
 #include "mio/mmap.hpp"
 #include "mio/page.hpp"
 #include "mio/detail/string_util.hpp"
+#include <errno.h>
 
 #include <vector>
 #include <algorithm>

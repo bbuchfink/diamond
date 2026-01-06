@@ -28,6 +28,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include <errno.h>
 #include <string.h> // strerror
 #include "file.h"
 #include "temp_file.h"

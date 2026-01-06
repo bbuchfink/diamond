@@ -32,6 +32,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <string>
 #include <vector>
+#include <errno.h>
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"

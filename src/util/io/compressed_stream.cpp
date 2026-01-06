@@ -31,6 +31,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 #include <cstdio>
 #include <cerrno>
+#include <errno.h>
 #include <vector>
 #include <limits>
 #include <zlib.h>

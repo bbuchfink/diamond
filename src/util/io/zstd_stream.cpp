@@ -30,6 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vector>
 #include <string.h>
+#include <errno.h>
 #include "zstd_stream.h"
 #include "../system.h"
 

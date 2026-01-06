@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <stdexcept>
 #include <memory>
+#include <errno.h>
 #include "../system.h"
 #include "util/system/system.h"
 #ifndef WIN32
