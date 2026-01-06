@@ -245,7 +245,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		timer.finish();
 		Search::Hit* hit_buf = get<0>(input);
 		const int64_t hit_count = get<1>(input);
-		log_stream << "Processing " << hit_count << " trace points (" << Util::String::format(hit_count * sizeof(Search::Hit)) << ")." << std::endl;
+		log_stream << "Processing " << hit_count << " trace points (" << Util::String::format(int64_t(hit_count * sizeof(Search::Hit))) << ")." << std::endl;
 		res_size += hit_count * sizeof(Search::Hit);
 		query_range = { get<2>(input), get<3>(input) };
 		//cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
