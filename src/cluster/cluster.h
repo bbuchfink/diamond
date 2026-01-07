@@ -75,7 +75,7 @@ std::vector<Int2> convert_mapping(const std::vector<Int>& mapping, Int2) {
 }
 
 struct Mapback : public Consumer {
-	static const OId NIL_VALUE = (OId)-1;
+	static constexpr OId NIL_VALUE = (OId)-1;
 	Mapback(int64_t count) :
 		centroid_id(count, NIL_VALUE)
 	{}

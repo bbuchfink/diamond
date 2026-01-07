@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -65,7 +65,11 @@ struct FlatArray {
 
 	template<typename It>
 	void push_back(const It begin, const It end) {
+	#if __cplusplus >= 202002L
+		std::for_each(begin, end, [&](auto&& v){ data_.push_back(v); });
+	#else
 		data_.insert(data_.end(), begin, end);
+	#endif
 		limits_.push_back(limits_.back() + (end - begin));
 	}
 
