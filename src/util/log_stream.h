@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -87,7 +87,7 @@ struct TaskTimer
 	{}
 	~TaskTimer()
 	{
-#if (__cplusplus >= 201703L && !defined(__APPLE__)) || defined(_MSC_VER)
+#if (__cplusplus >= 201703L || defined(_MSC_VER))
 		if (!std::uncaught_exceptions())
 #else
 		if (!std::uncaught_exception())
