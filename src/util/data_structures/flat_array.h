@@ -64,12 +64,8 @@ struct FlatArray {
 	}
 
 	template<typename It>
-	void push_back(const It begin, const It end) {
-	#if __cplusplus >= 202002L
-		std::for_each(begin, end, [&](auto&& v){ data_.push_back(v); });
-	#else
-		data_.insert(data_.end(), begin, end);
-	#endif
+	void push_back(const It begin, const It end) {	
+		std::copy(begin, end, std::back_inserter(data_));
 		limits_.push_back(limits_.back() + (end - begin));
 	}
 

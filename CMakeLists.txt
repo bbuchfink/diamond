@@ -469,7 +469,7 @@ include_directories("${CMAKE_SOURCE_DIR}/src/" "${ZLIB_INCLUDE_DIR}" "${CMAKE_SO
 #find_package(SQLite3)
 #target_link_libraries(diamond SQLite::SQLite3 ${CMAKE_DL_LIBS})
 find_path(${SQLite3_INCLUDE_DIR} NAMES sqlite3.h PATHS ${SQLite3_INCLUDE_DIR})
-find_library(SQLite3_LIBRARY NAMES libsqlite3.a libsqlite3.so sqlite3 HINTS /opt/homebrew/opt/sqlite/lib /usr/local/opt/sqlite/lib)
+find_library(SQLite3_LIBRARY NAMES libsqlite3.a libsqlite3.so libsqlite3.so.0 sqlite3 HINTS /opt/homebrew/opt/sqlite/lib /usr/local/opt/sqlite/lib)
 message(STATUS "SQLite3 Library: ${SQLite3_LIBRARY}")
 target_include_directories(diamond PRIVATE "${SQLite3_INCLUDE_DIR}")
 target_link_libraries(diamond ${SQLite3_LIBRARY} ${CMAKE_DL_LIBS})

@@ -29,6 +29,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <exception>
 #include <ostream>
 #include <fstream>
 #include <mutex>
@@ -87,7 +88,7 @@ struct TaskTimer
 	{}
 	~TaskTimer()
 	{
-#if (__cplusplus >= 201703L || defined(_MSC_VER))
+#if defined(__cpp_lib_uncaught_exceptions) && __cpp_lib_uncaught_exceptions >= 201411L
 		if (!std::uncaught_exceptions())
 #else
 		if (!std::uncaught_exception())

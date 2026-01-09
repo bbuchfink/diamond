@@ -1,3 +1,6 @@
+[2.1.19]
+- Fixed search paths for SQLite3 on Ubuntu.
+
 [2.1.18]
 - Improved performance when using BLAST databases.
 - BLAST format is now the recommended database format for best performance.
