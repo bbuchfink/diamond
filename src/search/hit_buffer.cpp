@@ -36,6 +36,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "basic/config.h"
 #include "util/log_stream.h"
 #include "util/io/output_file.h"
+#include "util/parallel/simple_thread_pool.h"
 
 using std::vector;
 using std::string;
@@ -45,16 +46,18 @@ using std::runtime_error;
 using std::mutex;
 using std::endl;
 using std::atomic_size_t;
+using std::pair;
+using std::atomic;
+using std::tuple;
 
 namespace Search {
 
-HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts) :
+HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count) :
 	key_partition_(key_partition),
 	long_subject_offsets_(long_subject_offsets),
 	query_contexts_(query_contexts),
 	bins_processed_(0),
 	total_disk_size_(0),
-	bin_mutex_(key_partition.size()),
 	mmap_(false),
 	load_worker_(nullptr)
 {
@@ -62,14 +65,77 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	count_ = new atomic_size_t[key_partition.size()];
 	for (size_t i = 0; i < key_partition.size(); ++i) {
 		if (config.trace_pt_membuf) {
+			membuf_out_queue_.push_back(new Queue<std::pair<int, std::vector<Hit>*>>(thread_count * 4, thread_count, 1, pair<int, vector<Hit>*>(0, nullptr)));			
 			hit_buf_.emplace_back();
-			hit_buf_.back().reserve(GIGABYTES / sizeof(Hit));
+			hit_buf_.back().reserve(25 * GIGABYTES / sizeof(Hit));			
 		}
-		else {			
+		else {
+			out_queue_.push_back(new Queue<tuple<int, TextBuffer*, uint32_t>>(thread_count * 4, thread_count, 1, tuple<int, TextBuffer*, uint32_t>(0, nullptr, 0)));
 			tmp_file_.push_back(File(Temporary()));
 		}
+		writer_.push_back(new thread(&HitBuffer::write_worker, this, (int)i));
 		count_[i].store(0, std::memory_order_relaxed);
+	}	
+}
+
+void HitBuffer::write_worker(int bin) {
+	try {
+		if (config.trace_pt_membuf) {
+			for (;;) {
+				pair<int, vector<Hit>*> buf;
+				if (!membuf_out_queue_[bin]->wait_and_dequeue(buf))
+					break;
+				vector<Hit>& hits = hit_buf_[buf.first];
+				hits.insert(hits.end(), buf.second->begin(), buf.second->end());
+				delete buf.second;
+			}
+		}
+		else {
+			for (;;) {
+				tuple<int, TextBuffer*, uint32_t> buf;
+				if (!out_queue_[bin]->wait_and_dequeue(buf))
+					break;
+				File& tmp_file = tmp_file_[std::get<0>(buf)];
+				//std::lock_guard<std::mutex> lock(bin_mutex_[bin]);
+				tmp_file.write(std::get<1>(buf)->size());
+				tmp_file.write(std::get<2>(buf));
+				tmp_file.write(std::get<1>(buf)->data(), std::get<1>(buf)->size());
+				delete std::get<1>(buf);
+			}
+		}
 	}
+	catch (...) {
+
+	}
+}
+
+void HitBuffer::finish_writing() {
+	for (int i = 0; i < out_queue_[0]->producer_count(); ++i)
+		if (config.trace_pt_membuf) {
+			for (int i = 0; i < bins(); ++i)
+				membuf_out_queue_[i]->close();
+		}
+		else {
+			for (int i = 0; i < bins(); ++i)
+				out_queue_[i]->close();
+		}
+	for (auto& t : writer_) {
+		t->join();
+		delete t;
+	}
+	for(auto& q : membuf_out_queue_)
+		delete q;
+	for (auto& q : out_queue_)
+		delete q;
+	writer_.clear();
+	membuf_out_queue_.clear();
+	out_queue_.clear();
+}
+
+HitBuffer::~HitBuffer() {
+	if (!writer_.empty())
+		throw runtime_error("HitBuffer::~HitBuffer(): writer thread still active");
+	delete[] count_;
 }
 
 bool HitBuffer::load(size_t max_size) {
@@ -108,24 +174,92 @@ bool HitBuffer::load(size_t max_size) {
 
 void HitBuffer::load_bin(Hit* out, int bin)
 {
-	if (!config.trace_pt_membuf) {
+	if (config.trace_pt_membuf)
+		return;
 #if !_MSC_VER && !__APPLE__
-		if (bin < bins() - 1)
-			posix_fadvise(fileno(tmp_file_[bin + 1].file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
+	if (bin < bins() - 1)
+		posix_fadvise(fileno(tmp_file_[bin + 1].file()), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_WILLNEED);
 #endif
-#ifdef WITH_ZSTD
-		const Compressor c = Compressor::ZSTD;
-#else
-		const Compressor c = Compressor::ZLIB;
-#endif
-		if (count_[bin] > 0) {
-			tmp_file_[bin].seek(0, SEEK_SET);
-			size_t n = decompress(tmp_file_[bin].file(), out, count_[bin] * sizeof(Hit), c);
-			if (n != count_[bin] * sizeof(Hit))
-				throw runtime_error("Mismatching hit count / possibly corrupted temporary file");
-		}
-		tmp_file_[bin].close();
+	File& f = tmp_file_[bin];
+	if (count_[bin] == 0) {
+		f.close();
+		return;
 	}
+	const int p = config.threads_ > 1 ? std::min(config.threads_ - 1, config.load_threads) : 1;
+	Queue<pair<vector<char>*, uint32_t>> queue(p * 4, 1, p, pair<vector<char>*, uint32_t>(nullptr, 0));
+	atomic<Hit*> out_ptr = out;
+	atomic<uint64_t> count = 0;
+	f.seek(0, SEEK_SET);
+	SimpleThreadPool pool;
+	auto worker = [&](const atomic<bool>& stop) {
+		uint64_t my_count = 0;
+		while (!stop) {
+			pair<vector<char>*, uint32_t> v;
+			if (!queue.wait_and_dequeue(v))
+				break;
+			Hit* dst = out_ptr.fetch_add(v.second, std::memory_order_relaxed);
+			vector<char>::const_iterator ptr = v.first->begin(), end = v.first->end();
+			uint16_t nullscore;
+			memcpy(&nullscore, &*ptr, 2);
+			ptr += 2;
+			while(ptr < end) {
+				uint32_t query_id, seed_offset;
+				memcpy(&query_id, &*ptr, 4);
+				ptr += 4;
+				memcpy(&seed_offset, &*ptr, 4);
+				ptr += 4;
+				PackedLoc subject_loc;
+				uint32_t x;
+				while(ptr<end) {
+					uint16_t score;
+					memcpy(&score, &*ptr, 2);
+					ptr += 2;
+					if (score == 0)
+						break;
+					if (long_subject_offsets_) {
+						memcpy(&subject_loc, &*ptr, sizeof(PackedLoc));
+						ptr += sizeof(PackedLoc);
+					}
+					else {
+						memcpy(&x, &*ptr, 4);
+						ptr += 4;
+						subject_loc = x;
+					}
+#ifdef HIT_KEEP_TARGET_ID
+					uint32_t target_block_id;
+					memcpy(&target_block_id, &*ptr, 4);
+					ptr += 4;
+					dst->target_block_id = target_block_id;
+#endif
+					dst->query_ = query_id;
+					dst->subject_ = subject_loc;
+					dst->seed_offset_ = seed_offset;
+					dst->score_ = score;
+					++dst;
+					++my_count;
+				}
+			}
+		}
+		count.fetch_add(my_count, std::memory_order_relaxed);
+		};
+	for (int i = 0; i < p; ++i)
+		pool.spawn(worker);
+	while(!pool.stop()) {
+		uint32_t n;
+		size_t l;
+		if (f.read_max(&l, sizeof(size_t)) < sizeof(size_t))
+			break;
+		f.read(n);
+		vector<char>* v = new vector<char>(l);
+		f.read(v->data(), l);
+		queue.enqueue(pair<vector<char>*, uint32_t>(v, n));
+	}
+	queue.close();
+	pool.join_all();
+
+	if (count != count_[bin])
+		throw runtime_error("Mismatching hit count / possibly corrupted temporary file");
+	f.close();
 }
 
 void HitBuffer::alloc_buffer() {

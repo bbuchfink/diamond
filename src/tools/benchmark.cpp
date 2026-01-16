@@ -78,7 +78,7 @@ void hit_buffer() {
 	part.push_back(0);
 	for (int i = 0; i < 16; ++i)
 		part.push_back((i + 1) * (INT_MAX / 16));
-	Search::HitBuffer buf(part, config.tmpdir, false, 1);
+	Search::HitBuffer buf(part, config.tmpdir, false, 1, config.threads_);
 	TaskTimer timer("Fill");
 	size_t n = (30ll * 1024ll * 1024ll * 1024ll) / sizeof(Search::Hit);
 	auto worker = [&]() {

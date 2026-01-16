@@ -49,7 +49,16 @@ struct File {
 	int64_t size();
 	FILE* file();
 	void read(void* ptr, size_t n);
+	size_t read_max(void* ptr, size_t n);
 	const char* read(size_t n);
+	template<typename T>
+	void read(T& x) {
+		read(&x, sizeof(T));
+	}
+	template<typename T>
+	void write(const T& x) {
+		write(&x, sizeof(T));
+	}
 
 private:
 

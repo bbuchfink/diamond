@@ -401,7 +401,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& advanced_aln_cluster = parser.add_group("Advanced options aln/cluster", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, RECLUSTER });
 	advanced_aln_cluster.add()
 		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
-		("bin", 0, "number of query bins for seed search", query_bins_)
+		("bin", 0, "number of query bins for seed search", query_bins)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
 		("dbsize", 0, "effective database size (in letters)", db_size)
@@ -935,6 +935,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 #endif
 #ifdef STRICT_BAND
 	log_stream << " STRICT_BAND";
+#endif
+#ifdef HIT_KEEP_TARGET_ID
+	log_stream << "HIT_KEEP_TARGET_ID" << endl;
 #endif
 	log_stream << endl;
 }

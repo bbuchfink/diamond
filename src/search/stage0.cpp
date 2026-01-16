@@ -95,6 +95,7 @@ static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_
 		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());
 		run_stage1(it, work_set.get(), cfg);
 	}
+	writer.reset();
 	statistics += work_set->stats;
 }
 
@@ -204,6 +205,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		delete query_idx;
 		delete context;
 		kmer_ranking.reset();
+		
 		timer.finish();
 		log_rss();
 	}

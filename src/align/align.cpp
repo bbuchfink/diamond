@@ -232,7 +232,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->init_random_access(cfg.current_query_block, 0, false);
 
-	int64_t res_size = cfg.query->mem_size() + cfg.target->mem_size(), last_size = 0;
+	int64_t res_size = cfg.query->mem_size() + cfg.target->mem_size();
 	cfg.seed_hit_buf->alloc_buffer();
 	//cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 
@@ -249,9 +249,6 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		res_size += hit_count * sizeof(Search::Hit);
 		query_range = { get<2>(input), get<3>(input) };
 		//cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
-
-		if (res_size + last_size > mem_limit)
-			log_stream << "Warning: resident size (" << (res_size + last_size) << ") exceeds memory limit." << std::endl;
 
 		timer.go("Sorting trace points");
 #ifdef NDEBUG
@@ -285,8 +282,6 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		timer.go("Deallocating buffers");
 		cfg.thread_pool.reset();
 		output_sink.reset();
-		last_size = hit_count * sizeof(Search::Hit);
-		res_size -= last_size;
 	}
 	statistics.max(Statistics::SEARCH_TEMP_SPACE, cfg.seed_hit_buf->total_disk_size());
 

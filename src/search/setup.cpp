@@ -355,7 +355,10 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	::Config::set_option(cfg.ungapped_evalue, config.ungapped_evalue_, -1.0, traits.ungapped_evalue);
 	::Config::set_option(cfg.ungapped_evalue_short, config.ungapped_evalue_short_, -1.0, traits.ungapped_evalue_short);
 	::Config::set_option(cfg.gapped_filter_evalue, config.gapped_filter_evalue_, -1.0, traits.gapped_filter_evalue);
-	::Config::set_option(cfg.query_bins, config.query_bins_, 0u, traits.query_bins);
+	if (config.query_bins.present())
+		cfg.query_bins = (unsigned)config.query_bins.get_present();
+	else
+		cfg.query_bins = std::max((unsigned)std::round((double)config.threads_ / 8), traits.query_bins);
 	::Config::set_option(cfg.minimizer_window, config.minimizer_window_, 0, traits.minimizer_window);
 	::Config::set_option(cfg.sketch_size, config.sketch_size, 0, traits.sketch_size);
 	

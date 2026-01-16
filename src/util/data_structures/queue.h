@@ -142,6 +142,10 @@ public:
         }
     }
 
+    int producer_count() const {
+		return producer_count_;
+    }
+
 private:
 
     struct cell_t {
