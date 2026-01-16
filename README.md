@@ -23,7 +23,7 @@ features are:
 [![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
 [![image](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbbuchfink%2Fdiamond-data%2Frefs%2Fheads%2Fmain%2Fcitations.json&query=%24.citations&style=flat&label=Citations&color=%23a020f0
 )](https://scholar.google.com/citations?user=kjPIF1cAAAAJ)
-[![image](https://img.shields.io/badge/Live%20chat-Discord-red)](https://discord.gg/sxYppXDZ)
+[![image](https://img.shields.io/badge/Live%20chat-Discord-red)](https://discord.gg/ptJnz3GSCy)
     
 Documentation
 =============
