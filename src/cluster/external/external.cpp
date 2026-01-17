@@ -73,7 +73,8 @@ namespace Cluster {
 
 void Job::log(const char* format, ...) {
 	char buffer[1024];
-	char* ptr = buffer + snprintf(buffer, 1024, "[" PRId64 ", %lli] ", worker_id_, std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count());
+	const long long int t = std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count();
+	char* ptr = buffer + snprintf(buffer, 1024, "[%" PRId64 ", %lli] ", worker_id_, t);
 	va_list args;
 	va_start(args, format);
 	int i = vsnprintf(ptr, 1024 - (ptr - buffer), format, args);
