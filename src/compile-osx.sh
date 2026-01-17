@@ -35,22 +35,12 @@ git clone https://github.com/facebook/zstd.git || TRUE
 cd zstd
 make -j $CPUS
 cd ..
-git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git || TRUE
-cd ncbi-cxx-toolkit-public
-./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format" --with-build-root=build
-cd build/build
-make -j $CPUS
-cd ..
-cp inc/ncbiconf_unix.h ../include
-cd ../..
 
 mkdir build_x86 || TRUE
 cd build_x86
 export CFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 export CXXFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 cmake -DCMAKE_BUILD_TYPE=Release \
-	-DBLAST_INCLUDE_DIR=src/ncbi-cxx-toolkit-public/include \
-	-DBLAST_LIBRARY_DIR=src/ncbi-cxx-toolkit-public/build/lib \
 	-DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
 	-DZSTD_INCLUDE_DIR=src/zstd/lib/ \
 	-DCROSS_COMPILE=ON \
@@ -65,8 +55,6 @@ export CFLAGS="-arch arm64 -mmacosx-version-min=11.0"
 export CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
 export MACOSX_DEPLOYMENT_TARGET=11.0
 cmake -DCMAKE_BUILD_TYPE=Release \
-        -DBLAST_INCLUDE_DIR=src/ncbi-cxx-toolkit-public/include \
-        -DBLAST_LIBRARY_DIR=src/ncbi-cxx-toolkit-public/build/lib \
         -DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
         -DZSTD_INCLUDE_DIR=src/zstd/lib/ \
         -DCROSS_COMPILE=ON \
