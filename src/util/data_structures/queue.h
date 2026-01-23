@@ -31,6 +31,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #include <atomic>
 #include <type_traits>
+#include <new>
 #include "../parallel/semaphore.h"
 
 template <class T>
@@ -48,7 +49,8 @@ public:
         producer_count_(producer_count),
         consumer_count_(consumer_count),
         poison_pill_(std::move(poison_pill)),
-        buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t)))),
+        //buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t)))),
+        buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t), std::align_val_t{ alignof(cell_t) }))),
         enqueue_pos_(0),
         dequeue_pos_(0),
         pills_received_(0) {
@@ -66,7 +68,8 @@ public:
         for (size_t i = 0; i < capacity_; ++i) {
             buffer_[i].~cell_t();
         }
-        ::operator delete[](buffer_);
+        //::operator delete[](buffer_);
+        ::operator delete[](buffer_, std::align_val_t{ alignof(cell_t) });
     }
 
     Queue(const Queue&) = delete;
@@ -154,6 +157,7 @@ private:
         };
         std::atomic<size_t> seq;
         Storage storage;
+        char pad[64 - ((sizeof(std::atomic<size_t>) + sizeof(Storage)) % 64)];
         cell_t() : seq(0) {}
     };
 
@@ -170,7 +174,11 @@ private:
     }
 
     static T* cell_value_ptr(cell_t* c) noexcept {
+#if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606L
+        return std::launder(reinterpret_cast<T*>(c->storage.storage));
+#else
         return reinterpret_cast<T*>(&c->storage);
+#endif
     }
 
     size_t index(size_t pos) const noexcept { return pos & mask_; }

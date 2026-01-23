@@ -36,7 +36,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "basic/config.h"
 #include "hit.h"
 #include "util/io/file.h"
-#include "util/io/compressed_buffer.h"
 #include "util/data_structures/queue.h"
 #include "util/text_buffer.h"
 

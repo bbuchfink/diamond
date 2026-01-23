@@ -67,7 +67,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 		if (config.trace_pt_membuf) {
 			membuf_out_queue_.push_back(new Queue<std::pair<int, std::vector<Hit>*>>(thread_count * 4, thread_count, 1, pair<int, vector<Hit>*>(0, nullptr)));			
 			hit_buf_.emplace_back();
-			hit_buf_.back().reserve(25 * GIGABYTES / sizeof(Hit));			
+			hit_buf_.back().reserve(1 * GIGABYTES / sizeof(Hit));
 		}
 		else {
 			out_queue_.push_back(new Queue<tuple<int, TextBuffer*, uint32_t>>(thread_count * 4, thread_count, 1, tuple<int, TextBuffer*, uint32_t>(0, nullptr, 0)));
@@ -142,6 +142,8 @@ bool HitBuffer::load(size_t max_size) {
 	max_size = std::max(max_size, (size_t)1);
 	data_size_next_ = 0;
 	auto worker = [this](int end) {
+		//printf("Loading bins %d to %d\n", bins_processed_, end - 1);
+		//fflush(stdout);
 		Hit* out = data_next_;
 		for (; bins_processed_ < end; ++bins_processed_) {
 			load_bin(out, bins_processed_);
@@ -165,6 +167,8 @@ bool HitBuffer::load(size_t max_size) {
 		log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
 		total_disk_size_ += disk_size;
 		data_size_next_ = size;
+		//printf("Spawning load worker for bins %d to %d\n", begin, end - 1);
+		//fflush(stdout);
 		load_worker_ = new thread(worker, end);
 	}
 	input_range_next_.first = this->begin(begin);
@@ -174,6 +178,9 @@ bool HitBuffer::load(size_t max_size) {
 
 void HitBuffer::load_bin(Hit* out, int bin)
 {
+	using namespace std::placeholders;
+	//printf("Loading bin %d\n", bin);
+	//fflush(stdout);
 	if (config.trace_pt_membuf)
 		return;
 #if !_MSC_VER && !__APPLE__
@@ -193,12 +200,19 @@ void HitBuffer::load_bin(Hit* out, int bin)
 	atomic<uint64_t> count = 0;
 	f.seek(0, SEEK_SET);
 	SimpleThreadPool pool;
-	auto worker = [&](const atomic<bool>& stop) {
+	auto worker = [&](const atomic<bool>& stop, int worker_id) {
 		uint64_t my_count = 0;
 		while (!stop) {
 			pair<vector<char>*, uint32_t> v;
-			if (!queue.wait_and_dequeue(v))
+			//printf("dequeueing worker %d\n", worker_id);
+			//fflush(stdout);
+			if (!queue.wait_and_dequeue(v)) {
+				//printf("breaking worker %d\n", worker_id);
+				//fflush(stdout);
 				break;
+			}
+			//printf("got work for worker %d\n", worker_id);
+			//fflush(stdout);
 			Hit* dst = out_ptr.fetch_add(v.second, std::memory_order_relaxed);
 			vector<char>::const_iterator ptr = v.first->begin(), end = v.first->end();
 			uint16_t nullscore;
@@ -212,7 +226,7 @@ void HitBuffer::load_bin(Hit* out, int bin)
 				ptr += 4;
 				PackedLoc subject_loc;
 				uint32_t x;
-				while(ptr<end) {
+				while (ptr < end) {
 					uint16_t score;
 					memcpy(&score, &*ptr, 2);
 					ptr += 2;
@@ -246,7 +260,7 @@ void HitBuffer::load_bin(Hit* out, int bin)
 		count.fetch_add(my_count, std::memory_order_relaxed);
 		};
 	for (int i = 0; i < p; ++i)
-		pool.spawn(worker);
+		pool.spawn(std::bind(worker, _1, i));
 	while(!pool.stop()) {
 		uint32_t n;
 		size_t l;
