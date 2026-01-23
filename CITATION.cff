@@ -13,4 +13,4 @@ date-released: 2021-04-07
 doi: "10.1038/s41592-021-01101-x"
 message: "If you use this software, please cite it using these metadata."
 title: "Sensitive protein alignments at tree-of-life scale using DIAMOND"
-version: "2.1.18"
+version: "2.1.19"

@@ -1,0 +1,41 @@
+name: Build and Upload macOS Binary
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    
+    # Permissions required to upload assets to a release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Install dependencies
+        run: brew install some-package
+      # 1. Check out your code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Make your script executable and run it
+      - name: Run Custom Build Script
+        run: |
+          chmod +x ./your-build-script.sh
+          ./your-build-script.sh
+        # Replace './your-build-script.sh' with the actual path to your script
+
+      # 3. Create the tar.gz archive
+      - name: Compress Binary
+        run: |
+          # Replace 'bin/my-app' with the actual path to your built binary
+          tar -czvf my-app-macos.tar.gz bin/my-app
+          tar -czvf my-app-${{ github.event.release.tag_name }}.tar.gz bin/my-app
+
+      # 4. Upload the archive to the release that triggered this workflow
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} my-app-macos.tar.gz

@@ -44,6 +44,8 @@ using std::pair;
 using std::tie;
 using std::numeric_limits;
 
+// #define COUNT_ONLY
+
 namespace Search {
 namespace DISPATCH_ARCH {
 
@@ -139,6 +141,7 @@ static void search_query_offset(const SeedLoc& q,
 				if (work_set.cfg.minimizer_window || work_set.cfg.sketch_size || config.lin_stage1 || work_set.cfg.lin_stage1_target
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
+#ifndef COUNT_ONLY
 					if (config.global_ranking_targets)
 						work_set.global_ranking_buffer->write({ query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) });
 					else {
@@ -150,6 +153,7 @@ static void search_query_offset(const SeedLoc& q,
 						work_set.out->write(query_id, (uint64_t)s[*(i + j)], (uint16_t)scores[j]);
 #endif
 					}
+#endif
 				}
 			}
 		}

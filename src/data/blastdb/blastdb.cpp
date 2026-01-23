@@ -74,12 +74,12 @@ BlastDB::BlastDB(const string& file_name, Flags flags, const ValueTraits& value_
 		//if (bool(flags_ & Flags::NEED_EARLY_TAXON_MAPPING)) {
 		const auto flags_now = flags_;
 		flags_ &= ~(Flags::SEQS | Flags::TITLES);
-		for (;;) {
+		bool done;
+		do {
 			pair<Block*, int64_t> b = load_parallel(1000000000, nullptr, nullptr, Chunk(), true);
+			done = b.first->oid_count() == 0;
 			delete b.first;
-			if (b.second == 0)
-				break;
-		}
+		} while (!done);
 		flags_ = flags_now;
 		flags_ &= ~Flags::TAXON_MAPPING;
 	}
@@ -228,7 +228,7 @@ void BlastDB::seek_offset(size_t p)
 RawChunk* BlastDB::raw_chunk(size_t letters, SequenceFile::Flags flags) {
 	Volume::RawChunk* c = volume_.raw_chunk(letters, flags);
 	c->no = raw_chunk_no_++;
-	OId oid = volume_.begin + volume_.seq_ptr();
+	OId oid = c->end_;
 	if (oid < pal_.sequence_count)
 		open_volume(oid);
 	return c;

@@ -151,6 +151,10 @@ void File::read(void* ptr, size_t n) {
 		throw runtime_error("Error reading file " + file_name_ + ". " + strerror(errno));
 }
 
+size_t File::read_max(void* ptr, size_t n) {
+	return fread(ptr, 1, n, file_);
+}
+
 const char* File::read(size_t n) {
 	static MemBuffer<char> buf;
 	buf.resize(n);

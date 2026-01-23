@@ -163,7 +163,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 	else
 		cfg.seed_hit_buf.reset(new Search::HitBuffer(query_seqs.partition(cfg.query_bins, true, true),
 			config.tmpdir,
-			cfg.target->long_offsets(), align_mode.query_contexts));
+			cfg.target->long_offsets(), align_mode.query_contexts, config.threads_));
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
@@ -184,6 +184,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 		char* ref_buffer, * query_buffer;
 		tie(ref_buffer, query_buffer) = alloc_buffers(cfg);
 		timer.finish();
+		log_stream << "Query bins = " << cfg.query_bins << endl;
 
 		::HashedSeedSet* target_seeds = nullptr;
 		if (config.target_indexed) {
@@ -199,6 +200,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 				if (config.global_ranking_targets)
 					Extension::GlobalRanking::update_table(cfg);
 			}
+			cfg.seed_hit_buf->finish_writing();
 		}
 #ifdef WITH_DNA
         else

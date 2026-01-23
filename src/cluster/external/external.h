@@ -510,6 +510,7 @@ struct ChunkSeqs {
 			int i;
 			while (i = next.fetch_add(1, std::memory_order_relaxed), i < (int)seq_file_.size()) {
 				std::unique_ptr<SequenceFile> in(SequenceFile::auto_create({ seq_file_[i].path }));
+				in->flags() |= SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES;
 				seq_blocks_[i] = in->load_seqs(INT64_MAX);
 				in->close();
 				Block& b = *seq_blocks_[i];

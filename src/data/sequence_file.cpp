@@ -767,11 +767,13 @@ DbFilter* SequenceFile::filter_by_taxonomy(std::istream& filter, char delimiter,
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
-	for (OId i = 0; i < sequence_count(); ++i)
-		if (contained(taxids(i), taxon_filter_list, exclude, exclude) ^ exclude) {
+	for (OId i = 0; i < sequence_count(); ++i) {
+		const bool c = contained(taxids(i), taxon_filter_list, exclude, exclude);
+		if (c ^ exclude) {
 			f->oid_filter.set(i);
 			f->letter_count += seq_length(i);
 		}
+	}
 	return f;
 }
 

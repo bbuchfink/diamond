@@ -146,7 +146,7 @@ struct Config
 	bool mode_very_sensitive;
 	unsigned max_hsps;
 	bool no_self_hits;
-	unsigned query_bins_;
+	Option<double> query_bins;
 	string prot_accession2taxid;
 	int superblock;
 	Option<string> masking_;

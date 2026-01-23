@@ -1,5 +1,13 @@
+[2.1.20]
+- Fixed a bug that could cause filtering by taxonomy to malfunction for BLAST databases
+  (present since v2.1.18).
+- Fixed a memory leak.
+
 [2.1.19]
+- Improved performance of the searching alignments stage and fixed a potential
+  performance issue present since v2.1.15.
 - Fixed search paths for SQLite3 on Ubuntu.
+- Fixed a crash when using the `--parallel-tmpdir` option for clustering.
 
 [2.1.18]
 - Improved performance when using BLAST databases.
