@@ -5,7 +5,8 @@
 - Fixed a potential deadlock.
 - Fixed a potential compilation error on arm64 systems.
 - Fixed an error when using BLAST databases that were read-only.
-- Fixed missing invocation and missing newline when using `--header verbose`.
+- Fixed missing invocation information and a missing newline when using
+  `--header verbose`.
 
 [2.1.19]
 - Improved performance of the searching alignments stage and fixed a potential
