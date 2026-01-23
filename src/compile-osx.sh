@@ -35,23 +35,25 @@ git clone https://github.com/facebook/zstd.git || TRUE
 cd zstd
 make -j $CPUS
 cd ..
-git clone https://github.com/ncbi/ncbi-cxx-toolkit-public.git || TRUE
-cd ncbi-cxx-toolkit-public
-./cmake-configure --without-debug --with-projects="objtools/blast/seqdb_reader;objtools/blast/blastdb_format" --with-build-root=build
-cd build/build
-make -j $CPUS
+
+mkdir sqlite3 || TRUE
+cd sqlite3
+curl https://sqlite.org/2026/sqlite-amalgamation-3510200.zip > sqlite.zip
+unzip -j sqlite.zip
+xcrun clang -c sqlite3.c -o sqlite3_x86_64.o -arch x86_64 -mmacosx-version-min=10.15
+xcrun clang -c sqlite3.c -o sqlite3_arm64.o  -arch arm64  -mmacosx-version-min=10.15
+xcrun libtool -static -o libsqlite3_x86_64.a sqlite3_x86_64.o
+xcrun libtool -static -o libsqlite3_arm64.a  sqlite3_arm64.o
+xcrun lipo -create -output libsqlite3.a libsqlite3_x86_64.a libsqlite3_arm64.a
 cd ..
-cp inc/ncbiconf_unix.h ../include
-cd ../..
 
 mkdir build_x86 || TRUE
 cd build_x86
 export CFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 export CXXFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 cmake -DCMAKE_BUILD_TYPE=Release \
-	-DBLAST_INCLUDE_DIR=src/ncbi-cxx-toolkit-public/include \
-	-DBLAST_LIBRARY_DIR=src/ncbi-cxx-toolkit-public/build/lib \
 	-DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
+	-DSQLite3_LIBRARY="../sqlite3/libsqlite3.a" \
 	-DZSTD_INCLUDE_DIR=src/zstd/lib/ \
 	-DCROSS_COMPILE=ON \
 	-DCMAKE_OSX_ARCHITECTURES=x86_64 \
@@ -65,9 +67,8 @@ export CFLAGS="-arch arm64 -mmacosx-version-min=11.0"
 export CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
 export MACOSX_DEPLOYMENT_TARGET=11.0
 cmake -DCMAKE_BUILD_TYPE=Release \
-        -DBLAST_INCLUDE_DIR=src/ncbi-cxx-toolkit-public/include \
-        -DBLAST_LIBRARY_DIR=src/ncbi-cxx-toolkit-public/build/lib \
         -DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
+	-DSQLite3_LIBRARY="../sqlite3/libsqlite3.a" \
         -DZSTD_INCLUDE_DIR=src/zstd/lib/ \
         -DCROSS_COMPILE=ON \
         -DCMAKE_OSX_ARCHITECTURES=arm64 \

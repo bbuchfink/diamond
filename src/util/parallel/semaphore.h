@@ -29,11 +29,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
-#if _MSC_VER || __GNUC__ >= 5 || __clang__
-#define HAVE_SEMAPHORE __has_include(<semaphore>)
-#endif
 
-#if HAVE_SEMAPHORE
+#if __cpp_lib_semaphore >= 201907L
 #include <semaphore>
 #else
 #warning "Old compiler missing semaphore support."
