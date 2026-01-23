@@ -142,8 +142,6 @@ bool HitBuffer::load(size_t max_size) {
 	max_size = std::max(max_size, (size_t)1);
 	data_size_next_ = 0;
 	auto worker = [this](int end) {
-		//printf("Loading bins %d to %d\n", bins_processed_, end - 1);
-		//fflush(stdout);
 		Hit* out = data_next_;
 		for (; bins_processed_ < end; ++bins_processed_) {
 			load_bin(out, bins_processed_);
@@ -167,8 +165,6 @@ bool HitBuffer::load(size_t max_size) {
 		log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
 		total_disk_size_ += disk_size;
 		data_size_next_ = size;
-		//printf("Spawning load worker for bins %d to %d\n", begin, end - 1);
-		//fflush(stdout);
 		load_worker_ = new thread(worker, end);
 	}
 	input_range_next_.first = this->begin(begin);
@@ -179,8 +175,6 @@ bool HitBuffer::load(size_t max_size) {
 void HitBuffer::load_bin(Hit* out, int bin)
 {
 	using namespace std::placeholders;
-	//printf("Loading bin %d\n", bin);
-	//fflush(stdout);
 	if (config.trace_pt_membuf)
 		return;
 #if !_MSC_VER && !__APPLE__
@@ -204,15 +198,9 @@ void HitBuffer::load_bin(Hit* out, int bin)
 		uint64_t my_count = 0;
 		while (!stop) {
 			pair<vector<char>*, uint32_t> v;
-			//printf("dequeueing worker %d\n", worker_id);
-			//fflush(stdout);
 			if (!queue.wait_and_dequeue(v)) {
-				//printf("breaking worker %d\n", worker_id);
-				//fflush(stdout);
 				break;
 			}
-			//printf("got work for worker %d\n", worker_id);
-			//fflush(stdout);
 			Hit* dst = out_ptr.fetch_add(v.second, std::memory_order_relaxed);
 			vector<char>::const_iterator ptr = v.first->begin(), end = v.first->end();
 			uint16_t nullscore;

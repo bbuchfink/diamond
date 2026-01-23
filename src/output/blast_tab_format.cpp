@@ -773,6 +773,7 @@ void TabularFormat::print_header(Consumer& f, int mode, const char* matrix, int 
 				ss << ", ";
             ss << field_def.at(*i).description;
         }
+        ss << std::endl;
         const string s(ss.str());
         f.consume(s.data(), s.length());
     }

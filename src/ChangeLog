@@ -2,6 +2,10 @@
 - Fixed a bug that could cause filtering by taxonomy to malfunction for BLAST databases
   (present since v2.1.18).
 - Fixed a memory leak (present since v2.1.19).
+- Fixed a potential deadlock.
+- Fixed a potential compilation error on arm64 systems.
+- Fixed an error when using BLAST databases that were read-only.
+- Fixed missing invocation and missing newline when using `--header verbose`.
 
 [2.1.19]
 - Improved performance of the searching alignments stage and fixed a potential

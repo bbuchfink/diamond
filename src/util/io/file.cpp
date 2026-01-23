@@ -53,8 +53,8 @@ File::File(Temporary) {
 	auto_delete_ = true;
 }
 
-File::File(const string& name) {
-	file_ = fopen(name.c_str(), "r+b");
+File::File(const string& name, const char* mode) {
+	file_ = fopen(name.c_str(), mode);
 	if (file_ == 0)
 		throw runtime_error("Error opening file " + name + ". " + strerror(errno));
 	unlinked_ = false;

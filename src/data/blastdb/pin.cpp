@@ -84,13 +84,13 @@ PinIndex Volume::ParsePinFile(File& mapping, bool load_index)
 }
 
 Volume::Volume(const string& path, int idx, OId begin, OId end, bool load_index) :
-    phr_mapping_(path + ".phr"),
-    psq_mapping_(path + ".psq"),
+    phr_mapping_(path + ".phr", "rb"),
+    psq_mapping_(path + ".psq", "rb"),
     idx(idx),
     begin(begin),
     end(end)
 {
-	File pin(path + ".pin");
+	File pin(path + ".pin", "rb");
     index_ = Volume::ParsePinFile(pin, load_index);
     pin.close();        
 }

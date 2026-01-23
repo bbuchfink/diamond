@@ -772,6 +772,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	std::ostringstream invocation;
 	join(" ", &argv[0], &argv[argc], invocation);
 	log_stream << invocation.str() << endl;
+	this->invocation = invocation.str();
 
 	if (!no_auto_append) {
 		if (command == Config::makedb)

@@ -36,7 +36,7 @@ struct Temporary {};
 struct File {
 
 	File(Temporary);
-	File(const std::string& name);
+	File(const std::string& name, const char* mode);
 	File(const File&) = delete;
 	File& operator= (const File&) = delete;
 	File(File&& f) noexcept;
