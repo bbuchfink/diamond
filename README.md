@@ -20,7 +20,7 @@ features are:
 [![image](https://img.shields.io/cirrus/github/bbuchfink/diamond)](https://cirrus-ci.com/github/bbuchfink/diamond/master)
 [![image](https://img.shields.io/github/downloads/bbuchfink/diamond/total)](https://github.com/bbuchfink/diamond/releases)
 [![image](https://anaconda.org/bioconda/diamond/badges/version.svg)](https://anaconda.org/bioconda/diamond)
-[![image](https://anaconda.org/bioconda/diamond/badges/downloads.svg)](https://anaconda.org/bioconda/diamond)
+[![Conda](https://img.shields.io/conda/dn/bioconda/diamond.svg)](https://anaconda.org/bioconda/diamond/files)
 [![image](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbbuchfink%2Fdiamond-data%2Frefs%2Fheads%2Fmain%2Fcitations.json&query=%24.citations&style=flat&label=Citations&color=%23a020f0
 )](https://scholar.google.com/citations?user=kjPIF1cAAAAJ)
 [![image](https://img.shields.io/badge/Live%20chat-Discord-red)](https://discord.gg/ptJnz3GSCy)
@@ -31,7 +31,7 @@ The online documentation is located at the [GitHub Wiki](https://github.com/bbuc
 
 Support
 =======
-DIAMOND is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc.
+DIAMOND is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc. I also provide live support on [Discord](https://discord.gg/ptJnz3GSCy). Don't be too shy to ask!
 
 About
 =====
