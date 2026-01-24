@@ -109,7 +109,7 @@ void hit_buffer() {
 	buf.alloc_buffer();
 	timer.go("Read");
 	for (int i = 0; i < buf.bins(); ++i) {
-		buf.load(INT64_MAX);
+		//buf.load(INT64_MAX);
 		std::tuple<Search::Hit*, size_t, BlockId, BlockId> input = buf.retrieve();
 		printf("%i: %zd\n", i, std::get<1>(input));
 	}

@@ -37,6 +37,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/log_stream.h"
 #include "util/io/output_file.h"
 #include "util/parallel/simple_thread_pool.h"
+#include "data/block/block.h"
 
 using std::vector;
 using std::string;
@@ -59,7 +60,8 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	bins_processed_(0),
 	total_disk_size_(0),
 	mmap_(false),
-	load_worker_(nullptr)
+	load_worker_(nullptr),
+	load_exception_(nullptr)
 {
 	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
 	count_ = new atomic_size_t[key_partition.size()];
@@ -138,14 +140,19 @@ HitBuffer::~HitBuffer() {
 	delete[] count_;
 }
 
-bool HitBuffer::load(size_t max_size) {
+bool HitBuffer::load(size_t max_size, Config& cfg) {
 	max_size = std::max(max_size, (size_t)1);
 	data_size_next_ = 0;
-	auto worker = [this](int end) {
-		Hit* out = data_next_;
-		for (; bins_processed_ < end; ++bins_processed_) {
-			load_bin(out, bins_processed_);
-			out += count_[bins_processed_];
+	auto worker = [&](int end) {
+		try {
+			Hit* out = data_next_;
+			for (; bins_processed_ < end; ++bins_processed_) {
+				load_bin(out, bins_processed_, cfg);
+				out += count_[bins_processed_];
+			}
+		}
+		catch (...) {
+			this->load_exception_ = std::current_exception();
 		}
 		};
 	if (bins_processed_ == bins()) {
@@ -172,7 +179,7 @@ bool HitBuffer::load(size_t max_size) {
 	return true;
 }
 
-void HitBuffer::load_bin(Hit* out, int bin)
+void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
 {
 	using namespace std::placeholders;
 	if (config.trace_pt_membuf)
@@ -189,6 +196,8 @@ void HitBuffer::load_bin(Hit* out, int bin)
 		return;
 	}
 	const int p = config.threads_ > 1 ? std::min(config.threads_ - 1, config.load_threads) : 1;
+	const uint32_t max_query = cfg.query->seqs().size();
+	const uint64_t max_target = cfg.target->seqs().raw_len();
 	Queue<pair<vector<char>*, uint32_t>> queue(p * 4, 1, p, pair<vector<char>*, uint32_t>(nullptr, 0));
 	atomic<Hit*> out_ptr = out;
 	atomic<uint64_t> count = 0;
@@ -202,13 +211,16 @@ void HitBuffer::load_bin(Hit* out, int bin)
 				break;
 			}
 			Hit* dst = out_ptr.fetch_add(v.second, std::memory_order_relaxed);
+			uint32_t package_count = 0;
 			vector<char>::const_iterator ptr = v.first->begin(), end = v.first->end();
 			uint16_t nullscore;
 			memcpy(&nullscore, &*ptr, 2);
 			ptr += 2;
 			while(ptr < end) {
-				uint32_t query_id, seed_offset;
+				uint32_t query_id, seed_offset;				
 				memcpy(&query_id, &*ptr, 4);
+				if (query_id >= max_query)
+					throw runtime_error("HitBuffer::load_bin(): invalid query id / possibly corrupted temporary file");
 				ptr += 4;
 				memcpy(&seed_offset, &*ptr, 4);
 				ptr += 4;
@@ -229,6 +241,10 @@ void HitBuffer::load_bin(Hit* out, int bin)
 						ptr += 4;
 						subject_loc = x;
 					}
+					if((uint64_t)subject_loc >= max_target)
+						throw runtime_error("HitBuffer::load_bin(): invalid subject location / possibly corrupted temporary file");
+					if(package_count >= v.second)
+						throw runtime_error("HitBuffer::load_bin(): buffer overflow / possibly corrupted temporary file");
 #ifdef HIT_KEEP_TARGET_ID
 					uint32_t target_block_id;
 					memcpy(&target_block_id, &*ptr, 4);
@@ -240,10 +256,11 @@ void HitBuffer::load_bin(Hit* out, int bin)
 					dst->seed_offset_ = seed_offset;
 					dst->score_ = score;
 					++dst;
-					++my_count;
+					++package_count;
 				}
 			}
 			delete v.first;
+			my_count += package_count;
 		}
 		count.fetch_add(my_count, std::memory_order_relaxed);
 		};

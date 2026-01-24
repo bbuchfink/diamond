@@ -38,6 +38,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/io/file.h"
 #include "util/data_structures/queue.h"
 #include "util/text_buffer.h"
+#include "run/config.h"
 
 namespace Search {
 
@@ -106,9 +107,7 @@ struct HitBuffer
 		}
 		void write(unsigned query, PackedLoc subject, uint16_t score, uint32_t target_block_id = 0)
 		{
-			assert(score > 0);
-			++count_[last_bin_];
-			++buf_count_[last_bin_];
+			assert(score > 0);			
 			assert(last_bin_ < parent_.bins());
 			if (config.trace_pt_membuf) {
 				if (buffer_[last_bin_]->size() >= buffer_size)
@@ -121,6 +120,8 @@ struct HitBuffer
 					text_buffer_[last_bin_]->write(query_);
 					text_buffer_[last_bin_]->write(seed_offset_);
 				}
+			++count_[last_bin_];
+			++buf_count_[last_bin_];
 			if (config.trace_pt_membuf) {
 #ifdef HIT_KEEP_TARGET_ID
 				buffer_[last_bin_]->emplace_back(query, subject, seed_offset_, score, target_block_id);
@@ -160,6 +161,7 @@ struct HitBuffer
 					delete text_buffer_[bin];
 					return;
 				}
+				text_buffer_[bin]->write((uint16_t)0);
 				parent_.out_queue_[bin]->enqueue(std::tuple<int, TextBuffer*, uint32_t>(bin, text_buffer_[bin], buf_count_[bin]));
 				buf_count_[bin] = 0;
 				if(!done) text_buffer_[bin] = new TextBuffer();
@@ -189,7 +191,7 @@ struct HitBuffer
 		HitBuffer &parent_;
 	};
 
-	bool load(size_t max_size);
+	bool load(size_t max_size, Config& cfg);
 
 	std::tuple<Hit*, size_t, Key, Key> retrieve() {
 		if (config.trace_pt_membuf) {
@@ -204,6 +206,8 @@ struct HitBuffer
 				load_worker_->join();
 				delete load_worker_;
 				load_worker_ = nullptr;
+				if(load_exception_)
+					std::rethrow_exception(load_exception_);
 			}
 			return std::tuple<Hit*, size_t, Key, Key> { data_next_, data_size_next_, input_range_next_.first, input_range_next_.second };
 		}
@@ -222,7 +226,7 @@ struct HitBuffer
 
 private:
 
-	void load_bin(Hit* out, int bin);
+	void load_bin(Hit* out, int bin, Config& cfg);
 	void write_worker(int bin);
 
 	const std::vector<Key> key_partition_;
@@ -238,6 +242,7 @@ private:
 	bool mmap_;
 	int64_t data_size_next_, alloc_size_;
 	std::thread* load_worker_;
+	std::exception_ptr load_exception_;
 	std::vector<std::thread*> writer_;
 	std::vector<Queue<std::tuple<int, TextBuffer*, uint32_t>>*> out_queue_;
 	std::vector<Queue<std::pair<int, std::vector<Hit>*>>*> membuf_out_queue_;

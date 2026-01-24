@@ -54,7 +54,7 @@ public:
         enqueue_pos_(0),
         dequeue_pos_(0),
         pills_received_(0) {
-
+        assert(producer_count == 1 || consumer_count == 1);
         for (size_t i = 0; i < capacity_; ++i) {
             new (&buffer_[i]) cell_t();
             buffer_[i].seq.store(i, std::memory_order_relaxed);
@@ -177,6 +177,7 @@ private:
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606L
         return std::launder(reinterpret_cast<T*>(c->storage.storage));
 #else
+#warning "old compiler missing support for std::launder"
         return reinterpret_cast<T*>(&c->storage);
 #endif
     }
@@ -215,7 +216,6 @@ private:
     const int producer_count_;
     const int consumer_count_;
     const T poison_pill_;
-    std::atomic<bool> closed_{ false };
     cell_t* const buffer_;
     alignas(64) std::atomic<size_t> enqueue_pos_;
     char _pad0[64 - sizeof(enqueue_pos_) % 64]{};

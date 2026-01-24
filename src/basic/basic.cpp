@@ -42,7 +42,7 @@ using std::vector;
 using std::count;
 using std::runtime_error;
 
-const char* Const::version_string = "2.1.20";
+const char* Const::version_string = "2.1.21";
 const char* Const::program_name = "diamond";
 
 AlignMode::AlignMode(unsigned mode) :

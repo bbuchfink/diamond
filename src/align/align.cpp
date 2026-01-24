@@ -238,7 +238,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 
 	while (true) {
 		timer.go("Loading trace points");
-		if (!cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size)))
+		if (!cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size), cfg))
 			break;
 		tuple<Search::Hit*, int64_t, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());

@@ -924,10 +924,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		mkdir(parallel_tmpdir);
 	}
 
-	trace_pt_membuf = memory_limit.empty() ? false : Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
-	if (hit_membuf) {
-		trace_pt_membuf = true;
-	}
+	//trace_pt_membuf = memory_limit.empty() ? false : Util::String::interpret_number(memory_limit) > 1024 * (1ll << 30);
+	//if (hit_membuf) {
+//		trace_pt_membuf = true;
+	//}
+	trace_pt_membuf = false;
 
 	log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
