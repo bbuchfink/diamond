@@ -61,3 +61,4 @@ src/extra/
 /src/test/out
 /src/test/data.dmnd
 /CMakePresets.json
+/Testing/Temporary
