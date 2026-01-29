@@ -66,6 +66,9 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
 	count_ = new atomic_size_t[key_partition.size()];
 	for (size_t i = 0; i < key_partition.size(); ++i) {
+		count_[i].store(0, std::memory_order_relaxed);
+		if (config.swipe_all)
+			continue;
 		if (config.trace_pt_membuf) {
 			membuf_out_queue_.push_back(new Queue<std::pair<int, std::vector<Hit>*>>(thread_count * 4, thread_count, 1, pair<int, vector<Hit>*>(0, nullptr)));			
 			hit_buf_.emplace_back();
@@ -75,8 +78,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 			out_queue_.push_back(new Queue<tuple<int, TextBuffer*, uint32_t>>(thread_count * 4, thread_count, 1, tuple<int, TextBuffer*, uint32_t>(0, nullptr, 0)));
 			tmp_file_.push_back(File(Temporary()));
 		}
-		writer_.push_back(new thread(&HitBuffer::write_worker, this, (int)i));
-		count_[i].store(0, std::memory_order_relaxed);
+		writer_.push_back(new thread(&HitBuffer::write_worker, this, (int)i));		
 	}	
 }
 
@@ -161,7 +163,7 @@ bool HitBuffer::load(size_t max_size, Config& cfg) {
 	size_t size = count_[bins_processed_], current_size;
 	const int begin = bins_processed_;
 	int end = bins_processed_ + 1;
-	if (!config.trace_pt_membuf) {
+	if (!config.trace_pt_membuf && !config.swipe_all) {
 		size_t disk_size = tmp_file_[bins_processed_].size();
 		// consider using more bins here
 		while (end < bins() && (size + (current_size = count_[end])) * sizeof(Hit) < max_size && (end - bins_processed_ == 0)) {

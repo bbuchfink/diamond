@@ -1,3 +1,7 @@
+[2.1.22]
+- Fixed a crash when using `--swipe`.
+- Fixed a crash when using `--global-ranking/-g`
+
 [2.1.21]
 - Fixed a potential segmentation fault.
 

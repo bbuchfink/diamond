@@ -200,7 +200,8 @@ static void run_ref_chunk(SequenceFile &db_file,
 				if (config.global_ranking_targets)
 					Extension::GlobalRanking::update_table(cfg);
 			}
-			cfg.seed_hit_buf->finish_writing();
+			if (!config.global_ranking_targets)
+				cfg.seed_hit_buf->finish_writing();
 		}
 #ifdef WITH_DNA
         else

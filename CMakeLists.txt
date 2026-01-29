@@ -1,30 +1,17 @@
-# Copyright � 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+# Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 #
-# Redistribution and use in source and binary forms, with or without modification,
-# are permitted provided that the following conditions are met:
-# 
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-# 
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation and/or
-# other materials provided with the distribution.
-# 
-# 3. Neither the name of the copyright holder nor the names of its contributors
-# may be used to endorse or promote products derived from this software without
-# specific prior written permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# SPDX-License-Identifier: BSD-3-Clause
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required (VERSION 2.6...3.5)
 project (DIAMOND)
@@ -521,6 +508,6 @@ SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/t
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-DARGS=blastp -q ${TD}/3.faa -d ${TD}/4.faa --mid-sensitive -p1" ${SP})
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
+add_test(NAME galaxy_7 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_7 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks 4 --file-buffer-size 67108864" ${SP})
+add_test(NAME galaxy_9 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_9 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --algo 0 --global-ranking 10 --index-chunks 4 --file-buffer-size 67108864" ${SP})
 add_test(NAME diamond COMMAND diamond test)
-add_test(NAME galaxy_7 COMMAND diamond blastx --threads "2" --db 'galaxy/db.dmnd' --query 'nucleotide.fasta' --query-gencode '1' --strand 'both' --min-orf 1   --outfmt '6' qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --out '/tmp/tmp1xijanx9/job_working_directory/000/18/outputs/dataset_8b57333d-bd50-45da-adfb-21be40fb4b92.dat'  --compress '0'   --matrix 'BLOSUM62' --comp-based-stats '1' --masking 'tantan'   --max-target-seqs '25'   --evalue '0.001'  --id '0.0' --approx-id '0.0' --query-cover '0.0' --subject-cover '0.0' --block-size '2.0'   --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks "4" --file-buffer-size "67108864")
-add_test(NAME galaxy_9 COMMAND diamond blastx --threads "2" --db 'galaxy/db.dmnd' --query 'nucleotide.fasta' --query-gencode '1' --strand 'both' --min-orf 1   --outfmt '6' qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --out '/tmp/tmp1xijanx9/job_working_directory/000/22/outputs/dataset_0480d043-5a49-4996-b925-52aa5f226d1f.dat'  --compress '0'   --matrix 'BLOSUM62' --comp-based-stats '1' --masking 'tantan'   --max-target-seqs '25'   --evalue '0.001'  --id '0.0' --approx-id '0.0' --query-cover '0.0' --subject-cover '0.0' --block-size '2.0'   --motif-masking 0 --soft-masking 0   --algo 0 --global-ranking 10 --index-chunks "4" --file-buffer-size "67108864")
