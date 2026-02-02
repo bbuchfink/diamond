@@ -254,10 +254,6 @@ string format(int64_t number) {
 	return format((double)number);
 }
 
-string format(size_t number) {
-	return format((double)number);
-}
-
 string format(uint64_t number) {
 	return format((double)number);
 }
