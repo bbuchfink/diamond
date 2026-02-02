@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -68,8 +55,6 @@ using Util::String::format;
 using std::shared_ptr;
 using std::to_string;
 using std::pmr::monotonic_buffer_resource;
-
-namespace Cluster {
 
 void Job::log(const char* format, ...) {
 	char buffer[1024];
@@ -129,18 +114,13 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 		int64_t v = 0;
 		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 			job.log("Building seed table. Shape=%i/%i Volume=%lli/%lli Records=%s", shape + 1, ::shapes.count(), v + 1, volumes.size(), format(volumes[v].record_count).c_str());
-			unique_ptr<OutputFile> oid_out;
-			if (job.round() > 0)
-				oid_out.reset(new OutputFile(volumes[v].path + ".oid"));
 			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
 			string id;
 			vector<Letter> seq;
 			int64_t oid = volumes[v].oid_begin;
 			while (in->read_seq(seq, id, nullptr)) {
-				if (job.round() > 0) {
-					const int64_t prev_oid = atoll(id.c_str());
-					oid_out->write(&prev_oid, 1);
-				}
+				if (job.round() > 0)
+					oid = atoll(id.c_str());
 				std::pmr::vector<Letter> buf = Reduction::reduce_seq(Sequence(seq), pool);
 				const Shape& sh = shapes[shape];
 				if (seq.size() < (size_t)sh.length_) {
@@ -158,8 +138,6 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 				++oid;
 			}
 			in->close();
-			if (job.round() > 0)
-				oid_out->close();
 			volumes_processed.fetch_add(1, std::memory_order_relaxed);
 		}
 		};
@@ -176,8 +154,8 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 	return buckets;
 }
 
-static vector<string> build_pair_table(Job& job, const vector<string>& seed_table, int shape, int64_t db_size, FileArray& output_files) {
-	const int64_t BUF_SIZE = 4096, shift = bit_length(db_size - 1) - RADIX_BITS; // promiscuous_cutoff = db_size / config.promiscuous_seed_ratio;
+static vector<string> build_pair_table(Job& job, const vector<string>& seed_table, int shape, int64_t max_oid, FileArray& output_files) {
+	const int64_t BUF_SIZE = 4096, shift = bit_length(max_oid) - RADIX_BITS; // promiscuous_cutoff = db_size / config.promiscuous_seed_ratio;
 	const string seed_table_base = job.base_dir() + PATH_SEPARATOR + "seed_table_" + to_string(shape);
 	const string queue_path = seed_table_base + PATH_SEPARATOR + "build_pair_table_queue";
 	const bool unid = !config.mutual_cover.present();
@@ -227,8 +205,8 @@ struct SizeCounter {
 	HyperLogLog hll;
 };
 
-struct Chunk {
-	Chunk(Atomic& next_chunk, const string& chunks_path):
+struct ClusterChunk {
+	ClusterChunk(Atomic& next_chunk, const string& chunks_path):
 		id((int32_t)next_chunk.fetch_add())
 	{
 		mkdir(chunks_path + std::to_string(id));
@@ -242,7 +220,7 @@ struct Chunk {
 		this->size.merge(size.hll);
 		size.hll = HyperLogLog();
 	}
-	~Chunk() {
+	~ClusterChunk() {
 		pairs_out->close();
 	}
 	const int32_t id;
@@ -251,8 +229,8 @@ struct Chunk {
 	mutex mtx;
 };
 
-static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string>& pair_table, int64_t db_size) {
-	const int64_t BUF_SIZE = 4096, shift = bit_length(db_size - 1) - RADIX_BITS, max_chunk_size = Util::String::interpret_number(config.linclust_chunk_size) / 64,
+static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string>& pair_table, int64_t max_oid) {
+	const int64_t BUF_SIZE = 4096, shift = bit_length(max_oid) - RADIX_BITS, max_chunk_size = Util::String::interpret_number(config.linclust_chunk_size) / 64,
 		max_processed = std::max(std::min(INT64_C(262144), max_chunk_size / config.threads_ / 16), INT64_C(1)); // ???
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "chunk_table",
 		chunks_path = job.base_dir() + PATH_SEPARATOR + "chunks" + PATH_SEPARATOR;
@@ -261,7 +239,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 	unique_ptr<FileArray> output_files(new FileArray(base_path, RADIX_COUNT, job.worker_id()));
 	Atomic queue(base_path + PATH_SEPARATOR + "queue");
 	Atomic next_chunk(base_path + PATH_SEPARATOR + "next_chunk");
-	shared_ptr<Chunk> current_chunk(new Chunk(next_chunk, chunks_path));
+	shared_ptr<ClusterChunk> current_chunk(new ClusterChunk(next_chunk, chunks_path));
 	int64_t total_pairs = 0, total_distinct_pairs = 0;
 	int64_t bucket, buckets_processed = 0;
 	mutex mtx;
@@ -272,7 +250,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 		total_pairs += data.size();
 		ips4o::parallel::sort(data.begin(), data.end(), std::less<PairEntry>(), config.threads_);
 		auto worker = [&](int thread_id) {
-			shared_ptr<Chunk> my_chunk(current_chunk);
+			shared_ptr<ClusterChunk> my_chunk(current_chunk);
 			BufferArray buffers(*output_files, RADIX_COUNT);
 			vector<PairEntryShort> pairs_buffer;
 			SizeCounter size;
@@ -307,7 +285,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 								lock_guard<mutex> lock(mtx);
 								if (my_chunk == current_chunk) {
 									log_stream << "build_chunk_table chunk=" << current_chunk->id << " est_size=" << est * 64 << endl;
-									current_chunk.reset(new Chunk(next_chunk, chunks_path));
+									current_chunk.reset(new ClusterChunk(next_chunk, chunks_path));
 									my_chunk = current_chunk;
 									new_chunk = true;
 								}
@@ -336,7 +314,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 		const int64_t est = current_chunk->size.estimate();
 		if (est >= max_chunk_size) {
 			log_stream << "build_chunk_table chunk=" << current_chunk->id << " est_size=" << est * 64 << endl;
-			current_chunk.reset(new Chunk(next_chunk, chunks_path));
+			current_chunk.reset(new ClusterChunk(next_chunk, chunks_path));
 		}
 		file.remove();
 		++buckets_processed;
@@ -384,6 +362,8 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 					vector<Letter> seq;
 					OId file_oid = v.oid_begin;
 					while (file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
+						if(job.round() > 0)
+							file_oid = atoll(id.c_str());
 						if (table_ptr->oid > file_oid) {
 							++file_oid;
 							continue;
@@ -420,7 +400,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 	finished.fetch_add(buckets_processed);
 	finished.await(chunk_table.size());
 	timer.finish();
-	log_stream << "build_chunks oids=" << oid_counter << '/' << db.records() << " distinct_oids=" << distinct_oid_counter << endl;
+	log_stream << "build_chunks oids=" << oid_counter << '/' << db.sparse_records() << " distinct_oids=" << distinct_oid_counter << endl;
 }
 
 string round(Job& job, const VolumedFile& volumes) {
@@ -431,7 +411,7 @@ string round(Job& job, const VolumedFile& volumes) {
 			: config.mutual_cover.get_present() / 100 - 0.05;
 	}
 	job.log("Starting round %i sensitivity %s %i shapes\n", job.round(), to_string(config.sensitivity).c_str(), ::shapes.count());
-	job.set_round(volumes.size(), volumes.records());
+	job.set_round(volumes.sparse_records());
 	const std::string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
 	mkdir(pair_table_base);
 	unique_ptr<FileArray> pair_table_files(new FileArray(pair_table_base, RADIX_COUNT, job.worker_id()));
@@ -439,19 +419,19 @@ string round(Job& job, const VolumedFile& volumes) {
 	for (int shape = 0; shape < ::shapes.count(); ++shape) {
 		const vector<string> buckets = build_seed_table(job, volumes, shape);
 		const vector<string> sorted_seed_table = radix_sort<SeedEntry>(job, buckets, shapes[0].bit_length() - RADIX_BITS);
-		pair_table = build_pair_table(job, sorted_seed_table, shape, volumes.records(), *pair_table_files);
+		pair_table = build_pair_table(job, sorted_seed_table, shape, volumes.max_oid(), *pair_table_files);
 	}
 	pair_table_files.reset();
-	const vector<string> sorted_pair_table = radix_sort<PairEntry>(job, pair_table, bit_length(volumes.records() - 1) - RADIX_BITS);
-	const pair<vector<string>, int> chunk_table = build_chunk_table(job, sorted_pair_table, volumes.records());
-	const vector<string> sorted_chunk_table = radix_sort<ChunkTableEntry>(job, chunk_table.first, bit_length(volumes.records() - 1) - RADIX_BITS);
+	const vector<string> sorted_pair_table = radix_sort<PairEntry>(job, pair_table, bit_length(volumes.max_oid()) - RADIX_BITS);
+	const pair<vector<string>, int> chunk_table = build_chunk_table(job, sorted_pair_table, volumes.max_oid());
+	const vector<string> sorted_chunk_table = radix_sort<ChunkTableEntry>(job, chunk_table.first, bit_length(volumes.max_oid()) - RADIX_BITS);
 	build_chunks(job, volumes, sorted_chunk_table, chunk_table.second);
-	const vector<string> edges = align(job, chunk_table.second, volumes.records());
+	const vector<string> edges = align(job, chunk_table.second, volumes.max_oid());
 	if (config.mutual_cover.present()) {
 		return cluster_bidirectional(job, edges, volumes);
 	}
 	else {
-		const vector<string> sorted_edges = radix_sort<Edge>(job, edges, bit_length(volumes.records() - 1) - RADIX_BITS);
+		const vector<string> sorted_edges = radix_sort<Edge>(job, edges, bit_length(volumes.max_oid()) - RADIX_BITS);
 		//const vector<string> sorted_edges = read_list(job.base_dir() + PATH_SEPARATOR + "alignments" + PATH_SEPARATOR + "radix_sort_out");
 		return cluster(job, sorted_edges, volumes);
 	}
@@ -462,8 +442,8 @@ void external() {
 		throw std::runtime_error("Option missing: output file (--out/-o)");
 	config.file_buffer_size = 64 * 1024;
 	TaskTimer total;
-	Job job;
 	VolumedFile volumes(config.database.get_present());
+	Job job(volumes.max_oid(), volumes.size());
 	if (job.worker_id() == 0) {
 		if(config.mutual_cover.present())
 			job.log("Bi-directional coverage = %f", config.mutual_cover.get_present());
@@ -471,7 +451,7 @@ void external() {
 			job.log("Uni-directional coverage = %f", config.member_cover.get(80));
 		job.log("Approx. id = %f", config.approx_min_id.get(0));
 		job.log("#Volumes = %lli", volumes.size());
-		job.log("#Sequences = %lli", volumes.records());
+		job.log("#Sequences = %lli", volumes.sparse_records());
 	}
 	if (config.mutual_cover.present()) {
 		config.query_or_target_cover = 0;
@@ -499,6 +479,4 @@ void external() {
 	if(output_lock.fetch_add() == 0)
 		output(job);
 	log_stream << "Total time = " << (double)total.milliseconds() / 1000 << 's' << endl;
-}
-
 }

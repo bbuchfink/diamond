@@ -414,7 +414,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
 		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext)
-		("hit-membuf", 0, "Buffer intermediate hits in memory (0=default/1)", hit_membuf);
+		("hit-membuf", 0, "Buffer intermediate hits in memory", hit_membuf);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
@@ -928,7 +928,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	//if (hit_membuf) {
 //		trace_pt_membuf = true;
 	//}
-	trace_pt_membuf = false;
+	trace_pt_membuf = hit_membuf;
 
 	log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;

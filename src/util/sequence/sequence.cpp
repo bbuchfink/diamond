@@ -175,7 +175,7 @@ array<vector<Letter>, 6> translate(const Sequence& seq) {
 	array<vector<Letter>, 6> out;
 	if (seq.length() < 3)
 		return out;
-	Translator::translate(seq, out.data());
+	Translator::translate(seq, out);
 	return out;
 }
 

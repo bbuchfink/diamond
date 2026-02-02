@@ -1,35 +1,24 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <atomic>
+#include <assert.h>
+#include <cstddef>
 #include <type_traits>
 #include <new>
 #include "../parallel/semaphore.h"
@@ -49,8 +38,11 @@ public:
         producer_count_(producer_count),
         consumer_count_(consumer_count),
         poison_pill_(std::move(poison_pill)),
-        //buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t)))),
+#if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606L
         buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t), std::align_val_t{ alignof(cell_t) }))),
+#else
+        buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t)))),        
+#endif
         enqueue_pos_(0),
         dequeue_pos_(0),
         pills_received_(0) {
@@ -68,8 +60,11 @@ public:
         for (size_t i = 0; i < capacity_; ++i) {
             buffer_[i].~cell_t();
         }
-        //::operator delete[](buffer_);
+#if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606L
         ::operator delete[](buffer_, std::align_val_t{ alignof(cell_t) });
+#else
+        ::operator delete[](buffer_);
+#endif
     }
 
     Queue(const Queue&) = delete;
@@ -77,34 +72,7 @@ public:
 
     void enqueue(const T& v) { emplace_impl(v); }
     void enqueue(T&& v) { emplace_impl(std::move(v)); }
-
-    bool try_dequeue(T& out) {
-        size_t pos = dequeue_pos_.load(std::memory_order_relaxed);
-        for (;;) {
-            cell_t* cell = &buffer_[index(pos)];
-            size_t seq = cell->seq.load(std::memory_order_acquire);
-            intptr_t dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos + 1);
-            if (dif == 0) {
-                if (dequeue_pos_.compare_exchange_weak(
-                    pos, pos + 1,
-                    std::memory_order_relaxed,
-                    std::memory_order_relaxed)) {
-                    T* p = cell_value_ptr(cell);
-                    out = std::move(*p);
-                    p->~T();
-                    cell->seq.store(pos + capacity_, std::memory_order_release);
-                    return true;
-                }
-            }
-            else if (dif < 0) {
-                return false;
-            }
-            else {
-                pos = dequeue_pos_.load(std::memory_order_relaxed);
-            }
-        }
-    }
-
+   
     bool wait_and_dequeue(T& out) {
         while (true) {
             items_.acquire();
@@ -139,6 +107,7 @@ public:
         return enq >= deq ? (enq - deq) : 0;
     }
 
+    // call once per producer
     void close() {
         for (int i = 0; i < consumer_count_; ++i) {
             enqueue(poison_pill_);
@@ -157,7 +126,7 @@ private:
         };
         std::atomic<size_t> seq;
         Storage storage;
-        char pad[64 - ((sizeof(std::atomic<size_t>) + sizeof(Storage)) % 64)];
+        char pad[(64 - ((sizeof(std::atomic<size_t>) + sizeof(Storage)) % 64)) % 64];
         cell_t() : seq(0) {}
     };
 
@@ -187,7 +156,6 @@ private:
     template <class... Args>
     void emplace_impl(Args&&... args) {        
         spaces_.acquire();
-
         size_t pos = enqueue_pos_.load(std::memory_order_relaxed);
         for (;;) {
             cell_t* cell = &buffer_[index(pos)];
@@ -198,7 +166,7 @@ private:
                 if (enqueue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
                     new (cell_value_ptr(cell)) T(std::forward<Args>(args)...);
                     cell->seq.store(pos + 1, std::memory_order_release);
-                    items_.release();
+                    items_.release();                    
                     return;
                 }
             }
@@ -211,6 +179,33 @@ private:
         }
     }
 
+    bool try_dequeue(T& out) {
+        size_t pos = dequeue_pos_.load(std::memory_order_relaxed);
+        for (;;) {
+            cell_t* cell = &buffer_[index(pos)];
+            size_t seq = cell->seq.load(std::memory_order_acquire);
+            intptr_t dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos + 1);
+            if (dif == 0) {
+                if (dequeue_pos_.compare_exchange_weak(
+                    pos, pos + 1,
+                    std::memory_order_relaxed,
+                    std::memory_order_relaxed)) {
+                    T* p = cell_value_ptr(cell);
+                    out = std::move(*p);
+                    p->~T();
+                    cell->seq.store(pos + capacity_, std::memory_order_release);
+                    return true;
+                }
+            }
+            else if (dif < 0) {
+                return false;
+            }
+            else {
+                pos = dequeue_pos_.load(std::memory_order_relaxed);
+            }
+        }
+    }
+
     const size_t capacity_;
     const size_t mask_;
     const int producer_count_;
@@ -218,9 +213,9 @@ private:
     const T poison_pill_;
     cell_t* const buffer_;
     alignas(64) std::atomic<size_t> enqueue_pos_;
-    char _pad0[64 - sizeof(enqueue_pos_) % 64]{};
+    char _pad0[(64 - sizeof(enqueue_pos_) % 64) % 64]{};
     alignas(64) std::atomic<size_t> dequeue_pos_;
-    char _pad1[64 - sizeof(dequeue_pos_) % 64]{};
+    char _pad1[(64 - sizeof(dequeue_pos_) % 64) % 64]{};
     std::counting_semaphore<> items_{ (ptrdiff_t)0 };
     std::counting_semaphore<> spaces_{ (ptrdiff_t)capacity_ };
     std::atomic<size_t> pills_received_;

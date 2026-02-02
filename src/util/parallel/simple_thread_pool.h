@@ -28,12 +28,13 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
 // SPDX-License-Identifier: BSD-3-Clause
 
+#pragma once
 #include <vector>
 #include <thread>
 #include <atomic>
 #include <mutex>
-#include <functional>
 #include <exception>
+#include <functional>
 
 struct SimpleThreadPool {
 
@@ -50,22 +51,49 @@ struct SimpleThreadPool {
         }
     }
 
-    template <typename Func>
-    void spawn(Func&& func) {
+    template <typename Func, typename... Args>
+    std::thread::id spawn(Func&& func, Args&&... args) {
         std::lock_guard<std::mutex> lock(data_mutex);
 
-        threads.emplace_back([this, task = std::forward<Func>(func)]() {
-            try {
-                task(static_cast<const std::atomic<bool>&>(stop_flag));
-            }
-            catch (...) {
-                std::lock_guard<std::mutex> lock(data_mutex);
-                if (!first_exception) {
-                    first_exception = std::current_exception();
-                    stop_flag = true;
+        threads.emplace_back(
+            [this,
+            fn = std::forward<Func>(func),
+            tup = std::make_tuple(std::forward<Args>(args)...)
+            ]() mutable {
+                try {
+                    std::apply(
+                        [&](auto&&... xs) {
+                            std::invoke(fn,
+                                static_cast<const std::atomic<bool>&>(stop_flag),
+                                std::forward<decltype(xs)>(xs)...);
+                        },
+                        tup
+                    );
+                }
+                catch (...) {
+                    std::lock_guard<std::mutex> lock(data_mutex);
+                    if (!first_exception) {
+                        first_exception = std::current_exception();
+                        stop_flag = true;
+                    }
                 }
             }
-            });
+        );
+
+        return threads.back().get_id();
+    }
+
+    template <typename T, typename Method, typename... Args>
+    std::thread::id spawn_method(T* obj, Method&& method, Args&&... args) {
+        if (!obj) {
+            throw std::invalid_argument("spawn_method: obj must not be null");
+        }
+        return spawn(
+            [obj, m = std::forward<Method>(method)](const std::atomic<bool>& stop, auto&&... xs) mutable {
+                std::invoke(m, obj, stop, std::forward<decltype(xs)>(xs)...);
+            },
+            std::forward<Args>(args)...
+        );
     }
 
     void join_all() {
@@ -74,10 +102,33 @@ struct SimpleThreadPool {
                 t.join();
             }
         }
+        threads.clear();
         if (first_exception) {
             std::rethrow_exception(first_exception);
         }
     }
+
+    template<typename It>
+    void join(It begin, It end) {
+        for (It i = begin; i != end; ++i) {
+            join(*i);
+        }
+        if (first_exception) {
+            std::rethrow_exception(first_exception);
+        }
+    }
+
+    void join(std::thread::id thread_id) {
+        auto it = std::find_if(threads.begin(), threads.end(),
+			[thread_id](const std::thread& t) { return t.get_id() == thread_id; });
+        if(it == threads.end()) {
+            throw std::runtime_error("Thread ID not found in thread pool.");
+		}
+        if (it->joinable()) {
+            it->join();
+		}
+        threads.erase(it);
+	}
 
     void request_stop() {
         stop_flag = true;

@@ -20,8 +20,6 @@ limitations under the License.
 #include "util/hash_function.h"
 #include "external.h"
 
-namespace Cluster {
-
 struct SeedEntry {
 	SeedEntry() :
 		seed(),
@@ -90,6 +88,4 @@ void get_pairs_mutual_cov(KeyMergeIterator<const SeedEntry*, SeedEntry::Key>& it
 				break;
 		}
 	}
-}
-
 }

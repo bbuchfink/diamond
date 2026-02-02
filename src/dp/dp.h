@@ -53,7 +53,8 @@ struct DpTarget
 		{}
 		int i1, j1, ident, len;
 	};
-	enum { BLANK = -1, MIN_LETTERS = 3 };
+	static constexpr BlockId BLANK = std::numeric_limits<BlockId>::max();
+	enum { MIN_LETTERS = 3 };
 	static Loc banded_cols(const Loc qlen, const Loc tlen, const Loc d_begin, const Loc d_end) {
 		const Loc pos = std::max(d_end - 1, 0) - (d_end - 1);
 		const Loc d0 = d_begin;

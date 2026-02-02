@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <atomic>
@@ -35,8 +22,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/log_stream.h"
 #include "util/parallel/atomic.h"
 #include "util/string/string.h"
-
-namespace Cluster {
 
 template<typename T>
 std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, const std::string& output_dir, int bits_unsorted) {
@@ -74,13 +59,13 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 	TaskTimer timer("Closing the output files");
 	output_files.reset();
 	timer.finish();
-	job.log("Radix sorted bucket records=%zu", bucket.records());
+	job.log("Radix sorted bucket records=%zu", bucket.sparse_records());
 	return buckets;
 }
 
 template<typename T>
 std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& buckets, int bits_unsorted) {
-	const std::string base_path = Cluster::base_path(buckets.front()),
+	const std::string base_path = ::base_path(buckets.front()),
 		queue_path = base_path + PATH_SEPARATOR + "radix_sort_queue",
 		result_path = base_path + PATH_SEPARATOR + "radix_sort_out";
 	const uint64_t size_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
@@ -89,8 +74,8 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 	int64_t i, buckets_processed = 0;
 	while (i = queue.fetch_add(), i < (int64_t)buckets.size()) {
 		VolumedFile bucket(buckets[i]);
-		const size_t data_size = bucket.records() * sizeof(T);
-		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.records()).c_str(), Util::String::format(data_size).c_str());
+		const size_t data_size = bucket.sparse_records() * sizeof(T);
+		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.sparse_records()).c_str(), Util::String::format(data_size).c_str());
 		if (data_size > size_limit) {
 			const std::vector<std::string> v = radix_cluster<T>(job, bucket, path(buckets[i]), bits_unsorted);
 			out.lock();
@@ -98,7 +83,7 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 				out.push_non_locked(s);
 			out.unlock();
 		}
-		else if (bucket.records() > 0)
+		else if (bucket.sparse_records() > 0)
 			out.push(buckets[i]);
 		else
 			bucket.remove();
@@ -108,6 +93,4 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 	finished.fetch_add(buckets_processed);
 	finished.await(buckets.size());
 	return read_list(result_path);
-}
-
 }

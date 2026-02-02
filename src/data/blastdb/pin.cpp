@@ -84,11 +84,11 @@ PinIndex Volume::ParsePinFile(File& mapping, bool load_index)
 }
 
 Volume::Volume(const string& path, int idx, OId begin, OId end, bool load_index) :
-    phr_mapping_(path + ".phr", "rb"),
-    psq_mapping_(path + ".psq", "rb"),
     idx(idx),
     begin(begin),
-    end(end)
+    end(end),
+    phr_mapping_(path + ".phr", "rb"),
+    psq_mapping_(path + ".psq", "rb")    
 {
 	File pin(path + ".pin", "rb");
     index_ = Volume::ParsePinFile(pin, load_index);
@@ -100,7 +100,7 @@ Volume::RawChunk* Volume::raw_chunk(size_t letters, SequenceFile::Flags flags) {
     if (!bool(flags & SequenceFile::Flags::SEQS)) {
         if(seq_ptr_ != 0)
 			throw runtime_error("Volume::raw_chunk");
-    } else if (!bool(flags & SequenceFile::Flags::TITLES | flags & SequenceFile::Flags::TAXON_MAPPING)) {
+    } else if (!bool((flags & SequenceFile::Flags::TITLES) | (flags & SequenceFile::Flags::TAXON_MAPPING))) {
         if (hdr_ptr_ != 0)
             throw runtime_error("Volume::raw_chunk");
 		begin = seq_ptr_;
@@ -120,7 +120,7 @@ Volume::RawChunk* Volume::raw_chunk(size_t letters, SequenceFile::Flags flags) {
     const uint32_t n = end - begin;
     if (n == 0)
         return chunk;
-    if (bool(flags & SequenceFile::Flags::TITLES | flags & SequenceFile::Flags::TAXON_MAPPING)) {
+    if (bool((flags & SequenceFile::Flags::TITLES) | (flags & SequenceFile::Flags::TAXON_MAPPING))) {
         chunk->phr_index.assign(index_.header_index.begin() + hdr_ptr_, index_.header_index.begin() + hdr_ptr_ + n + 1);
         chunk->phr_data = raw_deflines(n);
     }

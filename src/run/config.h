@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <mutex>
 #include "util/data_structures/bit_vector.h"
 #include "util/scores/cutoff_table.h"
+#include "util/parallel/simple_thread_pool.h"
 #ifdef WITH_DNA
 #include "contrib/dna/build_score.h"
 #endif
@@ -155,6 +156,7 @@ struct Config {
 	BlockId                                    iteration_query_aligned;
 
 	std::unique_ptr<ThreadPool>                thread_pool;
+	SimpleThreadPool                           search_pool;
 
 	bool iterated() const {
 		return sensitivity.size() > 1;

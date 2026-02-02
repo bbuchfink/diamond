@@ -163,7 +163,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 	else
 		cfg.seed_hit_buf.reset(new Search::HitBuffer(query_seqs.partition(cfg.query_bins, true, true),
 			config.tmpdir,
-			cfg.target->long_offsets(), align_mode.query_contexts, config.threads_));
+			cfg.target->long_offsets(), align_mode.query_contexts, config.threads_, cfg));
 
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");

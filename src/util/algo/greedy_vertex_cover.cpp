@@ -1,22 +1,28 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021-2024 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include <queue>
 #include "algo.h"
@@ -33,9 +39,10 @@ namespace Util { namespace Algo {
 
 template<typename Int, typename It>
 static Int neighbor_count2(It begin, It end, const vector<Int>& centroids) {
-	Int n = 0, last = -1;
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
+	Int n = 0, last = NIL;
 	for (It i = begin; i != end; ++i)
-		if (centroids[i->node2] == -1 && i->node2 != last) {
+		if (centroids[i->node2] == NIL && i->node2 != last) {
 			++n;
 			last = i->node2;
 		}
@@ -44,12 +51,13 @@ static Int neighbor_count2(It begin, It end, const vector<Int>& centroids) {
 
 template<typename Int, typename It>
 static Int neighbor_count(It begin, It end, const vector<Int>& centroids) {
-	Int n = 0, last = -1;
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
+	Int n = 0, last = NIL;
 	It w = begin;
 	for (It i = begin; i != end; ++i) {
-		if (i->node1 == -1)
+		if (i->node1 == NIL)
 			break;
-		if (centroids[i->node2] == -1 && i->node2 != last) {
+		if (centroids[i->node2] == NIL && i->node2 != last) {
 			++n;
 			last = i->node2;
 			if (w < i)
@@ -58,15 +66,16 @@ static Int neighbor_count(It begin, It end, const vector<Int>& centroids) {
 		}
 	}
 	if (w < end)
-		w->node1 = -1;
+		w->node1 = NIL;
 	return n;
 }
 
 template<typename Int, typename It>
 static Int neighbor_count(Int node, It begin, It end, const vector<Int>& centroids, const Int* member_counts) {
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
 	Int n = member_counts[node];
 	for (It i = begin; i != end; ++i)
-		if (centroids[i->node2] == -1)
+		if (centroids[i->node2] == NIL)
 			n += member_counts[i->node2];
 	return n;
 }
@@ -83,14 +92,16 @@ static void fix_assignment(vector<Int>& centroids) {
 
 template<typename Int>
 void make_cluster_gvc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& centroids, bool merge_recursive) {
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
 	centroids[rep] = rep;
 	for (auto i = neighbors.cbegin(rep); i != neighbors.cend(rep); ++i)
-		if (centroids[i->node2] == -1 || (merge_recursive && centroids[i->node2] == i->node2))
+		if (centroids[i->node2] == NIL || (merge_recursive && centroids[i->node2] == i->node2))
 			centroids[i->node2] = rep;
 }
 
 template<typename Int>
 void make_cluster_cc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& centroids, Int depth) {
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
 	struct Entry {
 		Entry(Int node, Int depth):
 			node(node),
@@ -102,15 +113,15 @@ void make_cluster_cc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& cent
 	centroids[rep] = rep;
 	queue<Entry> q;
 	for (auto i = neighbors.cbegin(rep); i != neighbors.cend(rep); ++i)
-		if (centroids[i->node2] == -1)
+		if (centroids[i->node2] == NIL)
 			q.emplace(i->node2, 1);
 	while (!q.empty()) {
 		const Entry node = q.front();
 		q.pop();
-		if (centroids[node.node] != -1 || node.depth > depth)
+		if (centroids[node.node] != NIL || node.depth > depth)
 			continue;
 		for (auto i = neighbors.cbegin(node.node); i != neighbors.cend(node.node); ++i)
-			if (centroids[i->node2] == -1)
+			if (centroids[i->node2] == NIL)
 				q.emplace(i->node2, node.depth + 1);
 		centroids[node.node] = rep;
 	}
@@ -118,9 +129,10 @@ void make_cluster_cc(Int rep, FlatArray<Edge<Int>>& neighbors, vector<Int>& cent
 
 template<typename Int>
 vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const Int* member_counts, bool merge_recursive, bool reassign, Int connected_component_depth) {
+	static constexpr Int NIL = std::numeric_limits<Int>::max();
 	TaskTimer timer("Computing edge counts");
 	priority_queue<pair<Int, Int>> q;
-	vector<Int> centroids(neighbors.size(), -1);
+	vector<Int> centroids(neighbors.size(), NIL);
 	for (Int i = 0; i < neighbors.size(); ++i)
 		q.emplace(member_counts ? neighbor_count(i, neighbors.cbegin(i), neighbors.cend(i), centroids, member_counts) :
 			(Int)neighbors.count(i), i);
@@ -130,7 +142,7 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const Int* memb
 	while (!q.empty()) {
 		const Int node = q.top().second;
 		q.pop();
-		if (centroids[node] != -1)
+		if (centroids[node] != NIL)
 			continue;
 		const Int count = member_counts ? neighbor_count(node, neighbors.cbegin(node), neighbors.cend(node), centroids, member_counts) :
 			neighbor_count(neighbors.begin(node), neighbors.end(node), centroids);

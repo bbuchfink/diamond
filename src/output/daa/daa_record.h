@@ -36,7 +36,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/sequence/translate.h"
 #include "basic/match.h"
 
-inline void translate_query(const std::vector<Letter>& query, std::vector<Letter> *context)
+inline void translate_query(const std::vector<Letter>& query, std::array<std::vector<Letter>, 6>& context)
 {
 	Translator::translate(query, context);
 }
@@ -138,7 +138,7 @@ struct DAA_query_record
 	std::string query_name;
 	size_t query_num;
 	std::vector<Letter> source_seq;
-	std::vector<Letter> context[6];
+	std::array<std::vector<Letter>, 6> context;
 	TranslatedSequence query_seq;
 
 private:

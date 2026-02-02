@@ -423,6 +423,7 @@ set(OBJECTS
         src/data/blastdb/pal.cpp
         src/data/blastdb/asn1.cpp
         src/data/blastdb/blastdb.cpp
+        src/test/queue.cpp
 )
 
 if(WITH_DNA)

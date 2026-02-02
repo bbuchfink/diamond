@@ -1,0 +1,16 @@
+This codebase is Copyright © 2012-2026 Dr. Benjamin J. Buchfink. You are free to use it under
+the terms of the Apache 2.0 License. This document does not change, limit or supersede the
+terms of the Apache 2.0 License.
+
+It is not permitted to make a fork, copy or derivative work of this project and publicly
+represent it as the official and original DIAMOND project developed by Dr. Benjamin J. Buchfink
+as published in the respective scientific articles, or to use the name DIAMOND or variations
+thereof or associated logos or variations thereof or the names of the authors to create such
+a false impression. Forks must give clear notice as such and identify as not being the official
+and original DIAMOND project.
+
+Logos may be used to indicate the use of the tool in a flowchart or similar. Files are
+available here: https://github.com/bbuchfink/diamond-data
+
+Contributors to this project are always invited and I will review and merge any sensible
+pull requests. Due recognition will be given including authorship on publications.

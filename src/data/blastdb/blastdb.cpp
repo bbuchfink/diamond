@@ -444,7 +444,7 @@ TaxId BlastDB::max_taxid() const {
 TaxId BlastDB::get_parent(TaxId taxid) {
 	if (taxid <= 0)
 		return taxid;
-	if (taxid >= parent_cache_.size())
+	if ((size_t)taxid >= parent_cache_.size())
 		return -1;
 	if (parent_cache_[taxid] != numeric_limits<TaxId>::min())
 		return parent_cache_[taxid];

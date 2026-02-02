@@ -44,9 +44,9 @@ using std::unique_ptr;
 using std::bind;
 using std::function;
 
-namespace Cluster {
-
 void external();
+
+namespace Cluster {
 		
 struct Config {
 	Config(shared_ptr<SequenceFile>& db) :
@@ -107,6 +107,7 @@ struct BestCentroid : public Consumer, public vector<OId> {
 };
 
 static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_block, const OId* super_block_id_to_oid, Config& cfg) {
+	static constexpr OId NIL = std::numeric_limits<OId>::max();
 	//if (cfg.verbosity >= 2)
 		message_stream << "Searching vs. centroids #sequences = " << super_block->sequence_count()
 			<< ", #letters = " << super_block->letters()
@@ -142,7 +143,7 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 	vector<SuperBlockId> unaligned;
 	for (SuperBlockId i = 0; i < super_block->sequence_count(); ++i) {
 		const OId oid = super_block_id_to_oid[i];
-		if (best_centroid->operator[](i) == -1) {
+		if (best_centroid->operator[](i) == NIL) {
 			unaligned.push_back(i);
 		}
 		else {

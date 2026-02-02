@@ -1,20 +1,28 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2013-2017 Benjamin Buchfink <buchfink@gmail.com>
+Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-2-Clause
 
 #pragma once
 #include <vector>
@@ -51,23 +59,23 @@ public:
 		return r;
 	}
 
-	static size_t translate(const Sequence& dnaSequence, std::vector<Letter> *proteins)
+	static size_t translate(const Sequence& dnaSequence, std::array<std::vector<Letter>, 6>& proteins)
 	{
-		size_t length_ = dnaSequence.length(), d, n;
+		const size_t length_ = dnaSequence.length();
 		if (length_ < 3) {
 			for (int i = 0; i < 6; ++i)
 				proteins[i].clear();
 			return 0;
 		}
-		proteins[0].resize(d = length_ / 3);
-		proteins[3].resize(d);
-		n = 2*d;
-		proteins[1].resize(d = (length_ - 1) / 3);
-		proteins[4].resize(d);
-		n += 2*d;
-		proteins[2].resize(d = (length_ - 2) / 3);
-		proteins[5].resize(d);
-		n += 2*d;
+		const size_t l1 = length_ / 3;
+		proteins[0].resize(l1);
+		proteins[3].resize(l1);
+		const size_t l2 = (length_ - 1) / 3;
+		proteins[1].resize(l2);
+		proteins[4].resize(l2);
+		const size_t l3 = (length_ - 2) / 3;
+		proteins[2].resize(l3);
+		proteins[5].resize(l3);
 
 		size_t r = length_ - 2;
 		unsigned pos = 0;
@@ -89,7 +97,7 @@ public:
 			proteins[1][i] = getAminoAcid(dnaSequence, pos);
 			proteins[4][i] = getAminoAcidReverse(dnaSequence, r - 1);
 		}
-		return n;
+		return 2 * (l1 + l2 + l3);
 	}
 
 	static Letter const* nextChar(Letter const*p, Letter const*end)

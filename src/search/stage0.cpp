@@ -47,12 +47,14 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/algo/radix_cluster.h"
 #include "util/algo/hash_join.h"
 #include "util/log_stream.h"
+#include "util/parallel/simple_thread_pool.h"
 
 using std::vector;
 using std::atomic;
 using std::endl;
 using std::unique_ptr;
 using Search::Hit;
+using std::thread;
 
 namespace Search {
 
@@ -80,7 +82,7 @@ static void seed_join_worker(
 }
 
 template<typename SeedLoc>
-static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_count, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
+static void search_worker(const std::atomic<bool>& stop, atomic<SeedPartition> *seedp, SeedPartition partition_count, unsigned shape, size_t thread_id, DoubleArray<SeedLoc> *query_seed_hits, DoubleArray<SeedLoc> *ref_seed_hits, const Search::Context *context, const Search::Config* cfg)
 {
 	using GRB = AsyncWriter<Hit, Search::Config::RankingBuffer::EXPONENT>;
 	unique_ptr<HitBuffer::Writer> writer;
@@ -91,7 +93,7 @@ static void search_worker(atomic<SeedPartition> *seedp, SeedPartition partition_
 		writer.reset(new HitBuffer::Writer(*cfg->seed_hit_buf, thread_id));
 	unique_ptr<Search::WorkSet> work_set(new Search::WorkSet(*context, *cfg, shape, writer.get(), grb.get(), context->kmer_ranking));
 	SeedPartition p;
-	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
+	while (!stop && (p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());
 		run_stage1(it, work_set.get(), cfg);
 	}
@@ -192,10 +194,10 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		timer.go("Searching alignments");
 		seedp = 0;
 		threads.clear();
+		vector<thread::id> search_workers;
 		for (int i = 0; i < config.threads_; ++i)
-			threads.emplace_back(search_worker<SeedLoc>, &seedp, range.size(), sid, i, query_seed_hits.data(), ref_seed_hits.data(), context, &cfg);
-		for (auto &t : threads)
-			t.join();
+			search_workers.push_back(cfg.search_pool.spawn(search_worker<SeedLoc>, &seedp, range.size(), sid, i, query_seed_hits.data(), ref_seed_hits.data(), context, &cfg));
+		cfg.search_pool.join(search_workers.begin(), search_workers.end());
 		statistics.inc(Statistics::TIME_SEARCH, timer.microseconds());
 		timer.finish();
 		log_rss();

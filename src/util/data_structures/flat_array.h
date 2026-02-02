@@ -1,5 +1,5 @@
 /****
-Copyright � 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -11,22 +11,18 @@ list of conditions and the following disclaimer.
 this list of conditions and the following disclaimer in the documentation and/or
 other materials provided with the distribution.
 
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
 IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
 INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
 BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: BSD-2-Clause
 
 #pragma once
 #include <vector>
@@ -37,7 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../util.h"
 #include "../algo/transform_iterator.h"
 
-template<typename T, typename I = int64_t>
+template<typename T, typename I = uint64_t>
 struct FlatArray {
 
 	typedef typename std::vector<T>::iterator DataIterator;
@@ -241,11 +237,7 @@ std::pair<FlatArray<typename It::value_type::second_type>, std::vector<typename 
 {
 	using Key = typename It::value_type::first_type;
 	using Value = typename It::value_type::second_type;
-#if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
-	std::sort(begin, end);
-#else
 	ips4o::parallel::sort(begin, end, std::less<std::pair<Key, Value>>(), num_threads);
-#endif
 	auto it = merge_keys(begin, end, First<Key, Value>());
 	int64_t n = 0;
 	while (it.good()) {
@@ -270,11 +262,7 @@ FlatArray<typename It::value_type::second_type> make_flat_array_dense(const It b
 {
 	using Key = typename It::value_type::first_type;
 	using Value = typename It::value_type::second_type;
-#if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
-	std:sort(begin, end);
-#else
 	ips4o::parallel::sort(begin, end, std::less<std::pair<Key, Value>>(), num_threads);
-#endif
 	const Key max_key = (end - 1)->first;
 	FlatArray<Value> r;
 	r.reserve(max_key + 1, end - begin);
@@ -295,13 +283,9 @@ FlatArray<typename It::value_type::second_type> make_flat_array_dense(const It b
 template<typename T, typename GetKey>
 FlatArray<T> make_flat_array_dense(std::vector<T>&& data, const typename T::Key key_end, int num_threads, GetKey get_key)
 {
-	std::vector<int64_t> limits;
+	std::vector<uint64_t> limits;
 	limits.push_back(0);
-#if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
-	std::sort(data.begin(), data.end());
-#else
 	ips4o::parallel::sort(data.begin(), data.end(), std::less<T>(), num_threads);
-#endif
 	limits.reserve(key_end + 1);
 	auto it = merge_keys(data.cbegin(), data.cend(), get_key);
 	typename T::Key k = 0;

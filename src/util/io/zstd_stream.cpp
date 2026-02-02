@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #include <vector>
 #include <string.h>
@@ -107,18 +94,15 @@ size_t ZstdSource::read(char* ptr, size_t count)
 	auto* buf = static_cast<InputStreamBuffer*>(prev_);
 
 	while (out_buf.pos < out_buf.size) {
-		// Refill only when current input slice is fully consumed
 		if (in_buf.pos == in_buf.size) {
 			if (buf->begin == buf->end)
 				buf->fetch();
-
-			// No pointer arithmetic here!
 			in_buf.src = buf->begin;
 			in_buf.size = static_cast<size_t>(buf->end - buf->begin);
 			in_buf.pos = 0;
 
 			if (in_buf.size == 0) {
-				eos_ = true;               // true EOF
+				eos_ = true;
 				break;
 			}
 		}
@@ -127,12 +111,8 @@ size_t ZstdSource::read(char* ptr, size_t count)
 		if (ZSTD_isError(ret))
 			throw runtime_error(string("ZSTD_decompressStream: ")
 				+ ZSTD_getErrorName(ret));
-
-		// Consume exactly what the decoder used in this call
 		size_t const consumed = in_buf.pos;
 		buf->begin += consumed;
-
-		// Keep any unconsumed tail for the next iteration
 		size_t const remaining = in_buf.size - consumed;
 		if (remaining) {
 			in_buf.src = buf->begin;
@@ -143,11 +123,8 @@ size_t ZstdSource::read(char* ptr, size_t count)
 			in_buf.src = nullptr;
 			in_buf.size = 0;
 			in_buf.pos = 0;
-		}
-
-		// Optional: detect truncation at file EOF
-		if (buf->begin == buf->end && ret > 0) {
-			throw runtime_error("truncated zstd stream (need more input)");
+			//if (buf->begin == buf->end && ret > 0) {
+				//throw runtime_error("truncated zstd stream (need more input)");
 		}
 	}
 

@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -34,12 +21,14 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <windows.h>
 #endif
 #include <numeric>
+#include <sstream>
 #include "basic/config.h"
 #include "external.h"
 #include "util/parallel/atomic.h"
 #define _REENTRANT
 #include "lib/ips4o/ips4o.hpp"
 #include "util/util.h"
+#include "data/sequence_file.h"
 
 using std::vector;
 using std::string;
@@ -48,15 +37,11 @@ using std::thread;
 using std::endl;
 using Util::String::format;
 using std::atomic;
-
-namespace Cluster {
-
-struct Assignment {
-	int64_t member_oid, rep_oid;
-};
+using std::ofstream;
+using std::ostringstream;
 
 static void compute_closure(Job& job, const VolumedFile& volumes, vector<int64_t>& rep) {
-	Partition<int64_t> parts(volumes.records(), config.threads_);
+	Partition<int64_t> parts(volumes.max_oid() + 1, config.threads_);
 	atomic<int64_t> cluster_count(0);
 	auto closure_worker = [&](int thread_id) {
 		int64_t clusters = 0;
@@ -81,7 +66,7 @@ static void compute_closure(Job& job, const VolumedFile& volumes, vector<int64_t
 	mkdir(output_dir);
 	for (size_t v = 0; v < volumes.size(); ++v) {
 		OutputFile out(output_dir + "volume" + std::to_string(v));
-		out.write(&rep[volumes[v].oid_begin], volumes[v].record_count);
+		out.write(&rep[volumes[v].oid_begin], volumes[v].oid_range());
 		out.close();
 	}
 }
@@ -91,8 +76,8 @@ static void compute_closure(Job& job, const string& assignment_file, const Volum
 	TaskTimer timer("Getting assignment volumes");
 	VolumedFile v(assignment_file);
 	timer.go("Initializing mapping vector");
-	vector<int64_t> rep(volumes.records());
-	std::iota(rep.begin(), rep.end(), (int64_t)0);
+	vector<int64_t> rep(volumes.max_oid() + 1);
+	std::iota(rep.begin(), rep.end(), 0);
 	timer.go("Reading assignments");
 	atomic<int> next(0);
 	auto read_worker = [&](int thread_id) {
@@ -123,40 +108,55 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "reps" + PATH_SEPARATOR, qpath = base_dir + "queue";
 	const string clustering_dir = job.base_dir() + PATH_SEPARATOR + "clustering" + PATH_SEPARATOR;
 	mkdir(base_dir);
-	unique_ptr<FileArray> output_files(new FileArray(base_dir, 1, job.worker_id()));
+	unique_ptr<FileStack> reps_list(new FileStack(base_dir + "reps.tsv"));
 	
 	Atomic q(qpath);
 	atomic<int> volumes_processed(0);
 	vector<thread> workers;
 	auto worker = [&](int thread_id) {
-		BufferArray buffers(*output_files, 1);
 		int64_t v = 0;
 		vector<Letter> buf;
 		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 			job.log("Writing representatives. Volume=%lli/%lli Records=%s", v + 1, volumes.size(), format(volumes[v].record_count).c_str());
-			vector<int64_t> rep(volumes[v].record_count);
+			vector<OId> rep(volumes[v].oid_range());
 			InputFile clustering_file(clustering_dir + "volume" + std::to_string(v));
-			clustering_file.read(rep.data(), volumes[v].record_count);
+			clustering_file.read(rep.data(), rep.size());
 			clustering_file.close();
 			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
 			string id;
 			vector<Letter> seq;
-			int64_t oid = volumes[v].oid_begin;
-			vector<int64_t>::const_iterator rep_it = rep.begin();
-			string fasta_record;
+			OId file_oid = volumes[v].oid_begin, table_oid = file_oid;
+			vector<OId>::const_iterator rep_it = rep.begin();
+			const string out_file = base_dir + std::to_string(v) + ".faa";
+			ofstream out(out_file);
+			OId count = 0, max_oid = 0, min_oid = std::numeric_limits<OId>::max();
 			while (in->read_seq(seq, id, nullptr)) {
-				if (*rep_it == oid) {
-					fasta_record = ">";
-					fasta_record += std::to_string(oid);
-					fasta_record += '\n';
-					fasta_record += Sequence(seq).to_string();
-					fasta_record += '\n';
-					buffers.write(0, fasta_record.data(), fasta_record.length(), 1);
+				if (job.round() > 0) {
+					file_oid = atoll(id.c_str());
 				}
-				++oid;
+				while(table_oid < file_oid) {
+					++table_oid;
+					++rep_it;
+				}
+				if (*rep_it == file_oid) {
+					out << ">"
+						<< file_oid
+						<< '\n'
+						<< Sequence(seq).to_string()
+						<< '\n';
+					++count;
+					max_oid = std::max(max_oid, file_oid);
+					min_oid = std::min(min_oid, file_oid);
+				}
+				++file_oid;
 				++rep_it;
+				++table_oid;
 			}
 			in->close();
+			out.close();
+			ostringstream ss;
+			ss << out_file << '\t' << count << '\t' << volumes[v].oid_begin << '\t' << volumes[v].oid_end << endl;
+			reps_list->push(ss.str());
 			volumes_processed.fetch_add(1, std::memory_order_relaxed);
 		}
 		};
@@ -164,17 +164,14 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 		workers.emplace_back(worker, i);
 	for (auto& t : workers)
 		t.join();
-	const vector<string> buckets = output_files->buckets();
 	TaskTimer timer("Closing the output files");
-	output_files.reset();
 	Atomic finished(base_dir + "finished");
 	finished.fetch_add(volumes_processed);
 	finished.await((int)volumes.size());
-	return buckets.front();
+	return reps_list->file_name();
 }
 
 string cluster(Job& job, const vector<string>& edges, const VolumedFile& volumes) {
-	const int64_t db_size = volumes.records();
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "alignments",
 		queue_path = base_path + PATH_SEPARATOR + "queue",
 		clustering_path = job.base_dir() + PATH_SEPARATOR + "clustering";
@@ -224,7 +221,7 @@ string cluster_bidirectional(Job& job, const vector<string>& edges, const Volume
 	Atomic finished(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_finished");
 	if (lock.fetch_add() == 0) {
 		job.log("Computing clustering (bi-directional coverage)");
-		vector<uint32_t> degree(volumes.records(), 0);
+		vector<uint32_t> degree(volumes.max_oid() + 1, 0);
 		for (int bucket = 0; bucket < (int)edges.size(); ++bucket) {
 			VolumedFile file(edges[bucket]);
 			InputBuffer<Edge> data(file);
@@ -235,7 +232,7 @@ string cluster_bidirectional(Job& job, const vector<string>& edges, const Volume
 				++degree[i->rep_oid];
 			}
 		}
-		vector<int64_t> rep(volumes.records());
+		vector<int64_t> rep(volumes.max_oid() + 1);
 		std::iota(rep.begin(), rep.end(), (int64_t)0);
 		for (int bucket = 0; bucket < (int)edges.size(); ++bucket) {
 			VolumedFile file(edges[bucket]);
@@ -257,6 +254,4 @@ string cluster_bidirectional(Job& job, const vector<string>& edges, const Volume
 	else
 		finished.await(1);
 	return get_reps(job, volumes);
-}
-
 }

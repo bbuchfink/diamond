@@ -74,7 +74,7 @@ static inline void transpose_scalar(const signed char **data, size_t n, signed c
 namespace Benchmark { namespace DISPATCH_ARCH {
 
 void hit_buffer() {
-	vector<uint32_t> part;
+	/*vector<uint32_t> part;
 	part.push_back(0);
 	for (int i = 0; i < 16; ++i)
 		part.push_back((i + 1) * (INT_MAX / 16));
@@ -113,7 +113,7 @@ void hit_buffer() {
 		std::tuple<Search::Hit*, size_t, BlockId, BlockId> input = buf.retrieve();
 		printf("%i: %zd\n", i, std::get<1>(input));
 	}
-	buf.free_buffer();
+	buf.free_buffer();*/
 }
 
 #if defined(__SSE4_1__) && defined(EXTRA)

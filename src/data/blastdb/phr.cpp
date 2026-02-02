@@ -215,7 +215,7 @@ vector<BlastDefLine> Volume::deflines(uint32_t oid, bool all, bool full_titles, 
 {
     if (oid >= index_.num_oids)
         throw out_of_range("OID exceeds number of sequences in volume");
-	size_t header_offset = index_.header_index[oid];
+    size_t header_offset = index_.header_index[oid];
     size_t next_header_offset = index_.header_index[oid + 1];
     if (next_header_offset < header_offset) {
         throw out_of_range("Header offsets exceed PHR file size");
@@ -224,8 +224,8 @@ vector<BlastDefLine> Volume::deflines(uint32_t oid, bool all, bool full_titles, 
     if (oid != hdr_ptr_)
         phr_mapping_.seek(header_offset, SEEK_SET);
     hdr_ptr_ = oid + 1;
-	return decode_deflines(phr_mapping_.read(header_length), header_length, all, full_titles, taxids);
- }
+    return decode_deflines(phr_mapping_.read(header_length), header_length, all, full_titles, taxids);
+}
 
 vector<char> Volume::raw_deflines(uint32_t count) {
 	const size_t n = index_.header_index[hdr_ptr_ + count] - index_.header_index[hdr_ptr_];

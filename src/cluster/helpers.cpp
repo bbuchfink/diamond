@@ -1,22 +1,28 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021-2023 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
 ****/
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include <sstream>
 #include "cluster.h"
@@ -79,7 +85,7 @@ vector<Int> read(const string& file_name, const SequenceFile& db) {
 	TextInputFile in(file_name);
 	string centroid, member;
 	vector<Int> v(db.sequence_count());
-	int64_t mappings = 0;
+	uint64_t mappings = 0;
 	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE) {
 		in.getline();
 		if (in.line != HEADER_LINE)
@@ -238,13 +244,14 @@ File* open_out_tsv() {
 }
 
 vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>& edges) {
-	vector<BlockId> v(edges.size(), -1);
-	for (int64_t i = 0; i < edges.size(); ++i) {
-		if (v[i] != -1)
+	static constexpr BlockId NIL = std::numeric_limits<BlockId>::max();
+	vector<BlockId> v(edges.size(), NIL);
+	for (uint64_t i = 0; i < edges.size(); ++i) {
+		if (v[i] != NIL)
 			continue;
 		v[i] = (BlockId)i;
 		for (auto it = edges.cbegin(i); it != edges.cend(i); ++it)
-			if (v[it->node2] == -1)
+			if (v[it->node2] == NIL)
 				v[it->node2] = (BlockId)i;
 	}
 	return v;

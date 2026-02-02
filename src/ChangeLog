@@ -1,4 +1,13 @@
 [2.1.22]
+- Fixed compiler errors for GCC 4.8.5.
+- Improved performance of the computing alignments stage.
+- Fixed a bug that caused the `--hit-membuf` option not to function correctly.
+- Fixed a crash when using the `--parallel-tmpdir` option for clustering.
+
+[2.1.21]
+- Fixed a potential segmentation fault.
+
+[2.1.22]
 - Fixed a crash when using `--swipe`.
 - Fixed a crash when using `--global-ranking/-g`
 

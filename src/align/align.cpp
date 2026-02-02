@@ -234,21 +234,20 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 
 	int64_t res_size = cfg.query->mem_size() + cfg.target->mem_size();
 	cfg.seed_hit_buf->alloc_buffer();
-	//cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+	cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+	bool goon = true;
 
-	while (true) {
+	while (goon) {
 		timer.go("Loading trace points");
-		if (!cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size), cfg))
-			break;
 		tuple<Search::Hit*, int64_t, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
+		goon = cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 		timer.finish();
 		Search::Hit* hit_buf = get<0>(input);
 		const int64_t hit_count = get<1>(input);
 		log_stream << "Processing " << hit_count << " trace points (" << Util::String::format(int64_t(hit_count * sizeof(Search::Hit))) << ")." << std::endl;
 		res_size += hit_count * sizeof(Search::Hit);
 		query_range = { get<2>(input), get<3>(input) };
-		//cfg.seed_hit_buf->load(std::min(mem_limit - res_size, config.trace_pt_fetch_size));
 
 		timer.go("Sorting trace points");
 #ifdef NDEBUG

@@ -167,7 +167,7 @@ void greedy_vertex_cover() {
 	unique_ptr<ofstream> out;
 	if (!config.output_file.empty())
 		out.reset(new ofstream(config.output_file));
-	for (int64_t i = 0; i < (int64_t)r.size(); ++i) {
+	for (size_t i = 0; i < r.size(); ++i) {
 		if (r[i] == i) {
 			++c;
 			if (!config.centroid_out.empty())

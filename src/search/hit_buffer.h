@@ -48,8 +48,8 @@ struct HitBuffer
 	using Vector = std::vector<Hit>;
 	using Key = uint32_t;
 	
-	HitBuffer(const std::vector<Key>& key_partition, const std::string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count);
-	~HitBuffer();
+	HitBuffer(const std::vector<Key>& key_partition, const std::string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count, Config& cfg);
+	~HitBuffer() noexcept(false);
 	void finish_writing();
 
 	Key begin(int bin) const
@@ -147,9 +147,6 @@ struct HitBuffer
 					delete buffer_[bin];
 					return;
 				}
-				//std::lock_guard<std::mutex> lock(parent_.bin_mutex_[bin]);
-				//parent_.hit_buf_[bin].insert(parent_.hit_buf_[bin].end(), buffer_[bin].begin(), buffer_[bin].end());
-				//buffer_[bin].clear();
 				parent_.membuf_out_queue_[bin]->enqueue(std::pair<int, std::vector<Hit>*>(bin, buffer_[bin]));
 				if (!done) {
 					buffer_[bin] = new std::vector<Hit>();
@@ -165,12 +162,6 @@ struct HitBuffer
 				parent_.out_queue_[bin]->enqueue(std::tuple<int, TextBuffer*, uint32_t>(bin, text_buffer_[bin], buf_count_[bin]));
 				buf_count_[bin] = 0;
 				if(!done) text_buffer_[bin] = new TextBuffer();
-				//File& tmp_file = parent_.tmp_file_[bin];
-				//{
-					//std::lock_guard<std::mutex> lock(parent_.bin_mutex_[bin]);
-					//tmp_file.write(text_buffer_[bin].data(), text_buffer_[bin].size());
-				//}
-				//text_buffer_[bin].clear();
 			}
 		}
 		virtual ~Writer()
@@ -187,11 +178,12 @@ struct HitBuffer
 		Loc seed_offset_;
 		BlockId query_;
 		std::vector<TextBuffer*> text_buffer_;
-		std::vector<size_t> count_, buf_count_;
+		std::vector<size_t> count_;
+		std::vector<uint32_t> buf_count_;
 		HitBuffer &parent_;
 	};
 
-	bool load(size_t max_size, Config& cfg);
+	bool load(size_t max_size);
 
 	std::tuple<Hit*, size_t, Key, Key> retrieve() {
 		if (config.trace_pt_membuf || config.swipe_all) {
@@ -211,8 +203,10 @@ struct HitBuffer
 				load_worker_ = nullptr;
 				if(load_exception_)
 					std::rethrow_exception(load_exception_);
-			}
-			return std::tuple<Hit*, size_t, Key, Key> { data_next_, data_size_next_, input_range_next_.first, input_range_next_.second };
+			} else
+				throw std::runtime_error("HitBuffer retrieve w/o load");
+			std::swap(data_loading_, data_finished_);
+			return std::tuple<Hit*, size_t, Key, Key> { data_finished_, data_size_next_, input_range_next_.first, input_range_next_.second };
 		}
 	}
 
@@ -229,24 +223,27 @@ struct HitBuffer
 
 private:
 
-	void load_bin(Hit* out, int bin, Config& cfg);
-	void write_worker(int bin);
+	void load_bin(Hit* out, int bin);
+	void write_worker(const std::atomic<bool>& stop, int bin);
 
 	const std::vector<Key> key_partition_;
 	const bool long_subject_offsets_;
 	const int query_contexts_;
+	const uint32_t max_query_;
+	const uint64_t max_target_;
+	SimpleThreadPool& search_pool_;
 	int bins_processed_;
 	int64_t total_disk_size_;
 	std::vector<std::vector<Hit>> hit_buf_;
 	std::vector<File> tmp_file_;
 	std::atomic_size_t *count_;
 	std::pair<Key, Key> input_range_next_;
-	Hit* data_next_;
-	bool mmap_;
+	Hit* data_loading_, *data_finished_;
+	bool mmap_loading_, mmap_finished_;
 	int64_t data_size_next_, alloc_size_;
 	std::thread* load_worker_;
 	std::exception_ptr load_exception_;
-	std::vector<std::thread*> writer_;
+	std::vector<std::thread::id> writer_;
 	std::vector<Queue<std::tuple<int, TextBuffer*, uint32_t>>*> out_queue_;
 	std::vector<Queue<std::pair<int, std::vector<Hit>*>>*> membuf_out_queue_;
 

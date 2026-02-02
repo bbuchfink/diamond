@@ -53,13 +53,15 @@ using std::tuple;
 
 namespace Search {
 
-HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count) :
+HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count, Config& cfg) :
 	key_partition_(key_partition),
 	long_subject_offsets_(long_subject_offsets),
 	query_contexts_(query_contexts),
+	max_query_(cfg.query->seqs().size()),
+	max_target_(cfg.target->seqs().raw_len()),
+	search_pool_(cfg.search_pool),
 	bins_processed_(0),
 	total_disk_size_(0),
-	mmap_(false),
 	load_worker_(nullptr),
 	load_exception_(nullptr)
 {
@@ -70,7 +72,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 		if (config.swipe_all)
 			continue;
 		if (config.trace_pt_membuf) {
-			membuf_out_queue_.push_back(new Queue<std::pair<int, std::vector<Hit>*>>(thread_count * 4, thread_count, 1, pair<int, vector<Hit>*>(0, nullptr)));			
+			membuf_out_queue_.push_back(new Queue<std::pair<int, std::vector<Hit>*>>(thread_count * 4, thread_count, 1, pair<int, vector<Hit>*>(0, nullptr)));
 			hit_buf_.emplace_back();
 			hit_buf_.back().reserve(1 * GIGABYTES / sizeof(Hit));
 		}
@@ -78,55 +80,46 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 			out_queue_.push_back(new Queue<tuple<int, TextBuffer*, uint32_t>>(thread_count * 4, thread_count, 1, tuple<int, TextBuffer*, uint32_t>(0, nullptr, 0)));
 			tmp_file_.push_back(File(Temporary()));
 		}
-		writer_.push_back(new thread(&HitBuffer::write_worker, this, (int)i));		
+		writer_.push_back(search_pool_.spawn_method(this, &HitBuffer::write_worker, (int)i));
 	}	
 }
 
-void HitBuffer::write_worker(int bin) {
-	try {
-		if (config.trace_pt_membuf) {
-			for (;;) {
-				pair<int, vector<Hit>*> buf;
-				if (!membuf_out_queue_[bin]->wait_and_dequeue(buf))
-					break;
-				vector<Hit>& hits = hit_buf_[buf.first];
-				hits.insert(hits.end(), buf.second->begin(), buf.second->end());
-				delete buf.second;
-			}
-		}
-		else {
-			for (;;) {
-				tuple<int, TextBuffer*, uint32_t> buf;
-				if (!out_queue_[bin]->wait_and_dequeue(buf))
-					break;
-				File& tmp_file = tmp_file_[std::get<0>(buf)];
-				//std::lock_guard<std::mutex> lock(bin_mutex_[bin]);
-				tmp_file.write(std::get<1>(buf)->size());
-				tmp_file.write(std::get<2>(buf));
-				tmp_file.write(std::get<1>(buf)->data(), std::get<1>(buf)->size());
-				delete std::get<1>(buf);
-			}
+void HitBuffer::write_worker(const std::atomic<bool>& stop, int bin) {
+	if (config.trace_pt_membuf) {
+		while(!stop) {
+			pair<int, vector<Hit>*> buf;
+			if (!membuf_out_queue_[bin]->wait_and_dequeue(buf))
+				break;
+			vector<Hit>& hits = hit_buf_[buf.first];
+			hits.insert(hits.end(), buf.second->begin(), buf.second->end());
+			delete buf.second;
 		}
 	}
-	catch (...) {
-
+	else {
+		while (!stop) {
+			tuple<int, TextBuffer*, uint32_t> buf;
+			if (!out_queue_[bin]->wait_and_dequeue(buf))
+				break;
+			File& tmp_file = tmp_file_[std::get<0>(buf)];
+			tmp_file.write(std::get<1>(buf)->size());
+			tmp_file.write(std::get<2>(buf));
+			tmp_file.write(std::get<1>(buf)->data(), std::get<1>(buf)->size());
+			delete std::get<1>(buf);
+		}
 	}
 }
 
 void HitBuffer::finish_writing() {
-	for (int i = 0; i < out_queue_[0]->producer_count(); ++i)
-		if (config.trace_pt_membuf) {
-			for (int i = 0; i < bins(); ++i)
-				membuf_out_queue_[i]->close();
-		}
-		else {
-			for (int i = 0; i < bins(); ++i)
-				out_queue_[i]->close();
-		}
-	for (auto& t : writer_) {
-		t->join();
-		delete t;
+	if (config.trace_pt_membuf) {
+		for (int i = 0; i < membuf_out_queue_[0]->producer_count(); ++i)
+			for (int j = 0; j < bins(); ++j)
+				membuf_out_queue_[j]->close();
 	}
+	else
+		for (int i = 0; i < out_queue_[0]->producer_count(); ++i)
+			for (int j = 0; j < bins(); ++j)
+				out_queue_[j]->close();
+	search_pool_.join(writer_.begin(), writer_.end());
 	for(auto& q : membuf_out_queue_)
 		delete q;
 	for (auto& q : out_queue_)
@@ -136,20 +129,22 @@ void HitBuffer::finish_writing() {
 	out_queue_.clear();
 }
 
-HitBuffer::~HitBuffer() {
+HitBuffer::~HitBuffer() noexcept(false) {
 	if (!writer_.empty())
 		throw runtime_error("HitBuffer::~HitBuffer(): writer thread still active");
 	delete[] count_;
 }
 
-bool HitBuffer::load(size_t max_size, Config& cfg) {
+bool HitBuffer::load(size_t max_size) {
+	if (load_worker_)
+		throw runtime_error("HitBuffer::load(): previous load still in progress");
 	max_size = std::max(max_size, (size_t)1);
 	data_size_next_ = 0;
 	auto worker = [&](int end) {
 		try {
-			Hit* out = data_next_;
+			Hit* out = data_loading_;
 			for (; bins_processed_ < end; ++bins_processed_) {
-				load_bin(out, bins_processed_, cfg);
+				load_bin(out, bins_processed_);
 				out += count_[bins_processed_];
 			}
 		}
@@ -181,7 +176,7 @@ bool HitBuffer::load(size_t max_size, Config& cfg) {
 	return true;
 }
 
-void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
+void HitBuffer::load_bin(Hit* out, int bin)
 {
 	using namespace std::placeholders;
 	if (config.trace_pt_membuf)
@@ -198,11 +193,9 @@ void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
 		return;
 	}
 	const int p = config.threads_ > 1 ? std::min(config.threads_ - 1, config.load_threads) : 1;
-	const uint32_t max_query = cfg.query->seqs().size();
-	const uint64_t max_target = cfg.target->seqs().raw_len();
 	Queue<pair<vector<char>*, uint32_t>> queue(p * 4, 1, p, pair<vector<char>*, uint32_t>(nullptr, 0));
-	atomic<Hit*> out_ptr = out;
-	atomic<uint64_t> count = 0;
+	atomic<Hit*> out_ptr(out);
+	atomic<uint64_t> count(0);
 	f.seek(0, SEEK_SET);
 	SimpleThreadPool pool;
 	auto worker = [&](const atomic<bool>& stop, int worker_id) {
@@ -221,7 +214,7 @@ void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
 			while(ptr < end) {
 				uint32_t query_id, seed_offset;				
 				memcpy(&query_id, &*ptr, 4);
-				if (query_id >= max_query)
+				if (query_id >= max_query_)
 					throw runtime_error("HitBuffer::load_bin(): invalid query id / possibly corrupted temporary file");
 				ptr += 4;
 				memcpy(&seed_offset, &*ptr, 4);
@@ -243,7 +236,7 @@ void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
 						ptr += 4;
 						subject_loc = x;
 					}
-					if((uint64_t)subject_loc >= max_target)
+					if((uint64_t)subject_loc >= max_target_)
 						throw runtime_error("HitBuffer::load_bin(): invalid subject location / possibly corrupted temporary file");
 					if(package_count >= v.second)
 						throw runtime_error("HitBuffer::load_bin(): buffer overflow / possibly corrupted temporary file");
@@ -267,7 +260,7 @@ void HitBuffer::load_bin(Hit* out, int bin, Search::Config& cfg)
 		count.fetch_add(my_count, std::memory_order_relaxed);
 		};
 	for (int i = 0; i < p; ++i)
-		pool.spawn(std::bind(worker, _1, i));
+		pool.spawn(worker, i);
 	while(!pool.stop()) {
 		uint32_t n;
 		size_t l;
@@ -294,36 +287,46 @@ void HitBuffer::alloc_buffer() {
 		max_size = std::max(max_size, bin_size(i));
 	alloc_size_ = max_size;
 	if (max_size == 0) {
-		data_next_ = nullptr;
+		data_loading_ = data_finished_ = nullptr;
 		return;
 	}
 #ifdef _MSC_VER
-	data_next_ = new Hit[max_size];
-	mmap_ = false;
+	data_loading_ = new Hit[max_size];
+	data_finished_ = new Hit[max_size];
+	mmap_finished_ = mmap_loading_ = false;
 #else
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 #ifdef MAP_HUGETLB
 	flags |= MAP_HUGETLB;
 #endif
-	data_next_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
-	if (data_next_ == MAP_FAILED) {
-		data_next_ = new Hit[max_size];
-		mmap_ = false;
+	mmap_finished_ = mmap_loading_ = true;
+	data_finished_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
+	data_loading_ = (Hit*)mmap(nullptr, max_size * sizeof(Hit), PROT_READ | PROT_WRITE, flags, -1, 0);
+	if (data_finished_ == MAP_FAILED) {
+		data_finished_ = new Hit[max_size];
+		mmap_finished_ = false;
 	}
-	else
-		mmap_ = true;
+	if (data_loading_ == MAP_FAILED) {
+		data_loading_ = new Hit[max_size];
+		mmap_loading_ = false;
+	}
 #endif
 }
 
 void HitBuffer::free_buffer() {
 	if (!config.trace_pt_membuf) {
 #ifdef _MSC_VER
-		delete[] data_next_;
+		delete[] data_loading_;
+		delete[] data_finished_;
 #else
-		if (mmap_)
-			munmap(data_next_, alloc_size_ * sizeof(Search::Hit));
+		if (mmap_finished_)
+			munmap(data_finished_, alloc_size_ * sizeof(Search::Hit));
 		else
-			delete[] data_next_;
+			delete[] data_finished_;
+		if (mmap_loading_)
+			munmap(data_loading_, alloc_size_ * sizeof(Search::Hit));
+		else
+			delete[] data_loading_;
 #endif
 	}
 
