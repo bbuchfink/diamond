@@ -258,4 +258,12 @@ string format(unsigned long long number) {
 	return format((double)number);
 }
 
+string format(long number) {
+	return format((double)number);
+}
+
+string format(long long number) {
+	return format((double)number);
+}
+
 }}
