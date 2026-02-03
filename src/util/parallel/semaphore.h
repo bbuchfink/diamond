@@ -30,7 +30,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#if __cpp_lib_semaphore >= 201907L
+#if __cpp_lib_semaphore >= 201907L && (!defined(__clang__) || (__clang_major__ >= 21))
 #include <semaphore>
 #else
 #warning "Old compiler missing semaphore support."

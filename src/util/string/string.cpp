@@ -250,11 +250,11 @@ string format(double number) {
 	return result;
 }
 
-string format(int64_t number) {
+string format(unsigned long number) {
 	return format((double)number);
 }
 
-string format(uint64_t number) {
+string format(unsigned long long number) {
 	return format((double)number);
 }
 

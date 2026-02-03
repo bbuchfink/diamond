@@ -117,7 +117,7 @@ T convert_string(const std::string& s) {
 }
 
 std::string format(double number);
-std::string format(int64_t number);
-std::string format(uint64_t number);
+std::string format(unsigned long number);
+std::string format(unsigned long long number);
 
 }}
