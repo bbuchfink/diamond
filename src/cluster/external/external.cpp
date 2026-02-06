@@ -95,8 +95,8 @@ struct ChunkTableEntry {
 		buf.write(e.chunk);
 	}
 	friend void deserialize(InputFile& in, ChunkTableEntry& e) {
-		in.read(e.oid);
-		in.read(e.chunk);
+		in.read(&e.oid);
+		in.read(&e.chunk);
 	}
 	OId oid;
 	int32_t chunk;

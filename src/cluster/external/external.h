@@ -78,10 +78,10 @@ struct PairEntry {
 		out.write(e.member_len);
 	}
 	friend void deserialize(InputFile& in, PairEntry& e) {
-		in.read(e.rep_oid);
-		in.read(e.member_oid);
-		in.read(e.rep_len);
-		in.read(e.member_len);
+		in.read(&e.rep_oid);
+		in.read(&e.member_oid);
+		in.read(&e.rep_len);
+		in.read(&e.member_len);
 	}
 	struct Key {
 		int64_t operator()(const PairEntry& e) const {
@@ -110,8 +110,8 @@ struct PairEntryShort {
 		out.write(e.member_oid);
 	}
 	friend void deserialize(InputFile& in, PairEntryShort& e) {
-		in.read(e.rep_oid);
-		in.read(e.member_oid);
+		in.read(&e.rep_oid);
+		in.read(&e.member_oid);
 	}
 	struct Key {
 		int64_t operator()(const PairEntryShort& e) const {
@@ -153,10 +153,10 @@ struct Edge {
 		out.write(e.member_len);
 	}
 	friend void deserialize(InputFile& in, Edge& e) {
-		in.read(e.rep_oid);
-		in.read(e.member_oid);
-		in.read(e.rep_len);
-		in.read(e.member_len);
+		in.read(&e.rep_oid);
+		in.read(&e.member_oid);
+		in.read(&e.rep_len);
+		in.read(&e.member_len);
 	}
 	struct Member {
 		int64_t operator()(const Edge& e) const {
@@ -185,8 +185,8 @@ struct Assignment {
 		out.write(e.rep_oid);
 	}
 	friend void deserialize(InputFile& in, Assignment& e) {
-		in.read(e.member_oid);
-		in.read(e.rep_oid);
+		in.read(&e.member_oid);
+		in.read(&e.rep_oid);
 	}
 	int64_t member_oid, rep_oid;
 } PACKED_ATTRIBUTE;

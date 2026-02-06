@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -35,6 +35,68 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include <exception>
 #include <functional>
+#include <tuple>
+
+namespace simple_thread_pool_detail {
+
+template<std::size_t... Is>
+struct index_sequence {};
+
+template<std::size_t N, std::size_t... Is>
+struct make_index_sequence_impl : make_index_sequence_impl<N-1, N-1, Is...> {};
+
+template<std::size_t... Is>
+struct make_index_sequence_impl<0, Is...> {
+    typedef index_sequence<Is...> type;
+};
+
+template<std::size_t N>
+using make_index_sequence = typename make_index_sequence_impl<N>::type;
+
+template<typename Func, typename Tuple>
+struct SpawnTask {
+    Func fn;
+    Tuple args;
+    std::atomic<bool>* stop;
+    std::mutex* mtx;
+    std::exception_ptr* exc;
+
+    SpawnTask(Func f, Tuple a, std::atomic<bool>* s, std::mutex* m, std::exception_ptr* e)
+        : fn(std::move(f)), args(std::move(a)), stop(s), mtx(m), exc(e) {}
+
+    void operator()() {
+        try {
+            invoke(make_index_sequence<std::tuple_size<Tuple>::value>{});
+        }
+        catch (...) {
+            std::lock_guard<std::mutex> lock(*mtx);
+            if (!*exc) {
+                *exc = std::current_exception();
+                *stop = true;
+            }
+        }
+    }
+
+    template<std::size_t... Is>
+    void invoke(index_sequence<Is...>) {
+        fn(static_cast<const std::atomic<bool>&>(*stop), std::get<Is>(args)...);
+    }
+};
+
+template<typename T, typename Method>
+struct MethodBinder {
+    T* obj;
+    Method method;
+
+    MethodBinder(T* o, Method m) : obj(o), method(std::move(m)) {}
+
+    template<typename... Xs>
+    void operator()(const std::atomic<bool>& stop, Xs&&... xs) {
+        (obj->*method)(stop, std::forward<Xs>(xs)...);
+    }
+};
+
+}
 
 struct SimpleThreadPool {
 
@@ -55,30 +117,15 @@ struct SimpleThreadPool {
     std::thread::id spawn(Func&& func, Args&&... args) {
         std::lock_guard<std::mutex> lock(data_mutex);
 
-        threads.emplace_back(
-            [this,
-            fn = std::forward<Func>(func),
-            tup = std::make_tuple(std::forward<Args>(args)...)
-            ]() mutable {
-                try {
-                    std::apply(
-                        [&](auto&&... xs) {
-                            std::invoke(fn,
-                                static_cast<const std::atomic<bool>&>(stop_flag),
-                                std::forward<decltype(xs)>(xs)...);
-                        },
-                        tup
-                    );
-                }
-                catch (...) {
-                    std::lock_guard<std::mutex> lock(data_mutex);
-                    if (!first_exception) {
-                        first_exception = std::current_exception();
-                        stop_flag = true;
-                    }
-                }
-            }
-        );
+        using FuncD = typename std::decay<Func>::type;
+        using TupleD = std::tuple<typename std::decay<Args>::type...>;
+        using Task = simple_thread_pool_detail::SpawnTask<FuncD, TupleD>;
+
+        threads.emplace_back(Task(
+            std::forward<Func>(func),
+            std::make_tuple(std::forward<Args>(args)...),
+            &stop_flag, &data_mutex, &first_exception
+        ));
 
         return threads.back().get_id();
     }
@@ -88,10 +135,9 @@ struct SimpleThreadPool {
         if (!obj) {
             throw std::invalid_argument("spawn_method: obj must not be null");
         }
+        using MethodD = typename std::decay<Method>::type;
         return spawn(
-            [obj, m = std::forward<Method>(method)](const std::atomic<bool>& stop, auto&&... xs) mutable {
-                std::invoke(m, obj, stop, std::forward<decltype(xs)>(xs)...);
-            },
+            simple_thread_pool_detail::MethodBinder<T, MethodD>(obj, std::forward<Method>(method)),
             std::forward<Args>(args)...
         );
     }

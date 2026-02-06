@@ -671,7 +671,7 @@ bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
 		return false;
 	dict_oid_[b].push_back(oid);
 	if (flag_any(format_flags_, FormatFlags::DICT_LENGTHS)) {
-		f.read(len);
+		f.read(&len);
 		dict_len_[b].push_back(len);
 	}
 	if (flag_any(format_flags_, FormatFlags::DICT_SEQIDS)) {
@@ -685,7 +685,7 @@ bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
 	}
 	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
 		double self_aln_score;
-		f.read(self_aln_score);
+		f.read(&self_aln_score);
 		dict_self_aln_score_[b].push_back(self_aln_score);
 	}
 	return true;

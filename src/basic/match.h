@@ -494,30 +494,30 @@ inline void serialize(const HspContext& h, TextBuffer& buf) {
 
 inline HspContext deserialize(InputFile* file_) {
 	HspContext h;
-	file_->read(h.query_id);
-	file_->read(h.query_oid);
-	file_->read(h.subject_oid);
+	file_->read(&h.query_id);
+	file_->read(&h.query_oid);
+	file_->read(&h.subject_oid);
 	*file_ >> h.query_title;
 	*file_ >> h.target_title;
-	file_->read(h.query_len);
-	file_->read(h.subject_len);
-	file_->read(h.hsp_.identities);
-	file_->read(h.hsp_.mismatches);
-	file_->read(h.hsp_.positives);
-	file_->read(h.hsp_.gaps);
-	file_->read(h.hsp_.length);
-	file_->read(h.hsp_.gap_openings);
-	file_->read(h.hsp_.query_range.begin_);
-	file_->read(h.hsp_.query_range.end_);
-	file_->read(h.hsp_.subject_range.begin_);
-	file_->read(h.hsp_.subject_range.end_);
-	file_->read(h.hsp_.bit_score);
-	file_->read(h.hsp_.evalue);
-	file_->read(h.hsp_.score);
-	file_->read(h.hsp_.approx_id);
+	file_->read(&h.query_len);
+	file_->read(&h.subject_len);
+	file_->read(&h.hsp_.identities);
+	file_->read(&h.hsp_.mismatches);
+	file_->read(&h.hsp_.positives);
+	file_->read(&h.hsp_.gaps);
+	file_->read(&h.hsp_.length);
+	file_->read(&h.hsp_.gap_openings);
+	file_->read(&h.hsp_.query_range.begin_);
+	file_->read(&h.hsp_.query_range.end_);
+	file_->read(&h.hsp_.subject_range.begin_);
+	file_->read(&h.hsp_.subject_range.end_);
+	file_->read(&h.hsp_.bit_score);
+	file_->read(&h.hsp_.evalue);
+	file_->read(&h.hsp_.score);
+	file_->read(&h.hsp_.approx_id);
 #ifdef WITH_DNA
-	file_->read(h.hsp_.mapping_quality);
-	file_->read(h.hsp_.n_anchors);
+	file_->read(&h.hsp_.mapping_quality);
+	file_->read(&h.hsp_.n_anchors);
 #endif
 	h.hsp_.query_source_range = h.hsp_.query_range;
 	h.hsp_.subject_source_range = h.hsp_.subject_range;
