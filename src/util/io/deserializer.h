@@ -16,6 +16,7 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
+#include <cstring>
 #include <string.h>
 #include <utility>
 #include <iterator>
