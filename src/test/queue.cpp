@@ -16,11 +16,21 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #include <thread>
+#include <random>
 #include <vector>
 #include <atomic>
 #include <iostream>
 #include <cstdint>
+#include <sstream>
 #include "../util/data_structures/queue.h"
+#include "util/parallel/filestack.h"
+#include "basic/config.h"
+
+using std::ostringstream;
+using std::unique_ptr;
+using std::thread;
+using std::endl;
+using std::vector;
 
 struct QueueStressTestResult {
     bool passed;
@@ -216,4 +226,24 @@ int run_queue_stress_test() {
     std::cout << "Tests passed: " << (2 - failures) << "/2" << std::endl;
 
     return failures;
+}
+
+void filestack() {
+    unique_ptr<FileStack> stack(new FileStack("test.tsv"));
+    vector<thread> workers;
+    auto worker = [&](int thread_id) {
+        for (int i = 0; i < 100; ++i) {
+            std::random_device r;
+            std::default_random_engine e1(r());
+            std::uniform_int_distribution<int> uniform_dist(1, 999999999);
+            ostringstream ss;
+            ss << uniform_dist(e1) << '\t' << uniform_dist(e1) << '\t' << uniform_dist(e1) << '\t' << uniform_dist(e1) << '\n';
+            stack->push(ss.str());
+        }
+        };
+    for (int i = 0; i < config.threads_; ++i)
+        workers.emplace_back(worker, i);
+    for (auto& t : workers) {
+        t.join();
+    }
 }

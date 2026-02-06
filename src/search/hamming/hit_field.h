@@ -58,7 +58,7 @@ struct HitField {
         word ^= ((0 - (uint64_t)v) ^ word) & m;
 #else
         word ^= (-(uint64_t)v ^ word) & m;
-#endif       
+#endif
     }
 
     const vector<uint_fast32_t>& hits(size_t query) {

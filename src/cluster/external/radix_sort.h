@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +17,14 @@ limitations under the License.
 
 #pragma once
 #include <atomic>
+#include <sstream>
 #include "external.h"
 #include "util/io/input_file.h"
 #include "util/log_stream.h"
 #include "util/parallel/atomic.h"
+#include "util/parallel/simple_thread_pool.h"
 #include "util/string/string.h"
+#include "file_array.h"
 
 template<typename T>
 std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, const std::string& output_dir, int bits_unsorted) {
@@ -31,15 +34,17 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 	std::unique_ptr<FileArray> output_files(new FileArray(output_dir, RADIX_COUNT, job.worker_id()));
 	std::atomic<int64_t> next(0);
 
-	std::vector<std::thread> workers;
-	auto worker = [&](int thread_id) {
+	SimpleThreadPool pool;
+	auto worker = [&](const std::atomic<bool>& stop, int thread_id) {
 		BufferArray buffers(*output_files, RADIX_COUNT);
 		int64_t v = 0;
-		while (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)bucket.size()) {
+
+		while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)bucket.size())) {
 			InputFile in(bucket[v].path);
 			const int64_t n = bucket[v].record_count;
 			std::unique_ptr<T[]> data(new T[n]);
-			in.read(data.get(), n);
+			for (int64_t i = 0; i < n; ++i)
+				deserialize(in, data[i]);
 			in.close();
 			const T* end = data.get() + n;
 			for (const T* ptr = data.get(); ptr < end; ++ptr) {
@@ -49,9 +54,8 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 		}
 		};
 	for (int i = 0; i < std::min(config.threads_, (int)bucket.size()); ++i)
-		workers.emplace_back(worker, i);
-	for (auto& t : workers)
-		t.join();
+		pool.spawn(worker, i);
+	pool.join_all();
 	std::vector<std::string> buckets;
 	buckets.reserve(RADIX_COUNT);
 	for (int i = 0; i < RADIX_COUNT; ++i)
@@ -78,10 +82,10 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.sparse_records()).c_str(), Util::String::format(data_size).c_str());
 		if (data_size > size_limit) {
 			const std::vector<std::string> v = radix_cluster<T>(job, bucket, path(buckets[i]), bits_unsorted);
-			out.lock();
+			std::ostringstream ss;
 			for (const std::string& s : v)
-				out.push_non_locked(s);
-			out.unlock();
+				ss << s << '\n';
+			out.push(ss.str());
 		}
 		else if (bucket.sparse_records() > 0)
 			out.push(buckets[i]);

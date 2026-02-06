@@ -39,7 +39,7 @@ using std::runtime_error;
 using std::string;
 using std::unordered_map;
 
-PinIndex Volume::ParsePinFile(File& mapping, bool load_index)
+PinIndex BlastVolume::ParsePinFile(File& mapping, bool load_index)
 {
     size_t offset = 0;
 
@@ -83,7 +83,7 @@ PinIndex Volume::ParsePinFile(File& mapping, bool load_index)
     return index;
 }
 
-Volume::Volume(const string& path, int idx, OId begin, OId end, bool load_index) :
+BlastVolume::BlastVolume(const string& path, int idx, OId begin, OId end, bool load_index) :
     idx(idx),
     begin(begin),
     end(end),
@@ -91,11 +91,11 @@ Volume::Volume(const string& path, int idx, OId begin, OId end, bool load_index)
     psq_mapping_(path + ".psq", "rb")    
 {
 	File pin(path + ".pin", "rb");
-    index_ = Volume::ParsePinFile(pin, load_index);
+    index_ = BlastVolume::ParsePinFile(pin, load_index);
     pin.close();        
 }
 
-Volume::RawChunk* Volume::raw_chunk(size_t letters, SequenceFile::Flags flags) {
+BlastVolume::RawChunk* BlastVolume::raw_chunk(size_t letters, SequenceFile::Flags flags) {
     uint32_t begin = hdr_ptr_;
     if (!bool(flags & SequenceFile::Flags::SEQS)) {
         if(seq_ptr_ != 0)
@@ -146,7 +146,7 @@ static bool acc_filter(const vector<BlastDefLine>& deflines, unordered_map<std::
     return false;
 }
 
-DecodedPackage* Volume::RawChunk::decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<std::string, bool>* accs) const {
+DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<std::string, bool>* accs) const {
     assert(filter == nullptr || accs == nullptr);
     DecodedPackage* pkg = new DecodedPackage();
     pkg->no = no;
@@ -196,7 +196,7 @@ DecodedPackage* Volume::RawChunk::decode(SequenceFile::Flags flags, const BitVec
     return pkg;
 }
 
-void Volume::rewind() {
+void BlastVolume::rewind() {
     hdr_ptr_ = 0;
     seq_ptr_ = 0;
 	phr_mapping_.seek(0, SEEK_SET);

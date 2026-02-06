@@ -2,7 +2,11 @@
 - Fixed compiler errors for GCC 4.8.5.
 - Improved performance of the computing alignments stage.
 - Fixed a bug that caused the `--hit-membuf` option not to function correctly.
-- Fixed a crash when using the `--parallel-tmpdir` option for clustering.
+- Fixed potential crashes when using the `--parallel-tmpdir` option for clustering.
+- Added the option `--linclust-chunk-size` to set database chunk size for clustering
+  using the `--parallel-tmpdir` option.
+- Fixed a potential hanging problem on macOS.
+- Fixed a memory leak.
 
 [2.1.21]
 - Fixed a potential segmentation fault.

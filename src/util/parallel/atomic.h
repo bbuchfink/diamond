@@ -26,23 +26,14 @@ struct Atomic {
 	{
 	}
 
-	int64_t fetch_add(int64_t n = 1) {
-		std::string s;
-		stack_.lock();
-		int64_t i;
-		stack_.pop(i);
-		if (i == -1)
-			i = 0;
-		stack_.push(i + n);
-		// message_stream << "Atomic = " << i << std::endl;
-		stack_.unlock();
-		return i;
-	}
-
 	int64_t get() {
 		int64_t i;
 		stack_.top(i);
 		return i >= 0 ? i : 0;
+	}
+
+	int64_t fetch_add(int64_t n = 1) {
+		return stack_.fetch_add(n);
 	}
 
 	void await(int64_t n) {
@@ -56,6 +47,7 @@ struct Atomic {
 	}
 
 private:
+
 	FileStack stack_;
 
 };

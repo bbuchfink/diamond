@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright Â© 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ limitations under the License.
 #include "util/string/string.h"
 #include "../cascaded/cascaded.h"
 #include "build_pair_table.h"
+#include "util/parallel/simple_thread_pool.h"
 
 using std::unique_ptr;
 using std::thread;
@@ -73,6 +74,7 @@ void Job::log(const char* format, ...) {
 	va_end(args);
 }
 
+#pragma pack(1)
 struct ChunkTableEntry {
 	ChunkTableEntry():
 		oid(),
@@ -88,9 +90,18 @@ struct ChunkTableEntry {
 	bool operator<(const ChunkTableEntry& e) const {
 		return oid < e.oid || (oid == e.oid && chunk < e.chunk);
 	}
+	friend void serialize(const ChunkTableEntry& e, CompressedBuffer& buf) {
+		buf.write(e.oid);
+		buf.write(e.chunk);
+	}
+	friend void deserialize(InputFile& in, ChunkTableEntry& e) {
+		in.read(e.oid);
+		in.read(e.chunk);
+	}
 	OId oid;
 	int32_t chunk;
-};
+} PACKED_ATTRIBUTE;
+#pragma pack()
 
 static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
 	const int64_t BUF_SIZE = 4096;
@@ -107,21 +118,21 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 	
 	Atomic q(qpath);
 	atomic<int> volumes_processed(0);
-	vector<thread> workers;
-	auto worker = [&](int thread_id) {
+	SimpleThreadPool pool;
+	auto worker = [&](const atomic<bool>& stop, int thread_id) {
 		BufferArray buffers(*output_files, RADIX_COUNT);
-		monotonic_buffer_resource pool;
+		monotonic_buffer_resource mem_pool;
 		int64_t v = 0;
-		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
+		while (!stop.load(std::memory_order_relaxed) && (v = q.fetch_add(), v < (int64_t)volumes.size())) {
 			job.log("Building seed table. Shape=%i/%i Volume=%lli/%lli Records=%s", shape + 1, ::shapes.count(), v + 1, volumes.size(), format(volumes[v].record_count).c_str());
 			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
 			string id;
 			vector<Letter> seq;
 			int64_t oid = volumes[v].oid_begin;
-			while (in->read_seq(seq, id, nullptr)) {
+			while (!stop.load(std::memory_order_relaxed) && in->read_seq(seq, id, nullptr)) {
 				if (job.round() > 0)
 					oid = atoll(id.c_str());
-				std::pmr::vector<Letter> buf = Reduction::reduce_seq(Sequence(seq), pool);
+				std::pmr::vector<Letter> buf = Reduction::reduce_seq(Sequence(seq), mem_pool);
 				const Shape& sh = shapes[shape];
 				if (seq.size() < (size_t)sh.length_) {
 					++oid;
@@ -142,9 +153,8 @@ static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int
 		}
 		};
 	for (int i = 0; i < config.threads_; ++i)
-		workers.emplace_back(worker, i);
-	for (auto& t : workers)
-		t.join();
+		pool.spawn(worker, i);
+	pool.join_all();
 	const vector<string> buckets = output_files->buckets();
 	TaskTimer timer("Closing the output files");
 	output_files.reset();
@@ -166,10 +176,11 @@ static vector<string> build_pair_table(Job& job, const vector<string>& seed_tabl
 		InputBuffer<SeedEntry> data(file);
 		job.log("Building pair table. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, seed_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
 		ips4o::parallel::sort(data.begin(), data.end(), std::less<SeedEntry>(), config.threads_);
-		auto worker = [&](int thread_id) {
+		SimpleThreadPool pool;
+		auto worker = [&](const atomic<bool>& stop, int thread_id) {
 			BufferArray buffers(output_files, RADIX_COUNT);
 			auto it = merge_keys(data.begin(thread_id), data.end(thread_id), SeedEntry::Key());
-			while (it.good()) {
+			while (!stop.load(std::memory_order_relaxed) && it.good()) {
 				/*if (it.count() >= promiscuous_cutoff) {
 					++it;
 					continue;
@@ -181,11 +192,9 @@ static vector<string> build_pair_table(Job& job, const vector<string>& seed_tabl
 				++it;
 			}
 			};
-		vector<thread> workers;
 		for (int i = 0; i < data.parts(); ++i)
-			workers.emplace_back(worker, i);
-		for (auto& t : workers)
-			t.join();
+			pool.spawn(worker, i);
+		pool.join_all();
 		file.remove();
 		++buckets_processed;
 	}
@@ -249,14 +258,15 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 		job.log("Building chunk table. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, pair_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
 		total_pairs += data.size();
 		ips4o::parallel::sort(data.begin(), data.end(), std::less<PairEntry>(), config.threads_);
-		auto worker = [&](int thread_id) {
+		SimpleThreadPool pool;
+		auto worker = [&](const atomic<bool>& stop, int thread_id) {
 			shared_ptr<ClusterChunk> my_chunk(current_chunk);
 			BufferArray buffers(*output_files, RADIX_COUNT);
 			vector<PairEntryShort> pairs_buffer;
 			SizeCounter size;
 			int64_t distinct_pairs = 0, processed = 0;
 			auto it = merge_keys(data.begin(thread_id), data.end(thread_id), PairEntry::Key());
-			while (it.good()) {
+			while (!stop.load(std::memory_order_relaxed) && it.good()) {
 				const int64_t rep_oid = it.begin()->rep_oid;
 				int radix = int(rep_oid >> shift); // Hashing?
 				buffers.write(radix, ChunkTableEntry(rep_oid, my_chunk->id));
@@ -306,11 +316,9 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 			my_chunk->write(pairs_buffer, size);
 			total_distinct_pairs += distinct_pairs;
 			};
-		vector<thread> workers;
 		for (int i = 0; i < data.parts(); ++i)
-			workers.emplace_back(worker, i);
-		for (auto& t : workers)
-			t.join();
+			pool.spawn(worker, i);
+		pool.join_all();
 		const int64_t est = current_chunk->size.estimate();
 		if (est >= max_chunk_size) {
 			log_stream << "build_chunk_table chunk=" << current_chunk->id << " est_size=" << est * 64 << endl;
@@ -348,12 +356,13 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 			const OId oid_begin = data.front().oid, oid_end = data.back().oid + 1;
 			const pair<vector<Volume>::const_iterator, vector<Volume>::const_iterator> volumes = db.find(oid_begin, oid_end);
 			atomic<int64_t> next(0);
-			auto worker = [&]() {
+			SimpleThreadPool pool;
+			auto worker = [&](const atomic<bool>& stop) {
 				int64_t volume;
 				const ChunkTableEntry* table_ptr = data.begin();
 				BufferArray output_bufs(*output_files, chunk_count);
 				TextBuffer buf;
-				while (volume = next.fetch_add(1, std::memory_order_relaxed), volume < volumes.second - volumes.first) {
+				while (!stop.load(std::memory_order_relaxed) && (volume = next.fetch_add(1, std::memory_order_relaxed), volume < volumes.second - volumes.first)) {
 					const Volume& v = volumes.first[volume];
 					while (table_ptr->oid < v.oid_begin)
 						++table_ptr;
@@ -361,7 +370,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 					string id;
 					vector<Letter> seq;
 					OId file_oid = v.oid_begin;
-					while (file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
+					while (!stop.load(std::memory_order_relaxed) && file_oid < oid_end && in->read_seq(seq, id, nullptr)) {
 						if(job.round() > 0)
 							file_oid = atoll(id.c_str());
 						if (table_ptr->oid > file_oid) {
@@ -384,11 +393,9 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 					in->close();
 				}
 				};
-			vector<thread> workers;
 			for (int i = 0; i < std::min(config.threads_, int(volumes.second - volumes.first)); ++i)
-				workers.emplace_back(worker);
-			for (auto& t : workers)
-				t.join();
+				pool.spawn(worker);
+			pool.join_all();
 		}
 		file.remove();
 		++buckets_processed;
@@ -412,7 +419,7 @@ string round(Job& job, const VolumedFile& volumes) {
 	}
 	job.log("Starting round %i sensitivity %s %i shapes\n", job.round(), to_string(config.sensitivity).c_str(), ::shapes.count());
 	job.set_round(volumes.sparse_records());
-	const std::string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
+	const string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
 	mkdir(pair_table_base);
 	unique_ptr<FileArray> pair_table_files(new FileArray(pair_table_base, RADIX_COUNT, job.worker_id()));
 	vector<string> pair_table;

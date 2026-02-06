@@ -211,7 +211,7 @@ vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool a
     return out;
 }
 
-vector<BlastDefLine> Volume::deflines(uint32_t oid, bool all, bool full_titles, bool taxids)
+vector<BlastDefLine> BlastVolume::deflines(uint32_t oid, bool all, bool full_titles, bool taxids)
 {
     if (oid >= index_.num_oids)
         throw out_of_range("OID exceeds number of sequences in volume");
@@ -227,7 +227,7 @@ vector<BlastDefLine> Volume::deflines(uint32_t oid, bool all, bool full_titles, 
     return decode_deflines(phr_mapping_.read(header_length), header_length, all, full_titles, taxids);
 }
 
-vector<char> Volume::raw_deflines(uint32_t count) {
+vector<char> BlastVolume::raw_deflines(uint32_t count) {
 	const size_t n = index_.header_index[hdr_ptr_ + count] - index_.header_index[hdr_ptr_];
     vector<char> v(n);
 	phr_mapping_.read(v.data(), n);
@@ -235,7 +235,7 @@ vector<char> Volume::raw_deflines(uint32_t count) {
 	return v;
 }
 
-size_t Volume::id_len(uint32_t oid) const noexcept {
+size_t BlastVolume::id_len(uint32_t oid) const noexcept {
     return index_.header_index[oid + 1] - index_.header_index[oid];
 }
 

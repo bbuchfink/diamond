@@ -1,22 +1,21 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Code developed by Klaus Reuter
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
+// SPDX-License-Identifier: Apache-2.0
 
 #include <string>
 #include <iostream>
@@ -28,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string.h>
 #include "multiprocessing.h"
-#ifdef WIN32
+#ifdef _WIN32
 #else
 #include <fcntl.h>
 #include <unistd.h>
@@ -59,10 +58,9 @@ FileStack::FileStack(const string & file_name) : FileStack::FileStack(file_name,
 }
 
 FileStack::FileStack(const string & file_name, int maximum_line_length):
-    locked(false),
     file_name_(file_name)
 {
-#ifdef WIN32
+#ifdef _WIN32
     hFile = CreateFile(TEXT(file_name.c_str()), FILE_GENERIC_WRITE | FILE_GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE)
         throw std::runtime_error("Error opening file " + file_name_);
@@ -78,7 +76,7 @@ FileStack::FileStack(const string & file_name, int maximum_line_length):
 
 FileStack::~FileStack() {
     DBG("");
-#ifdef WIN32
+#ifdef _WIN32
     CloseHandle(hFile);
 #else
     close(fd);
@@ -87,13 +85,12 @@ FileStack::~FileStack() {
 
 int FileStack::lock() {
     mtx_.lock();
-#ifdef WIN32
+#ifdef _WIN32
     OVERLAPPED overlapvar;
     overlapvar.Offset = 0;
     overlapvar.OffsetHigh = 0;
     if(!LockFileEx(hFile, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &overlapvar))
-        throw std::runtime_error("could not put lock on file " + file_name_);
-    locked = true;
+        throw runtime_error("could not put lock on file " + file_name_);
     return 0;
 #else
     DBG("");
@@ -107,8 +104,6 @@ int FileStack::lock() {
         fcntl_status = fcntl(fd, F_SETLKW, &lck);
         if (fcntl_status == -1) {
             throw(std::runtime_error("could not put lock on file " + file_name_));
-        } else {
-            locked = true;
         }
     } else {
         throw(std::runtime_error("could not put lock on non-open file " + file_name_));
@@ -118,13 +113,12 @@ int FileStack::lock() {
 }
 
 int FileStack::unlock() {
-#ifdef WIN32
+#ifdef _WIN32
     OVERLAPPED overlapvar;
     overlapvar.Offset = 0;
     overlapvar.OffsetHigh = 0;
     if (!UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapvar))
         throw(std::runtime_error("could not unlock file " + file_name_));
-    locked = false;
     mtx_.unlock();
     return 0;
 #else
@@ -135,8 +129,6 @@ int FileStack::unlock() {
         fcntl_status = fcntl(fd, F_SETLKW, &lck);
         if (fcntl_status == -1) {
             throw(std::runtime_error("could not unlock file " + file_name_));
-        } else {
-            locked = false;
         }
     }
     mtx_.unlock();
@@ -145,7 +137,7 @@ int FileStack::unlock() {
 }
 
 int64_t FileStack::seek(int64_t offset, int mode) {
-#ifdef WIN32
+#ifdef _WIN32
     LARGE_INTEGER ptr, o;
     o.QuadPart = offset;
     const BOOL ret = SetFilePointerEx(hFile, o, &ptr, mode == SEEK_END ? FILE_END : FILE_BEGIN);
@@ -158,7 +150,7 @@ int64_t FileStack::seek(int64_t offset, int mode) {
 }
 
 size_t FileStack::read(char* buf, size_t size) {
-#ifdef WIN32
+#ifdef _WIN32
     DWORD n;
     if (!ReadFile(hFile, buf, (DWORD)size, &n, NULL))
         throw runtime_error("Error reading file " + file_name_);
@@ -172,7 +164,7 @@ size_t FileStack::read(char* buf, size_t size) {
 }
 
 int64_t FileStack::write(const char* buf, size_t size) {
-#ifdef WIN32
+#ifdef _WIN32
     DWORD n;
     if (!WriteFile(hFile, buf, (DWORD)size, &n, NULL))
         throw std::runtime_error("Error writing file " + file_name_);
@@ -183,7 +175,7 @@ int64_t FileStack::write(const char* buf, size_t size) {
 }
 
 int FileStack::truncate(size_t size) {
-#ifdef WIN32
+#ifdef _WIN32
     seek(size, SEEK_SET);
     if (!SetEndOfFile(hFile))
         throw std::runtime_error("Error calling SetEndOfFile");
@@ -239,7 +231,7 @@ int64_t FileStack::pop_non_locked(string & buf, const bool keep_flag, size_t & s
     }
 }
 
-int64_t FileStack::pop_non_locked(string & buf) {
+int64_t FileStack::pop_exclusive(string & buf) {
     DBG("");
     size_t size_after_pop = numeric_limits<size_t>::max();
     return pop_non_locked(buf, false, size_after_pop);
@@ -247,15 +239,9 @@ int64_t FileStack::pop_non_locked(string & buf) {
 
 int FileStack::pop(string & buf, const bool keep_flag, size_t & size_after_pop) {
     DBG("");
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
+    lock();
     int val = (int)pop_non_locked(buf, keep_flag, size_after_pop);
-    if (locked_internally) {
-        unlock();
-    }
+    unlock();
     return val;
 }
 
@@ -276,16 +262,23 @@ int FileStack::pop(string& buf, size_t& size_after_pop) {
     return pop(buf, false, size_after_pop);
 }
 
-int64_t FileStack::pop(int64_t & i) {
+int64_t FileStack::pop_non_locked(int64_t & i) {
     DBG("");
     string buf;
     size_t size_after_pop = numeric_limits<size_t>::max();
-    const int get_status = pop(buf, false, size_after_pop);
+    const int get_status = pop_non_locked(buf, false, size_after_pop);
     if (get_status > 0) {
         return i = std::stoll(buf);
     } else {
         return i = -1;
     }
+}
+
+int64_t FileStack::pop(int64_t& i) {
+    lock();
+    const int64_t r = pop_non_locked(i);
+    unlock();
+    return r;
 }
 
 int64_t FileStack::top(int64_t& i) {
@@ -302,11 +295,7 @@ int64_t FileStack::top(int64_t& i) {
 
 void FileStack::remove(const string & line) {
     DBG("");
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
+    lock();
     const int64_t size = seek(0, SEEK_END);
     seek(0, SEEK_SET);
 
@@ -328,12 +317,10 @@ void FileStack::remove(const string & line) {
         size_t n = write(buf.c_str(), buf.size());
     }
 
-    if (locked_internally) {
-        unlock();
-    }
+    unlock();
 }
 
-int64_t FileStack::push_non_locked(const string & buf) {
+int64_t FileStack::push_exclusive(const string & buf) {
     DBG("");
     static const string nl("\n");
     seek(0, SEEK_END);
@@ -346,18 +333,12 @@ int64_t FileStack::push_non_locked(const string & buf) {
 
 int64_t FileStack::push(const string & buf, size_t & size_after_push) {
     DBG("");
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
-    int64_t n = push_non_locked(buf);
+    lock();
+    int64_t n = push_exclusive(buf);
     if (size_after_push != numeric_limits<size_t>::max()) {
         size_after_push = size();
     }
-    if (locked_internally) {
-        unlock();
-    }
+    unlock();
     return n;
 }
 
@@ -371,10 +352,17 @@ int64_t FileStack::push(const string & buf) {
     return push(buf, size_after_push);
 }
 
-int64_t FileStack::push(int64_t i) {
+int64_t FileStack::push_non_locked(int64_t i) {
     DBG("");
     string buf = to_string(i);
-    return push(buf);
+    return push_exclusive(buf);
+}
+
+int64_t FileStack::push(int64_t i) {
+    lock();
+    const int64_t r = push_non_locked(i);
+    unlock();
+    return r;
 }
 
 size_t FileStack::size() {
@@ -383,11 +371,7 @@ size_t FileStack::size() {
     const size_t chunk_size = default_max_line_length;
     char * raw = new char[chunk_size * sizeof(char)];
 
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
+    lock();
 
     size_t n_bytes, i;
     seek(0, SEEK_SET);
@@ -399,9 +383,7 @@ size_t FileStack::size() {
         }
     }
 
-    if (locked_internally) {
-        unlock();
-    }
+    unlock();
 
     delete [] raw;
     return c;
@@ -409,20 +391,10 @@ size_t FileStack::size() {
 
 int FileStack::clear() {
     DBG("");
-
-    bool locked_internally = false;
-    if (! locked) {
-        lock();
-        locked_internally = true;
-    }
-
+    lock();
     seek(0, SEEK_SET);
     int stat = truncate(0);
-
-    if (locked_internally) {
-        unlock();
-    }
-
+    unlock();
     return stat;
 }
 
@@ -478,4 +450,18 @@ int FileStack::set_max_line_length(int n) {
 int FileStack::get_max_line_length() {
     DBG("");
     return max_line_length;
+}
+
+
+int64_t FileStack::fetch_add(int64_t n) {
+    string s;
+    lock();
+    int64_t i;
+    pop_non_locked(i);
+    if (i == -1)
+        i = 0;
+    push_non_locked(i + n);
+    // message_stream << "Atomic = " << i << std::endl;
+    unlock();
+    return i;
 }

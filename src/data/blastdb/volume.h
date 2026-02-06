@@ -69,7 +69,7 @@ struct PinIndex {
 std::string build_title(const std::vector<BlastDefLine>& deflines, const char* delimiter, bool all);
 std::string format_seqid(const SeqId& id);
 
-class Volume {
+class BlastVolume {
 public:
 
     struct RawChunk : public ::RawChunk {
@@ -96,7 +96,7 @@ public:
         size_t letters_;
     };
 
-    Volume(const std::string& path, int idx, OId begin, OId end, bool load_index);
+    BlastVolume(const std::string& path, int idx, OId begin, OId end, bool load_index);
     const PinIndex& index() const { return index_; }
     std::vector<BlastDefLine> deflines(uint32_t oid, bool all, bool full_titles, bool taxids);
     std::vector<Letter> sequence(uint32_t oid);
@@ -111,7 +111,7 @@ public:
     OId begin = 0, end = 0;    
 
 private:
-    Volume(PinIndex index, File&& phr, File&& psq, int idx, OId begin, OId end);
+    BlastVolume(PinIndex index, File&& phr, File&& psq, int idx, OId begin, OId end);
     static PinIndex ParsePinFile(File& mapping, bool index);
     
     PinIndex index_;

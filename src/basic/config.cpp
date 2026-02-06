@@ -414,6 +414,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
 		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext)
+		("linclust-chunk-size", 0, "Chunk size for linclust in parallel mode (default=10G)", linclust_chunk_size, string("10G"))
 		("hit-membuf", 0, "Buffer intermediate hits in memory", hit_membuf);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
@@ -651,7 +652,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("min-len-ratio", 0, "", min_length_ratio)
 		("max-indirection", 0, "", max_indirection)
 		("aln-out", 0, "", aln_out)
-		("linclust-chunk-size", 0, "", linclust_chunk_size, string("10G"))
 		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
 		
 	parser.store(argc, argv, command);

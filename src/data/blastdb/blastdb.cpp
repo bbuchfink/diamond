@@ -154,7 +154,7 @@ void BlastDB::open_volume(OId oid) {
 	if (oid >= volume_.begin && oid < volume_.end)
 		return;
 	const int idx = pal_.volume(oid);
-	volume_ = Volume(pal_.volumes[idx], idx, pal_.oid_index[idx], pal_.oid_index[idx + 1], true);
+	volume_ = BlastVolume(pal_.volumes[idx], idx, pal_.oid_index[idx], pal_.oid_index[idx + 1], true);
 }
 
 void BlastDB::print_info() const {
@@ -226,7 +226,7 @@ void BlastDB::seek_offset(size_t p)
 }
 
 RawChunk* BlastDB::raw_chunk(size_t letters, SequenceFile::Flags flags) {
-	Volume::RawChunk* c = volume_.raw_chunk(letters, flags);
+	BlastVolume::RawChunk* c = volume_.raw_chunk(letters, flags);
 	c->no = raw_chunk_no_++;
 	OId oid = c->end_;
 	if (oid < pal_.sequence_count)

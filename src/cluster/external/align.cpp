@@ -29,6 +29,7 @@ limitations under the License.
 #include "util/parallel/thread_pool.h"
 #include "util/hash_function.h"
 #include "chunk.h"
+#include "file_array.h"
 
 using std::mutex;
 using std::thread;

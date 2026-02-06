@@ -29,6 +29,8 @@ limitations under the License.
 #include "lib/ips4o/ips4o.hpp"
 #include "util/util.h"
 #include "data/sequence_file.h"
+#include "util/parallel/simple_thread_pool.h"
+#include "file_array.h"
 
 using std::vector;
 using std::string;
@@ -113,13 +115,14 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	Atomic q(qpath);
 	atomic<int> volumes_processed(0);
 	vector<thread> workers;
-	auto worker = [&](int thread_id) {
+	auto worker = [&](const atomic<bool>& stop, int thread_id) {
 		int64_t v = 0;
 		vector<Letter> buf;
-		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
+		while (v = q.fetch_add(), !stop.load(std::memory_order_relaxed) && v < (int64_t)volumes.size()) {
 			job.log("Writing representatives. Volume=%lli/%lli Records=%s", v + 1, volumes.size(), format(volumes[v].record_count).c_str());
+			fflush(stdout);
 			vector<OId> rep(volumes[v].oid_range());
-			InputFile clustering_file(clustering_dir + "volume" + std::to_string(v));
+			InputFile clustering_file(clustering_dir + "volume" + std::to_string(v), InputFile::NO_AUTODETECT);
 			clustering_file.read(rep.data(), rep.size());
 			clustering_file.close();
 			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
@@ -130,7 +133,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 			const string out_file = base_dir + std::to_string(v) + ".faa";
 			ofstream out(out_file);
 			OId count = 0, max_oid = 0, min_oid = std::numeric_limits<OId>::max();
-			while (in->read_seq(seq, id, nullptr)) {
+			while (!stop.load(std::memory_order_relaxed) && in->read_seq(seq, id, nullptr)) {
 				if (job.round() > 0) {
 					file_oid = atoll(id.c_str());
 				}
@@ -155,20 +158,28 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 			in->close();
 			out.close();
 			ostringstream ss;
-			ss << out_file << '\t' << count << '\t' << volumes[v].oid_begin << '\t' << volumes[v].oid_end << endl;
+			ss << out_file << '\t' << count << '\t' << volumes[v].oid_begin << '\t' << volumes[v].oid_end << '\n';
 			reps_list->push(ss.str());
 			volumes_processed.fetch_add(1, std::memory_order_relaxed);
 		}
 		};
+	SimpleThreadPool pool;
 	for (int i = 0; i < config.threads_; ++i)
-		workers.emplace_back(worker, i);
-	for (auto& t : workers)
+		pool.spawn(worker, i);
+	int n = 0;
+	pool.join_all();
+	/*for (auto& t : workers) {
 		t.join();
+		printf("Worker %d/%d finished\n", ++n, (int)workers.size());
+		fflush(stdout);
+	}*/
 	TaskTimer timer("Closing the output files");
 	Atomic finished(base_dir + "finished");
 	finished.fetch_add(volumes_processed);
 	finished.await((int)volumes.size());
-	return reps_list->file_name();
+	const string out = reps_list->file_name();
+	reps_list.reset();
+	return out;
 }
 
 string cluster(Job& job, const vector<string>& edges, const VolumedFile& volumes) {

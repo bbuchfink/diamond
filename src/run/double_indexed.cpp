@@ -585,8 +585,8 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 				FileStack stack_wip(file_align_wip);
 				string buf;
 				int j = 0;
-				while (stack_wip.pop_non_locked(buf)) {
-					stack_todo.push_non_locked(buf);
+				while (stack_wip.pop_exclusive(buf)) {
+					stack_todo.push_exclusive(buf);
 					j++;
 				}
 				if (j > 0)
@@ -599,8 +599,8 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 				FileStack stack_todo(file_join_todo);
 				string buf;
 				int j = 0;
-				while (stack_wip.pop_non_locked(buf)) {
-					stack_todo.push_non_locked(buf);
+				while (stack_wip.pop_exclusive(buf)) {
+					stack_todo.push_exclusive(buf);
 					j++;
 				}
 				if (j > 0)

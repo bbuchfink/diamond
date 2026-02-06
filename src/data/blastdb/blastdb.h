@@ -114,7 +114,7 @@ private:
 	std::vector<TaxId> parent_cache_;
 	std::unordered_map<TaxId, std::string> extra_names_;
 	std::map<OId, std::string> volumes_;
-	Volume volume_;
+	BlastVolume volume_;
 	int raw_chunk_no_;
 	
 	friend void load_blast_seqid();

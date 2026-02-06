@@ -40,6 +40,7 @@ using std::list;
 using std::shared_ptr;
 
 int run_queue_stress_test();
+void filestack();
 
 namespace Test {
 
@@ -93,6 +94,7 @@ static void load_seqs(SequenceFile& file) {
 
 int run() {
 	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
+	//filestack();
 	run_queue_stress_test();
 	TaskTimer timer("Generating test dataset");
 	FastaFile proteins("test1", true, FastaFile::WriteAccess());
@@ -108,7 +110,7 @@ int run() {
 	for (size_t i = 0; i < n; ++i)
 		passed += run_testcase(i, db, query_file, max_width, bootstrap, log, to_cout);
 
-	cout << endl << "#Test cases passed: " << passed << '/' << n << endl; // << endl;
+	cout << endl << "#Test cases passed: " << passed << '/' << n << endl;
 	
 	query_file->close();
 	db->close();

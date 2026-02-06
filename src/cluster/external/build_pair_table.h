@@ -20,6 +20,7 @@ limitations under the License.
 #include "util/hash_function.h"
 #include "external.h"
 
+#pragma pack(1)
 struct SeedEntry {
 	SeedEntry() :
 		seed(),
@@ -37,6 +38,16 @@ struct SeedEntry {
 	bool operator<(const SeedEntry& e) const {
 		return seed < e.seed || (seed == e.seed && (len > e.len || (len == e.len && oid < e.oid)));
 	}
+	friend void serialize(const SeedEntry& e, CompressedBuffer& buf) {
+		buf.write((const char*)&e.seed, sizeof(e.seed));
+		buf.write((const char*)&e.oid, sizeof(e.oid));
+		buf.write((const char*)&e.len, sizeof(e.len));
+	}
+	friend void deserialize(InputFile& in, SeedEntry& e) {
+		in.read((char*)&e.seed, sizeof(e.seed));
+		in.read((char*)&e.oid, sizeof(e.oid));
+		in.read((char*)&e.len, sizeof(e.len));
+	}
 	struct Key {
 		uint64_t operator()(const SeedEntry& e) const {
 			return e.seed;
@@ -45,7 +56,8 @@ struct SeedEntry {
 	uint64_t seed;
 	int64_t oid;
 	int32_t len;
-};
+} PACKED_ATTRIBUTE;
+#pragma pack()
 
 void get_pairs_uni_cov(KeyMergeIterator<const SeedEntry*, SeedEntry::Key>& it, BufferArray& buffers) {
 	const int64_t rep_oid = it.begin()->oid;

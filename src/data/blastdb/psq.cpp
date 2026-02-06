@@ -55,7 +55,7 @@ vector<Letter> decode_protein_sequence(const char* data, size_t len)
     return decoded;
 }
 
-vector<Letter> Volume::sequence(uint32_t oid)
+vector<Letter> BlastVolume::sequence(uint32_t oid)
 {
     if (oid >= index_.num_oids) {
         throw out_of_range("OID exceeds number of sequences in volume");
@@ -73,7 +73,7 @@ vector<Letter> Volume::sequence(uint32_t oid)
     return decode_protein_sequence(psq_mapping_.read(end - start), end - start);
 }
 
-vector<char> Volume::raw_sequence(uint32_t count) {
+vector<char> BlastVolume::raw_sequence(uint32_t count) {
     const size_t n = index_.sequence_index[seq_ptr_ + count] - index_.sequence_index[seq_ptr_];
     vector<char> v(n);
     psq_mapping_.read(v.data(), n);
@@ -81,6 +81,6 @@ vector<char> Volume::raw_sequence(uint32_t count) {
     return v;
 }
 
-Loc Volume::length(uint32_t oid) const noexcept {
+Loc BlastVolume::length(uint32_t oid) const noexcept {
     return index_.sequence_index[oid + 1] - index_.sequence_index[oid] - 1;
 }

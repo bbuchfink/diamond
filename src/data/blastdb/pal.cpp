@@ -162,7 +162,7 @@ Pal::Pal(const string& path) {
             it = recurse(is_absolute_path(nested) ? nested : db_dir + PATH_SEPARATOR + nested, it);
         }
         else {
-            Volume vol(*it, 0, 0, 0, false);
+            BlastVolume vol(*it, 0, 0, 0, false);
             sequence_count += vol.index().num_oids;
             oid_index.push_back(vol.index().num_oids + oid_index.back());
             letters += vol.index().total_length;

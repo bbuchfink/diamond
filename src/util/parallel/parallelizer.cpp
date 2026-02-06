@@ -261,5 +261,5 @@ void Parallelizer::log(const string & buf) {
         ).count();
     const string tagged_buf = to_string(ms) + ' ' + buf + '\n';
 
-    log_stack->push_non_locked(tagged_buf);
+    log_stack->push(tagged_buf);
 }
