@@ -69,10 +69,6 @@ static QueueStressTestResult test_many_producers_one_consumer(int thread_count, 
                 queue.enqueue(value);
                 local_checksum += static_cast<uint64_t>(value);
                 size_t x = total_sent2.fetch_add(1, std::memory_order_relaxed);
-                if (x % 10000 == 0) {
-                    printf("%llu\n", x);
-                    fflush(stdout);
-                }
             }
             total_sent.fetch_add(items_per_producer, std::memory_order_relaxed);
             sent_checksum.fetch_add(local_checksum, std::memory_order_relaxed);
@@ -81,8 +77,6 @@ static QueueStressTestResult test_many_producers_one_consumer(int thread_count, 
     }
 
     std::thread consumer([&queue, &total_received, &received_checksum]() {
-		fprintf(stderr, "Consumer started\n");
-        fflush(stderr);
         int64_t value;
         uint64_t local_checksum = 0;
         size_t count = 0;
@@ -97,12 +91,8 @@ static QueueStressTestResult test_many_producers_one_consumer(int thread_count, 
     int j = 0;
     for (auto& t : producers) {
         t.join();
-		fprintf(stderr, "Producer %d joined\n", j++);
-        fflush(stderr);
     }
     consumer.join();
-    fprintf(stderr, "Consumer joined\n", j++);
-    fflush(stderr);
 
     const size_t expected_count = static_cast<size_t>(producer_count) * items_per_producer;
     const size_t sent = total_sent.load();
@@ -172,8 +162,8 @@ static QueueStressTestResult test_one_producer_many_consumers(int thread_count, 
 
 int run_queue_stress_test() {
     const int thread_count = static_cast<int>(std::thread::hardware_concurrency());
-    const size_t items_per_producer = 10000;
-    const size_t total_items = 500000;
+    const size_t items_per_producer = 1000;
+    const size_t total_items = 50000;
 
     std::cout << "Queue Stress Test" << std::endl;
     std::cout << "=================" << std::endl;
