@@ -67,6 +67,9 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 {
 	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
 	count_ = new atomic_size_t[key_partition.size()];
+
+	// first populate queues, then initiate workers
+	// to avoid multi-threaded data access.
 	for (size_t i = 0; i < key_partition.size(); ++i) {
 		count_[i].store(0, std::memory_order_relaxed);
 		if (config.swipe_all)
@@ -80,8 +83,13 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 			out_queue_.push_back(new Queue<tuple<int, TextBuffer*, uint32_t>>(thread_count * 4, thread_count, 1, tuple<int, TextBuffer*, uint32_t>(0, nullptr, 0)));
 			tmp_file_.push_back(File(Temporary()));
 		}
-		writer_.push_back(search_pool_.spawn_method(this, &HitBuffer::write_worker, (int)i));
-	}	
+	}
+
+	if (!config.swipe_all) {
+		for (size_t i = 0; i < key_partition.size(); ++i) {
+			writer_.push_back(search_pool_.spawn_method(this, &HitBuffer::write_worker, (int)i));
+		}
+	}
 }
 
 void HitBuffer::write_worker(const std::atomic<bool>& stop, int bin) {
