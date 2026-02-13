@@ -1,3 +1,6 @@
+[2.1.23]
+- Fixed a potential crash in the clustering workflows.
+
 [2.1.22]
 - Fixed compiler errors for GCC 4.8.5.
 - Improved performance of the computing alignments stage.

@@ -959,7 +959,7 @@ vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> SequenceFile::length_so
 	files.reserve(block);
 	for (int i = 0; i < block; ++i) {
 		//files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
-		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP), vector<OId>(),
+		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP | Flags::TITLES | Flags::SEQS), vector<OId>(),
 			new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::TEMP));
 		get<0>(files.back())->init_write();
 	}

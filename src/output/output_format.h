@@ -309,7 +309,7 @@ struct Edge : public OutputFormat
 		double evalue;
 	};
 	Edge() :
-		OutputFormat(EDGE, HspValues::COORDS)
+		OutputFormat(EDGE, HspValues::COORDS, Output::Flags::SSEQID)
 	{}
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~Edge()
