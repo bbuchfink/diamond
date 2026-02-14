@@ -53,6 +53,17 @@ struct vector : public std::vector<T> {
     }
 };
 
+struct string : public std::string {
+    string(monotonic_buffer_resource*) :
+        std::string()
+    {
+    }
+    string(std::pmr::string&& s) :
+        std::string(std::move(s))
+    {
+	}
+};
+
 }}
 
 #endif
