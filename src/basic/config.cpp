@@ -19,6 +19,7 @@ limitations under the License.
 #include <iostream>
 #include <numeric>
 #include <thread>
+#include <chrono>
 #include "util/command_line_parser.h"
 #include "config.h"
 #include "util/util.h"
@@ -918,7 +919,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point release_time = std::chrono::system_clock::from_time_t(1771090269);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1771090269);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::days(180)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;
