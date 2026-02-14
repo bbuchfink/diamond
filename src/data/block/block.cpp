@@ -228,7 +228,7 @@ SeqInfo Block::seq_info(const BlockId id) const {
 Block* Block::length_sorted(int threads) const {
 	const BlockId n = seqs_.size();
 	vector<pair<Loc, BlockId>> lengths = seqs_.lengths();
-#if _MSC_FULL_VER == 191627045 || !defined(NDEBUG)
+#if !defined(NDEBUG)
 	std::sort(lengths.begin(), lengths.end(), greater<pair<Loc, BlockId>>());
 #else
 	ips4o::parallel::sort(lengths.begin(), lengths.end(), greater<pair<Loc, BlockId>>(), threads);

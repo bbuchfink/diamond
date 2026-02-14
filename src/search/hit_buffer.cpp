@@ -288,6 +288,7 @@ void HitBuffer::load_bin(Hit* out, int bin)
 }
 
 void HitBuffer::alloc_buffer() {
+	mmap_finished_ = mmap_loading_ = false;
 	if (config.trace_pt_membuf)
 		return;
 	int64_t max_size = 0;
@@ -300,8 +301,7 @@ void HitBuffer::alloc_buffer() {
 	}
 #ifdef _MSC_VER
 	data_loading_ = new Hit[max_size];
-	data_finished_ = new Hit[max_size];
-	mmap_finished_ = mmap_loading_ = false;
+	data_finished_ = new Hit[max_size];	
 #else
 	int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 #ifdef MAP_HUGETLB

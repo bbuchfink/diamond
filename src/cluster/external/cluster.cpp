@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ limitations under the License.
 #include <windows.h>
 #endif
 #include <numeric>
+#include <inttypes.h>
 #include <sstream>
 #include "basic/config.h"
 #include "external.h"
@@ -31,6 +32,7 @@ limitations under the License.
 #include "data/sequence_file.h"
 #include "util/parallel/simple_thread_pool.h"
 #include "file_array.h"
+#include "input_buffer.h"
 
 using std::vector;
 using std::string;
@@ -42,9 +44,8 @@ using std::atomic;
 using std::ofstream;
 using std::ostringstream;
 
-static void compute_closure(Job& job, const VolumedFile& volumes, vector<int64_t>& rep) {
+static void compute_closure(Job& job, const VolumedFile& volumes, vector<uint64_t>& rep) {
 	Partition<int64_t> parts(volumes.max_oid() + 1, config.threads_);
-	atomic<int64_t> cluster_count(0);
 	auto closure_worker = [&](int thread_id) {
 		int64_t clusters = 0;
 		for (int64_t i = parts.begin(thread_id); i < parts.end(thread_id); ++i) {
@@ -56,14 +57,12 @@ static void compute_closure(Job& job, const VolumedFile& volumes, vector<int64_t
 			if (r != rep[i])
 				rep[i] = r;
 		}
-		cluster_count.fetch_add(clusters, std::memory_order_relaxed);
-		};
+	};
 	vector<thread> workers;
 	for (int i = 0; i < std::min(config.threads_, (int)parts.parts); ++i)
 		workers.emplace_back(closure_worker, i);
 	for (auto& t : workers)
 		t.join();
-	job.log("Cluster count = %lli", (int64_t)cluster_count);
 	const string output_dir = job.base_dir() + PATH_SEPARATOR + "clustering" + PATH_SEPARATOR;
 	mkdir(output_dir);
 	for (size_t v = 0; v < volumes.size(); ++v) {
@@ -78,7 +77,7 @@ static void compute_closure(Job& job, const string& assignment_file, const Volum
 	TaskTimer timer("Getting assignment volumes");
 	VolumedFile v(assignment_file);
 	timer.go("Initializing mapping vector");
-	vector<int64_t> rep(volumes.max_oid() + 1);
+	vector<OId> rep(volumes.max_oid() + 1);
 	std::iota(rep.begin(), rep.end(), 0);
 	timer.go("Reading assignments");
 	atomic<int> next(0);
@@ -114,6 +113,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	
 	Atomic q(qpath);
 	atomic<int> volumes_processed(0);
+	atomic<OId> cluster_count(0);
 	vector<thread> workers;
 	auto worker = [&](const atomic<bool>& stop, int thread_id) {
 		int64_t v = 0;
@@ -161,6 +161,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 			ss << out_file << '\t' << count << '\t' << volumes[v].oid_begin << '\t' << volumes[v].oid_end << '\n';
 			reps_list->push(ss.str());
 			volumes_processed.fetch_add(1, std::memory_order_relaxed);
+			cluster_count.fetch_add(count, std::memory_order_relaxed);
 		}
 		};
 	SimpleThreadPool pool;
@@ -168,11 +169,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 		pool.spawn(worker, i);
 	int n = 0;
 	pool.join_all();
-	/*for (auto& t : workers) {
-		t.join();
-		printf("Worker %d/%d finished\n", ++n, (int)workers.size());
-		fflush(stdout);
-	}*/
+	job.log("Representatives written: %" PRIu64, cluster_count.load());
 	TaskTimer timer("Closing the output files");
 	Atomic finished(base_dir + "finished");
 	finished.fetch_add(volumes_processed);
@@ -182,12 +179,12 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	return out;
 }
 
-string cluster(Job& job, const vector<string>& edges, const VolumedFile& volumes) {
+string cluster(Job& job, const RadixedTable& edges, const VolumedFile& volumes) {
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "alignments",
 		queue_path = base_path + PATH_SEPARATOR + "queue",
 		clustering_path = job.base_dir() + PATH_SEPARATOR + "clustering";
 	mkdir(clustering_path);
-	unique_ptr<FileArray> output_file(new FileArray(clustering_path, 1, job.worker_id()));
+	unique_ptr<FileArray> output_file(new FileArray(clustering_path, 1, job.worker_id(), false));
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
 	while (bucket = queue.fetch_add(), bucket < (int64_t)edges.size()) {
@@ -227,7 +224,7 @@ string cluster(Job& job, const vector<string>& edges, const VolumedFile& volumes
 	return get_reps(job, volumes);
 }
 
-string cluster_bidirectional(Job& job, const vector<string>& edges, const VolumedFile& volumes) {
+string cluster_bidirectional(Job& job, const RadixedTable& edges, const VolumedFile& volumes) {
 	Atomic lock(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_lock");
 	Atomic finished(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_finished");
 	if (lock.fetch_add() == 0) {
@@ -237,20 +234,20 @@ string cluster_bidirectional(Job& job, const vector<string>& edges, const Volume
 			VolumedFile file(edges[bucket]);
 			InputBuffer<Edge> data(file);
 			job.log("Getting node degrees. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, edges.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
-			const Edge* end = data.end();
-			for (const Edge* i = data.begin(); i < end; ++i) {
+			const auto end = data.cend();
+			for (auto i = data.cbegin(); i < end; ++i) {
 				++degree[i->member_oid];
 				++degree[i->rep_oid];
 			}
 		}
-		vector<int64_t> rep(volumes.max_oid() + 1);
+		vector<uint64_t> rep(volumes.max_oid() + 1);
 		std::iota(rep.begin(), rep.end(), (int64_t)0);
 		for (int bucket = 0; bucket < (int)edges.size(); ++bucket) {
 			VolumedFile file(edges[bucket]);
 			InputBuffer<Edge> data(file);
 			job.log("Assigning reps. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, edges.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
-			const Edge* end = data.end();
-			for (const Edge* i = data.begin(); i < end; ++i) {
+			const auto end = data.cend();
+			for (auto i = data.cbegin(); i < end; ++i) {
 				if (degree[i->rep_oid] > degree[rep[i->member_oid]] || (degree[i->rep_oid] == degree[rep[i->member_oid]] && i->rep_oid < rep[i->member_oid]))
 					rep[i->member_oid] = i->rep_oid;
 				if (degree[i->member_oid] > degree[rep[i->rep_oid]] || (degree[i->member_oid] == degree[rep[i->rep_oid]] && i->member_oid < rep[i->rep_oid]))

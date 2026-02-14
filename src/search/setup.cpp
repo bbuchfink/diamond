@@ -402,6 +402,9 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		if (config.anchored_swipe)
 			throw runtime_error("Anchored swipe does not support full matrix extension.");
 	}
+
+	if(!config.aln_out.empty() && config.parallel_tmpdir.empty())
+		throw runtime_error("Alignment output to file is not supported without --parallel-tmpdir.");
 }
 
 }

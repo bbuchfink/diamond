@@ -16,14 +16,11 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
-struct MurmurHash {
-	uint64_t operator()(uint64_t h) const
-	{
-		h ^= h >> 33;
-		h *= 0xff51afd7ed558ccdLL;
-		h ^= h >> 33;
-		h *= 0xc4ceb9fe1a85ec53LL;
-		h ^= h >> 33;
-		return h;
-	}
-};
+static inline uint64_t hash64(uint64_t x)
+{
+	x += 0x9e3779b97f4a7c15ULL;
+	x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+	x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+	x ^= x >> 31;
+	return x;
+}

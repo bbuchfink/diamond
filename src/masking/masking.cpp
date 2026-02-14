@@ -1,23 +1,19 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
+// SPDX-License-Identifier: Apache-2.0
 
 #include <atomic>
 #include <numeric>
@@ -162,15 +158,15 @@ Masking::~Masking() {
 	SegParametersFree(blast_seg_);
 }
 
-size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size_t block_id, MaskingTable* table) const
+MaskingStat Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size_t block_id, MaskingTable* table) const
 {
-	size_t n = 0;
+	MaskingStat stats;
 	if (flag_any(algo, MaskingAlgo::TANTAN)) {
 		Mask::Ranges r = Util::tantan::mask(seq, (int)len, (const float**)probMatrixPointersf_, 0.005f, 0.05f, 1.0f / 0.9f, (float)config.tantan_minMaskProb, table ? 0 : 1);
 		if (table)
 			for (auto i : r) {
 				table->add(block_id, i.first, i.second, seq);
-				n += i.second - i.first;
+				stats.add(MaskingAlgo::TANTAN, i.second - i.first);
 			}
 	}
 	if (flag_any(algo, MaskingAlgo::SEG)) {
@@ -183,7 +179,7 @@ size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size
 			do {
 				if (table) {
 					table->add(block_id, l->ssr->left, l->ssr->right + 1, seq);
-					n += l->ssr->right - l->ssr->left + 1;
+					stats.add(MaskingAlgo::SEG, l->ssr->right - l->ssr->left + 1);
 				}
 				else {
 					for (signed i = l->ssr->left; i <= l->ssr->right; i++) {
@@ -196,8 +192,8 @@ size_t Masking::operator()(Letter *seq, size_t len, MaskingAlgo algo, const size
 		}
 	}
 	if (flag_any(algo, MaskingAlgo::MOTIF))
-		n += mask_motifs(seq, len, block_id, *table);
-	return n;
+		stats.add(MaskingAlgo::MOTIF, mask_motifs(seq, len, block_id, *table));
+	return stats;
 }
 
 void Masking::mask_bit(Letter *seq, size_t len) const
@@ -221,31 +217,36 @@ void Masking::remove_bit_mask(Letter *seq, size_t len) const
 			seq[i] &= ~bit_mask;
 }
 
-void mask_worker(atomic<BlockId> *next, SequenceSet *seqs, const Masking *masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table, atomic_size_t* count)
+MaskingStat mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table)
 {
-	BlockId i;
-	size_t n = 0;
-	while ((i = next->fetch_add(1, std::memory_order_relaxed)) < seqs->size()) {
-		if (hard_mask)
-			n += masking->operator()(seqs->ptr(i), seqs->length(i), algo, i, table);
-		else
-			masking->mask_bit(seqs->ptr(i), seqs->length(i));
-	}
-	*count += n;
-}
-
-size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table)
-{
+	MaskingStat stats_all;
 	if (algo == MaskingAlgo::NONE)
-		return 0;
+		return stats_all;
 	if (flag_any(algo, MaskingAlgo::MOTIF) && !table)
 		throw std::runtime_error("Motif masking requires masking table.");
 	vector<thread> threads;
-	atomic<BlockId> next(0);
-	atomic_size_t count(0);
+	atomic<BlockId> next(0);	
+	std::mutex mtx;
+
+	auto worker = [&]() {
+		BlockId i;
+		size_t n = 0;
+		MaskingStat stats;
+		while ((i = next.fetch_add(1, std::memory_order_relaxed)) < seqs.size()) {
+			if (hard_mask)
+				stats += masking.operator()(seqs.ptr(i), seqs.length(i), algo, i, table);
+			else
+				masking.mask_bit(seqs.ptr(i), seqs.length(i));
+		}
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			stats_all += stats;
+		}
+		};
+	
 	for (int i = 0; i < config.threads_; ++i)
-		threads.emplace_back(mask_worker, &next, &seqs, &masking, hard_mask, algo, table, &count);
+		threads.emplace_back(worker);
 	for (auto &t : threads)
 		t.join();
-	return count;
+	return stats_all;
 }

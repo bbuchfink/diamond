@@ -1,4 +1,11 @@
 [2.1.23]
+- Clustering in parallel across multiple nodes using the `--parallel-tmpdir` option now outputs
+  accessions (separated into volumed files) instead of ordinal ids if not using `--oid-output`,
+  applies tantan, motif and seed complexity masking during seeding by default consistent with
+  the regular clustering workflow, and runs faster.
+- Added the option `--aln-out` to output alignments for clustering workflows when using
+  the option `--parallel-tmpdir`.
+- Fixed a potential crash (thanks @jchorl).
 - Fixed a potential crash in the clustering workflows.
 
 [2.1.22]

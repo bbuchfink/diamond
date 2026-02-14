@@ -106,9 +106,9 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 
 	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
-		size_t n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
+		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << "Masked letters: " << n << endl;
+		log_stream << stats;
 	}
 
 	timer.go("Computing alignments");
@@ -198,10 +198,9 @@ void extend(Search::Config& cfg, Consumer& out) {
 
 	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
-		size_t n;
-		n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
+		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << "Masked letters: " << n << endl;
+		log_stream << stats;
 	}
 
 	if (cfg.iterated()) {

@@ -410,6 +410,8 @@ set(OBJECTS
         src/dp/scalar/smith_waterman.cpp
         src/tools/tsv.cpp
         src/cluster/external/external.cpp
+        src/cluster/external/seed_table.cpp
+        src/cluster/external/pair_table.cpp
         src/cluster/external/align.cpp
         src/cluster/external/cluster.cpp
         src/cluster/external/output.cpp

@@ -206,6 +206,7 @@ struct HitBuffer
 			} else
 				throw std::runtime_error("HitBuffer retrieve w/o load");
 			std::swap(data_loading_, data_finished_);
+			std::swap(mmap_finished_, mmap_loading_);
 			return std::tuple<Hit*, size_t, Key, Key> { data_finished_, data_size_next_, input_range_next_.first, input_range_next_.second };
 		}
 	}

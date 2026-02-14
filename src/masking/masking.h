@@ -39,7 +39,7 @@ struct Masking
 {
 	Masking(const ScoreMatrix&score_matrix);
 	~Masking();
-	size_t operator()(Letter *seq, size_t len, const MaskingAlgo algo, const size_t block_id, MaskingTable* table = nullptr) const;
+	MaskingStat operator()(Letter *seq, size_t len, const MaskingAlgo algo, const size_t block_id, MaskingTable* table = nullptr) const;
 	void mask_bit(Letter *seq, size_t len) const;
 	void bit_to_hard_mask(Letter *seq, size_t len, size_t &n) const;
 	void remove_bit_mask(Letter *seq, size_t len) const;
@@ -56,7 +56,7 @@ private:
 	SegParameters* blast_seg_;
 };
 
-size_t mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table = nullptr);
+MaskingStat mask_seqs(SequenceSet &seqs, const Masking &masking, bool hard_mask, const MaskingAlgo algo, MaskingTable* table = nullptr);
 
 struct MaskingTable {
 

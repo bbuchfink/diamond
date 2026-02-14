@@ -1,5 +1,5 @@
 /****
-Copyright � 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,37 +16,44 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
-#include <atomic>
-#include <stdarg.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <stdio.h>
 #include <vector>
 #include <string>
 #include <mutex>
 #include "util/system/system.h"
-#include "util/io/output_file.h"
 #include "util/tsv/file.h"
-#include "util/algo/partition.h"
 #include "util/parallel/filestack.h"
 #include "util/parallel/atomic.h"
 #include "util/io/compressed_buffer.h"
 #include "util/io/input_file.h"
 #include "util/io/serializer.h"
-#include "util/parallel/simple_thread_pool.h"
 #include "data/block/block.h"
+#include "volume.h"
+#include "util/algo/hash.h"
+#include "file_array.h"
 
 #ifdef WIN32
 #else
 #include <sys/stat.h>
 #endif
 
-const uint64_t RADIX_BITS = 8;
-const int_fast16_t RADIX_COUNT = INT64_C(1) << RADIX_BITS;
-const int_fast64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
+struct ClusterStats {
+	uint64_t hits_evalue_filtered = 0, extensions_computed = 0, hits_filtered = 0, seeds_considered = 0, seeds_indexed = 0;
+	MaskingStat masking_stat;
+	std::mutex mtx;
+	void add(const ClusterStats& s) {
+		std::lock_guard<std::mutex> lock(mtx);
+		hits_evalue_filtered += s.hits_evalue_filtered;
+		extensions_computed += s.extensions_computed;
+		hits_filtered += s.hits_filtered;
+		masking_stat += s.masking_stat;
+		seeds_considered += s.seeds_considered;
+		seeds_indexed += s.seeds_indexed;
+	}
+};
 
 #pragma pack(1)
 struct PairEntry {
+	static constexpr bool POD = true;
 	PairEntry() :
 		rep_oid(),
 		member_oid(),
@@ -59,8 +66,8 @@ struct PairEntry {
 		rep_len(rep_len),
 		member_len(member_len)
 	{}
-	int64_t key() const {
-		return rep_oid;
+	uint64_t key() const {
+		return hash64(rep_oid);
 	}
 	bool operator<(const PairEntry& e) const {
 		return rep_oid < e.rep_oid || (rep_oid == e.rep_oid && member_oid < e.member_oid);
@@ -84,20 +91,21 @@ struct PairEntry {
 		in.read(&e.member_len);
 	}
 	struct Key {
-		int64_t operator()(const PairEntry& e) const {
+		uint64_t operator()(const PairEntry& e) const {
 			return e.rep_oid;
 		}
 	};
-	int64_t rep_oid, member_oid;
-	int32_t rep_len, member_len;
+	uint64_t rep_oid, member_oid;
+	uint32_t rep_len, member_len;
 } PACKED_ATTRIBUTE;
 
 struct PairEntryShort {
+	static constexpr bool POD = true;
 	PairEntryShort() :
 		rep_oid(),
 		member_oid()
 	{}
-	PairEntryShort(int64_t rep_oid, int64_t member_oid) :
+	PairEntryShort(uint64_t rep_oid, uint64_t member_oid) :
 		rep_oid(rep_oid),
 		member_oid(member_oid)
 	{}
@@ -114,15 +122,16 @@ struct PairEntryShort {
 		in.read(&e.member_oid);
 	}
 	struct Key {
-		int64_t operator()(const PairEntryShort& e) const {
+		uint64_t operator()(const PairEntryShort& e) const {
 			return e.rep_oid;
 		}
 	};
-	int64_t rep_oid, member_oid;
+	uint64_t rep_oid, member_oid;
 } PACKED_ATTRIBUTE;
 
 struct Edge {
-	Edge(int64_t rep_oid, int64_t member_oid, int32_t rep_len, int32_t member_len) :
+	static constexpr bool POD = true;
+	Edge(uint64_t rep_oid, uint64_t member_oid, int32_t rep_len, int32_t member_len) :
 		rep_oid(rep_oid),
 		member_oid(member_oid),
 		rep_len(rep_len),
@@ -134,8 +143,8 @@ struct Edge {
 		rep_len(),
 		member_len()
 	{}
-	int64_t key() const {
-		return member_oid;
+	uint64_t key() const {
+		return hash64(member_oid);
 	}
 	bool operator<(const Edge& e) const {
 		return member_oid < e.member_oid || (member_oid == e.member_oid && (rep_len > e.rep_len || (rep_len == e.rep_len && rep_oid < e.rep_oid)));
@@ -159,20 +168,21 @@ struct Edge {
 		in.read(&e.member_len);
 	}
 	struct Member {
-		int64_t operator()(const Edge& e) const {
+		uint64_t operator()(const Edge& e) const {
 			return e.member_oid;
 		}
 	};
-	int64_t rep_oid, member_oid;
-	int32_t rep_len, member_len;
+	uint64_t rep_oid, member_oid;
+	uint32_t rep_len, member_len;
 } PACKED_ATTRIBUTE;
 
 struct Assignment {
+	static constexpr bool POD = true;
 	Assignment() :
 		member_oid(),
 		rep_oid()
 	{}
-	Assignment(int64_t member_oid, int64_t rep_oid) :
+	Assignment(uint64_t member_oid, uint64_t rep_oid) :
 		member_oid(member_oid),
 		rep_oid(rep_oid)
 	{}
@@ -188,13 +198,9 @@ struct Assignment {
 		in.read(&e.member_oid);
 		in.read(&e.rep_oid);
 	}
-	int64_t member_oid, rep_oid;
+	uint64_t member_oid, rep_oid;
 } PACKED_ATTRIBUTE;
 #pragma pack()
-
-inline std::string path(const std::string& file_name) {
-	return file_name.substr(0, file_name.find_last_of(PATH_SEPARATOR));
-}
 
 inline std::string base_path(const std::string& file_name) {
 	static const std::string s = std::string(&PATH_SEPARATOR, 1) + "0" + PATH_SEPARATOR + "bucket.tsv";
@@ -208,6 +214,7 @@ struct Job {
 	Job(OId max_oid, size_t volumes):
 		max_oid(max_oid),
 		volumes(volumes),
+		mem_limit(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT))),
 		base_dir_(config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-" + Const::version_string),
 		round_(0),
 		start_(std::chrono::system_clock::now())
@@ -223,11 +230,16 @@ struct Job {
 		return worker_id_;
 	}
 
+	std::string root_dir() const {
+		return base_dir_ + PATH_SEPARATOR;
+	}
+
 	std::string base_dir(int round = -1) const {
 		return base_dir_ + PATH_SEPARATOR + "round" + std::to_string(round == -1 ? round_ : round);
 	}
 
 	void log(const char* format, ...);
+	void log(const ClusterStats& stats);
 
 	void next_round() {
 		++round_;
@@ -256,6 +268,7 @@ struct Job {
 
 	const OId max_oid;
 	const size_t volumes;
+	const uint64_t mem_limit;
 
 private:
 	
@@ -268,187 +281,9 @@ private:
 	
 };
 
-struct Volume {
-	Volume() :
-		path(),
-		oid_begin(0),
-		oid_end(0),
-		record_count(0)
-	{}
-	Volume(const std::string& path, OId oid_begin, OId oid_end, OId record_count) :
-		path(path),
-		oid_begin(oid_begin),
-		oid_end(oid_end),
-		record_count(record_count)
-	{}
-	std::string path;
-	OId oid_begin, oid_end, record_count;
-	bool operator<(size_t oid) const {
-		return oid_end <= oid;
-	}
-	OId oid_range() const {
-		return oid_end - oid_begin;
-	}
-	bool operator<(const Volume& v) const {
-		return oid_begin < v.oid_begin;
-	}
-	friend std::istream& operator>>(std::istream& str, Volume& v) {
-		std::string line;
-		v.oid_begin = v.oid_end = 0;
-		if (!std::getline(str, line)) return str;		
-		std::istringstream row(line);
-		row >> v.path;
-		if(!row)
-			throw std::runtime_error("Format error in VolumedFile");
-		row >> v.record_count;
-		if (!row)
-			throw std::runtime_error("Format error in VolumedFile");
-		row >> v.oid_begin >> v.oid_end;
-		return str;
-	}
-};
-
-struct VolumedFile : public std::vector<Volume> {
-	VolumedFile(const std::string& file_name):
-		list_file_(file_name),
-		records_(0),
-		max_oid_(0)
-	{
-		std::ifstream volume_file(file_name);
-		int64_t oid = 0;
-		Volume v;
-		while(volume_file) {
-			volume_file >> v;
-			if (!volume_file)
-				break;
-			if (v.oid_begin == 0 && v.oid_end == 0) {
-				v.oid_begin = oid;
-				v.oid_end = oid + v.record_count;
-			}
-			push_back(v);
-			oid += v.record_count;
-			records_ += v.record_count;
-			max_oid_ = std::max(max_oid_, v.oid_end - 1);
-		}
-		std::sort(begin(), end());
-	}
-	OId sparse_records() const {
-		return records_;
-	}
-	OId max_oid() const {
-		return max_oid_;
-	}
-	std::pair<std::vector<Volume>::const_iterator, std::vector<Volume>::const_iterator> find(OId oid_begin, OId oid_end) const {
-		auto it = std::lower_bound(begin(), end(), oid_begin);
-		if (it == end())
-			throw std::runtime_error("OID out of bounds");
-		auto end = it + 1;
-		while (end < this->end() && end->oid_begin < oid_end)
-			++end;
-		return { it,end };
-	}
-	void remove() const {
-		for (const Volume& v : *this)
-			::remove(v.path.c_str());
-		::remove(list_file_.c_str());
-		rmdir(path(list_file_).c_str());
-		
-	}
-private:
-	const std::string list_file_;
-	OId records_, max_oid_;
-};
-
-inline std::vector<std::string> read_list(const std::string& file_name) {
-	std::vector<std::string> v;
-	Util::Tsv::File file({ Util::Tsv::Type::STRING }, file_name);
-	const Util::Tsv::Table table = file.read(config.threads_);
-	v.reserve(table.size());
-	for (int64_t i = 0; i < table.size(); ++i) {
-		v.push_back(table[i].get<std::string>(0));
-	}
-	return v;
-}
-
-template<typename T>
-struct InputBuffer {
-
-	InputBuffer(const VolumedFile& f, int parts = config.threads_):
-		size_(f.sparse_records()),
-		data_(new T[size_]),
-		part_(size_, parts)
-	{
-		std::atomic<int64_t> next(0);
-		SimpleThreadPool pool;
-		auto worker = [&](const std::atomic<bool>& stop) {
-			int64_t v;
-			while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)f.size())) {
-				InputFile in(f[v].path);
-				in.read(&data_[f[v].oid_begin], f[v].record_count);
-				in.close();
-			}
-			};
-		for (int i = 0; i < std::min(config.threads_, (int)f.size()); ++i)
-			pool.spawn(worker);
-		pool.join_all();
-	}
-
-	size_t size() const {
-		return size_;
-	}
-
-	size_t byte_size() const {
-		return size_ * sizeof(T);
-	}
-
-	T* begin() {
-		return data_.get();
-	}
-
-	T* end() {
-		return data_.get() + size_;
-	}
-
-	const T* end() const {
-		return data_.get() + size_;
-	}
-
-	const T* begin(int part) const {
-		const T* begin = data_.get() + part_.begin(part), * end = this->end();
-		if (part > 0)
-			while (begin < end && begin[-1].key() == begin[0].key())
-				++begin;
-		return begin;
-	}
-
-	const T* end(int part) const {
-		const T* ptr = data_.get() + part_.end(part), *end = this->end();
-		while (ptr < end && ptr[-1].key() == ptr[0].key())
-			++ptr;
-		return ptr;
-	}
-
-	int64_t parts() const {
-		return part_.parts;
-	}
-
-	const T& front() const {
-		return data_[0];
-	}
-
-	const T& back() const {
-		return data_[size_ - 1];
-	}
-
-private:
-
-	const size_t size_;
-	std::unique_ptr<T[]> data_;
-	const Partition<int64_t> part_;
-
-};
-
-std::vector<std::string> align(Job& job, int chunk_count, int64_t db_size);
-std::string cluster(Job& job, const std::vector<std::string>& edges, const VolumedFile& volumes);
-std::string cluster_bidirectional(Job& job, const std::vector<std::string>& edges, const VolumedFile& volumes);
-void output(Job& job);
+RadixedTable align(Job& job, int chunk_count, int64_t db_size);
+std::string cluster(Job& job, const RadixedTable& edges, const VolumedFile& volumes);
+std::string cluster_bidirectional(Job& job, const RadixedTable& edges, const VolumedFile& volumes);
+void output(Job& job, const VolumedFile& volumes);
+RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape);
+RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shape, int64_t max_oid, FileArray& output_files);

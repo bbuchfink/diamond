@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #include <memory>
 #include <iostream>
@@ -148,11 +135,11 @@ T set_string_option(const string& s, const string& name, const vector<pair<strin
 
 void Config::set_sens(Sensitivity sens) {
 	if (sensitivity != Sensitivity::DEFAULT)
-		throw std::runtime_error("Sensitivity switches are mutually exclusive.");
+		throw runtime_error("Sensitivity switches are mutually exclusive.");
 	sensitivity = sens;
 }
 
-std::string Config::single_query_file() const {
+string Config::single_query_file() const {
 	return query_file.empty() ? string() : query_file.front();
 }
 
@@ -165,7 +152,7 @@ Compressor Config::compressor() const
 	else if (compression == "zstd")
 		return Compressor::ZSTD;
 	else
-		throw std::runtime_error("Invalid compression algorithm: " + compression);
+		throw runtime_error("Invalid compression algorithm: " + compression);
 }
 
 Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& parser)
@@ -362,7 +349,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("cluster-steps", 0, "Clustering steps", cluster_steps)
 		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
 		("round-coverage", 0, "Per-round coverage cutoffs for cascaded clustering", round_coverage)
-		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id);
+		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id)
+		("aln-out", 0, "Output file for clustering alignments", aln_out);
 
 	auto& memory_opt = parser.add_group("Memory options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST, CLUSTER_REALIGN });
 	memory_opt.add()
@@ -651,7 +639,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
 		("min-len-ratio", 0, "", min_length_ratio)
 		("max-indirection", 0, "", max_indirection)
-		("aln-out", 0, "", aln_out)
 		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
 		
 	parser.store(argc, argv, command);
@@ -929,6 +916,15 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 //		trace_pt_membuf = true;
 	//}
 	trace_pt_membuf = hit_membuf;
+
+	if (command != Config::version) {
+		static const std::chrono::time_point release_time = std::chrono::system_clock::from_time_t(1771090269);
+		if (std::chrono::system_clock::now() - release_time > std::chrono::days(180)) {
+			set_color(Color::YELLOW, true);
+			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;
+			reset_color();
+		}
+	}
 
 	log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
 	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;

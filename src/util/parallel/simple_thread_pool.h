@@ -16,13 +16,11 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
-#include <algorithm>
-#include <vector>
+#include <map>
 #include <thread>
 #include <atomic>
 #include <mutex>
 #include <exception>
-#include <functional>
 #include <tuple>
 
 namespace simple_thread_pool_detail {
@@ -95,8 +93,8 @@ struct SimpleThreadPool {
     ~SimpleThreadPool() {
         stop_flag = true;
         for (auto& t : threads) {
-            if (t.joinable()) {
-                t.join();
+            if (t.second.joinable()) {
+                t.second.join();
             }
         }
     }
@@ -109,13 +107,15 @@ struct SimpleThreadPool {
         using TupleD = std::tuple<typename std::decay<Args>::type...>;
         using Task = simple_thread_pool_detail::SpawnTask<FuncD, TupleD>;
 
-        threads.emplace_back(Task(
+        std::thread t(Task(
             std::forward<Func>(func),
             std::make_tuple(std::forward<Args>(args)...),
             &stop_flag, &data_mutex, &first_exception
         ));
 
-        return threads.back().get_id();
+		std::thread::id id = t.get_id();
+        threads[id] = std::move(t);
+        return id;
     }
 
     template <typename T, typename Method, typename... Args>
@@ -132,8 +132,8 @@ struct SimpleThreadPool {
 
     void join_all() {
         for (auto& t : threads) {
-            if (t.joinable()) {
-                t.join();
+            if (t.second.joinable()) {
+                t.second.join();
             }
         }
         threads.clear();
@@ -153,15 +153,21 @@ struct SimpleThreadPool {
     }
 
     void join(std::thread::id thread_id) {
-        auto it = std::find_if(threads.begin(), threads.end(),
-			[thread_id](const std::thread& t) { return t.get_id() == thread_id; });
+		std::map<std::thread::id, std::thread>::iterator it;
+        {
+            std::lock_guard<std::mutex> lock(data_mutex);
+            it = threads.find(thread_id);
+        }
         if(it == threads.end()) {
             throw std::runtime_error("Thread ID not found in thread pool.");
 		}
-        if (it->joinable()) {
-            it->join();
+        if (it->second.joinable()) {
+            it->second.join();
 		}
-        threads.erase(it);
+        {
+            std::lock_guard<std::mutex> lock(data_mutex);
+            threads.erase(it);
+        }
 	}
 
     void request_stop() {
@@ -170,7 +176,7 @@ struct SimpleThreadPool {
 
 private:
 
-    std::vector<std::thread> threads;
+    std::map<std::thread::id, std::thread> threads;
     std::atomic<bool> stop_flag{ false };
     std::exception_ptr first_exception = nullptr;
     std::mutex data_mutex;

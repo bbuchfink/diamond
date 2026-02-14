@@ -94,6 +94,14 @@ struct Deserializer {
 		return *this;
 	}
 
+	Deserializer& operator>>(std::pmr::string& s)
+	{
+		s.clear();
+		if (!read_to(std::back_inserter(s), '\0'))
+			throw EndOfStream();
+		return *this;
+	}
+
 	template<typename T>
 	void read(T* x)
 	{

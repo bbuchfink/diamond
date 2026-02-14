@@ -137,9 +137,9 @@ static void run_ref_chunk(SequenceFile &db_file,
 
 	if (cfg.target_masking != MaskingAlgo::NONE && !cfg.lazy_masking) {
 		timer.go("Masking reference");
-		size_t n = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
+		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << "Masked letters: " << n << endl;
+		log_stream << stats;
 	}
 
 	if (flag_any(cfg.output_format->flags, Output::Flags::SELF_ALN_SCORES)) {

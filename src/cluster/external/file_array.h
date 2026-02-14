@@ -17,15 +17,21 @@ limitations under the License.
 
 #pragma once
 
+const int RADIX_BITS = 8;
+const uint64_t RADIX_COUNT = UINT64_C(1) << RADIX_BITS;
+const uint64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
+
 struct FileArray {
 
-	FileArray(const std::string& base_dir, int size, int64_t worker_id, int64_t max_file_size = MAX_FILE_SIZE) :
+	FileArray(const std::string& base_dir, int size, int64_t worker_id, bool exclusive, int64_t max_file_size = MAX_FILE_SIZE) :
+		exclusive_(exclusive),
 		max_file_size(max_file_size),
 		size_(size),
 		worker_id_(worker_id),
 		base_dir(base_dir),
 		mtx_(size),
 		records_(size, 0),
+		records_total_(size, 0),
 		bytes_(size, 0),
 		next_(size, 1)
 	{
@@ -38,7 +44,7 @@ struct FileArray {
 	}
 
 	~FileArray() {
-		for (int64_t i = 0; i < size_; ++i) {
+		for (uint64_t i = 0; i < size_; ++i) {
 			output_files_[i]->close();
 			if (records_[i] > 0)
 				bucket_files_[i]->push(output_files_[i]->file_name() + '\t' + std::to_string(records_[i]));
@@ -48,10 +54,12 @@ struct FileArray {
 		}
 	}
 
-	bool write(int i, const char* ptr, size_t count, int64_t records) {
+	bool write(uint64_t i, const char* ptr, size_t count, int64_t records) {
 		std::lock_guard<std::mutex> lock(mtx_[i]);
 		output_files_[i]->write(ptr, count);
 		records_[i] += records;
+		if (exclusive_)
+			records_total_[i] += records;
 		bytes_[i] += count;
 		if (bytes_[i] >= max_file_size) {
 			bucket_files_[i]->push(output_files_[i]->file_name() + '\t' + std::to_string(records_[i]));
@@ -65,19 +73,19 @@ struct FileArray {
 		return false;
 	}
 
-	int64_t records(int i) const {
+	uint64_t records(uint64_t i) const {
 		return records_[i];
 	}
 
-	std::string bucket(int i) const {
+	std::string bucket(uint64_t i) const {
 		return bucket_files_[i]->file_name();
 	}
 
-	std::vector<std::string> buckets() const {
-		std::vector<std::string> buckets;
+	RadixedTable buckets() const {
+		RadixedTable buckets;
 		buckets.reserve(size_);
-		for (int i = 0; i < size_; ++i)
-			buckets.push_back(bucket(i));
+		for (uint64_t i = 0; i < size_; ++i)
+			buckets.emplace_back(bucket(i), exclusive_ ? records_total_[i] : Bucket::NIL);
 		return buckets;
 	}
 
@@ -87,13 +95,14 @@ struct FileArray {
 
 private:
 
+	const bool exclusive_;
 	const int64_t max_file_size;
-	const int size_;
+	const uint64_t size_;
 	const int64_t worker_id_;
 	const std::string base_dir;
 	std::vector<OutputFile*> output_files_;
 	std::vector<std::mutex> mtx_;
-	std::vector<int64_t> records_, bytes_, next_;
+	std::vector<int64_t> records_, records_total_, bytes_, next_;
 	std::vector<std::unique_ptr<FileStack>> bucket_files_;
 
 };
@@ -134,7 +143,7 @@ struct BufferArray {
 
 	template<typename T>
 	//bool write(int radix, const T* ptr, size_t n, int64_t record_count) {
-	void write(int radix, const T * ptr, size_t n, int64_t record_count) {
+	void write(uint64_t radix, const T * ptr, size_t n, int64_t record_count) {
 		for (size_t i = 0; i < n; ++i)
 			serialize(ptr[i], data_[radix]);
 		records_[radix] += record_count;
@@ -149,13 +158,13 @@ struct BufferArray {
 		flush(radix);
 	}
 
-	void write(int radix, const char* ptr, size_t n) {
+	void write(uint64_t radix, const char* ptr, size_t n) {
 		data_[radix].write(ptr, n);
 		records_[radix] += n;
 		flush(radix);
 	}
 
-	void flush(int radix) {
+	void flush(uint64_t radix) {
 		if (data_[radix].size() >= BUF_SIZE) {
 			data_[radix].finish();
 			file_array_.write(radix, data_[radix].data(), data_[radix].size(), records_[radix]);
@@ -165,12 +174,19 @@ struct BufferArray {
 	}
 
 	template<typename T>
-	void write(int radix, const T& x) {
+	void write(uint64_t radix, const T& x) {
 		write(radix, &x, 1, 1);
 	}
 
+	template<typename T>
+	void write_msb(const T& x) {
+		const uint64_t key = x.key();
+		const uint64_t radix = key >> (64 - RADIX_BITS);
+		write(radix , &x, 1, 1);
+	}
+
 	~BufferArray() {
-		for (int i = 0; i < (int)data_.size(); ++i) {
+		for (uint64_t i = 0; i < data_.size(); ++i) {
 			data_[i].finish();
 			file_array_.write(i, data_[i].data(), data_[i].size(), records_[i]);
 		}

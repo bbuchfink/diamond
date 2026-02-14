@@ -65,6 +65,11 @@ void rmdir(const std::string& dir);
 std::pair<std::string, std::string> absolute_path(const std::string& file_path);
 bool is_absolute_path(const std::string& path);
 
+inline std::string containing_directory(const std::string& file_name) {
+	return file_name.substr(0, file_name.find_last_of(PATH_SEPARATOR));
+}
+
+
 #ifdef _MSC_VER
 #define POPEN _popen
 #define PCLOSE _pclose

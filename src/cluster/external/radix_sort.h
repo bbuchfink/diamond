@@ -25,13 +25,14 @@ limitations under the License.
 #include "util/parallel/simple_thread_pool.h"
 #include "util/string/string.h"
 #include "file_array.h"
+#include "util/memory/memory_resource.h"
 
 template<typename T>
-std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, const std::string& output_dir, int bits_unsorted) {
+RadixedTable radix_cluster(Job& job, const VolumedFile& bucket, const std::string& output_dir, int bits_unsorted) {
 	const int64_t BUF_SIZE = 4096;
 	const uint64_t shift = bits_unsorted - RADIX_BITS;
 
-	std::unique_ptr<FileArray> output_files(new FileArray(output_dir, RADIX_COUNT, job.worker_id()));
+	std::unique_ptr<FileArray> output_files(new FileArray(output_dir, RADIX_COUNT, job.worker_id(), true));
 	std::atomic<int64_t> next(0);
 
 	SimpleThreadPool pool;
@@ -41,38 +42,45 @@ std::vector<std::string> radix_cluster(Job& job, const VolumedFile& bucket, cons
 
 		while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)bucket.size())) {
 			InputFile in(bucket[v].path);
-			const int64_t n = bucket[v].record_count;
-			std::unique_ptr<T[]> data(new T[n]);
-			for (int64_t i = 0; i < n; ++i)
-				deserialize(in, data[i]);
-			in.close();
-			const T* end = data.get() + n;
-			for (const T* ptr = data.get(); ptr < end; ++ptr) {
-				const int radix = (ptr->key() >> shift) & (RADIX_COUNT - 1);
-				buffers.write(radix, *ptr);
+			const size_t n = bucket[v].record_count;
+			if constexpr (T::POD) {
+				T x;
+				for (size_t i = 0; i < n; ++i) {
+					in.read(&x, sizeof(T));
+					const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
+					buffers.write(radix, x);
+				}
 			}
+			else {
+				std::pmr::monotonic_buffer_resource pool;
+				T x(pool);
+				for (size_t i = 0; i < n; ++i) {
+					deserialize(in, x);
+					const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
+					buffers.write(radix, x);
+				}
+			}
+			in.close();
 		}
 		};
 	for (int i = 0; i < std::min(config.threads_, (int)bucket.size()); ++i)
 		pool.spawn(worker, i);
 	pool.join_all();
-	std::vector<std::string> buckets;
-	buckets.reserve(RADIX_COUNT);
-	for (int i = 0; i < RADIX_COUNT; ++i)
-		buckets.push_back(output_files->bucket(i));
 	TaskTimer timer("Closing the output files");
+	const RadixedTable out = output_files->buckets();
 	output_files.reset();
 	timer.finish();
 	job.log("Radix sorted bucket records=%zu", bucket.sparse_records());
-	return buckets;
+	return out;
 }
 
 template<typename T>
-std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& buckets, int bits_unsorted) {
-	const std::string base_path = ::base_path(buckets.front()),
+RadixedTable radix_sort(Job& job, const RadixedTable& buckets, int bits_unsorted) {
+	if (bits_unsorted < RADIX_BITS)
+		return buckets;
+	const std::string base_path = ::base_path(buckets.front().path),
 		queue_path = base_path + PATH_SEPARATOR + "radix_sort_queue",
 		result_path = base_path + PATH_SEPARATOR + "radix_sort_out";
-	const uint64_t size_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
 	Atomic queue(queue_path);
 	FileStack out(result_path);
 	int64_t i, buckets_processed = 0;
@@ -80,15 +88,15 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 		VolumedFile bucket(buckets[i]);
 		const size_t data_size = bucket.sparse_records() * sizeof(T);
 		job.log("Radix sorting. Bucket=%lli/%lli Records=%s Size=%s", i + 1, buckets.size(), Util::String::format(bucket.sparse_records()).c_str(), Util::String::format(data_size).c_str());
-		if (data_size > size_limit) {
-			const std::vector<std::string> v = radix_cluster<T>(job, bucket, path(buckets[i]), bits_unsorted);
+		if (data_size > job.mem_limit) {
+			const RadixedTable v = radix_cluster<T>(job, bucket, buckets[i].containing_directory(), bits_unsorted);
+			v.append(out);
+		}
+		else if (bucket.sparse_records() > 0) {
 			std::ostringstream ss;
-			for (const std::string& s : v)
-				ss << s << '\n';
+			ss << buckets[i].path << '\t' << bucket.sparse_records() << std::endl;
 			out.push(ss.str());
 		}
-		else if (bucket.sparse_records() > 0)
-			out.push(buckets[i]);
 		else
 			bucket.remove();
 		++buckets_processed;
@@ -96,5 +104,5 @@ std::vector<std::string> radix_sort(Job& job, const std::vector<std::string>& bu
 	Atomic finished(base_path + PATH_SEPARATOR + "radix_sort_finished");
 	finished.fetch_add(buckets_processed);
 	finished.await(buckets.size());
-	return read_list(result_path);
+	return RadixedTable(result_path);
 }

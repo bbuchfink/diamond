@@ -21,6 +21,8 @@ limitations under the License.
 #include <windows.h>
 #endif
 #include <type_traits>
+#include <inttypes.h>
+#include <cstdarg>
 #include <string>
 #include "../basic/config.h"
 #include "util/tsv/tsv.h"
@@ -29,7 +31,6 @@ limitations under the License.
 #include "data/sequence_file.h"
 #include "basic/reduction.h"
 #include "basic/shape_config.h"
-#include "basic/seed_iterator.h"
 #include "search/search.h"
 #include "external.h"
 #include "radix_sort.h"
@@ -41,6 +42,7 @@ limitations under the License.
 #include "../cascaded/cascaded.h"
 #include "build_pair_table.h"
 #include "util/parallel/simple_thread_pool.h"
+#include "input_buffer.h"
 
 using std::unique_ptr;
 using std::thread;
@@ -55,6 +57,7 @@ using std::atomic;
 using Util::String::format;
 using std::shared_ptr;
 using std::to_string;
+using std::ofstream;
 using std::pmr::monotonic_buffer_resource;
 
 void Job::log(const char* format, ...) {
@@ -74,8 +77,20 @@ void Job::log(const char* format, ...) {
 	va_end(args);
 }
 
+void Job::log(const ClusterStats& stats) {
+	std::stringstream ss;
+	ss << stats.masking_stat;
+	log(ss.str().c_str());
+	log("Seeds considered: %" PRIu64, stats.seeds_considered);
+	log("Seeds indexed: %" PRIu64, stats.seeds_indexed);	
+	log("Extensions computed: %" PRIu64, stats.extensions_computed);
+	log("Alignments passing e-value filter: %" PRIu64, stats.hits_evalue_filtered);
+	log("Alignments passing all filters: %" PRIu64, stats.hits_filtered);
+}
+
 #pragma pack(1)
 struct ChunkTableEntry {
+	static constexpr bool POD = true;
 	ChunkTableEntry():
 		oid(),
 		chunk()
@@ -102,108 +117,6 @@ struct ChunkTableEntry {
 	int32_t chunk;
 } PACKED_ATTRIBUTE;
 #pragma pack()
-
-static vector<string> build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
-	const int64_t BUF_SIZE = 4096;
-	const double SKETCH_SIZE_RATIO = 0.1;
-	//Reduction::set_reduction(Search::no_reduction);
-	Loc sketch_size = config.sketch_size == 0 ? Search::sensitivity_traits.at(config.sensitivity).sketch_size : config.sketch_size;
-	if (sketch_size == 0)
-		sketch_size = std::numeric_limits<Loc>::max();
-	//const uint64_t shift = shapes[shape].bit_length() - RADIX_BITS;
-
-	const std::string base_dir = job.base_dir() + PATH_SEPARATOR + "seed_table_" + std::to_string(shape) + PATH_SEPARATOR, qpath = base_dir + "queue";
-	mkdir(base_dir);
-	unique_ptr<FileArray> output_files(new FileArray(base_dir, RADIX_COUNT, job.worker_id()));
-	
-	Atomic q(qpath);
-	atomic<int> volumes_processed(0);
-	SimpleThreadPool pool;
-	auto worker = [&](const atomic<bool>& stop, int thread_id) {
-		BufferArray buffers(*output_files, RADIX_COUNT);
-		monotonic_buffer_resource mem_pool;
-		int64_t v = 0;
-		while (!stop.load(std::memory_order_relaxed) && (v = q.fetch_add(), v < (int64_t)volumes.size())) {
-			job.log("Building seed table. Shape=%i/%i Volume=%lli/%lli Records=%s", shape + 1, ::shapes.count(), v + 1, volumes.size(), format(volumes[v].record_count).c_str());
-			unique_ptr<SequenceFile> in(SequenceFile::auto_create({ volumes[v].path }));
-			string id;
-			vector<Letter> seq;
-			int64_t oid = volumes[v].oid_begin;
-			while (!stop.load(std::memory_order_relaxed) && in->read_seq(seq, id, nullptr)) {
-				if (job.round() > 0)
-					oid = atoll(id.c_str());
-				std::pmr::vector<Letter> buf = Reduction::reduce_seq(Sequence(seq), mem_pool);
-				const Shape& sh = shapes[shape];
-				if (seq.size() < (size_t)sh.length_) {
-					++oid;
-					continue;
-				}
-				//SketchIterator it(buf, sh, std::min(sketch_size, std::max((int)std::round(seq.size() * SKETCH_SIZE_RATIO), 1)));
-				SketchIterator it(buf.cbegin(), buf.cend(), sh, sketch_size);
-				while (it.good()) {
-					const uint64_t key = *it;
-					const int radix = MurmurHash()(key) & (RADIX_COUNT - 1);
-					buffers.write(radix, SeedEntry(key, oid, (int32_t)seq.size()));
-					++it;
-				}
-				++oid;
-			}
-			in->close();
-			volumes_processed.fetch_add(1, std::memory_order_relaxed);
-		}
-		};
-	for (int i = 0; i < config.threads_; ++i)
-		pool.spawn(worker, i);
-	pool.join_all();
-	const vector<string> buckets = output_files->buckets();
-	TaskTimer timer("Closing the output files");
-	output_files.reset();
-	Atomic finished(base_dir + "finished");
-	finished.fetch_add(volumes_processed);
-	finished.await(volumes.size());
-	return buckets;
-}
-
-static vector<string> build_pair_table(Job& job, const vector<string>& seed_table, int shape, int64_t max_oid, FileArray& output_files) {
-	const int64_t BUF_SIZE = 4096, shift = bit_length(max_oid) - RADIX_BITS; // promiscuous_cutoff = db_size / config.promiscuous_seed_ratio;
-	const string seed_table_base = job.base_dir() + PATH_SEPARATOR + "seed_table_" + to_string(shape);
-	const string queue_path = seed_table_base + PATH_SEPARATOR + "build_pair_table_queue";
-	const bool unid = !config.mutual_cover.present();
-	Atomic queue(queue_path);
-	int64_t bucket, buckets_processed = 0;
-	while (bucket = queue.fetch_add(), bucket < (int64_t)seed_table.size()) {
-		VolumedFile file(seed_table[bucket]);
-		InputBuffer<SeedEntry> data(file);
-		job.log("Building pair table. Bucket=%lli/%lli Records=%s Size=%s", bucket + 1, seed_table.size(), format(data.size()).c_str(), format(data.byte_size()).c_str());
-		ips4o::parallel::sort(data.begin(), data.end(), std::less<SeedEntry>(), config.threads_);
-		SimpleThreadPool pool;
-		auto worker = [&](const atomic<bool>& stop, int thread_id) {
-			BufferArray buffers(output_files, RADIX_COUNT);
-			auto it = merge_keys(data.begin(thread_id), data.end(thread_id), SeedEntry::Key());
-			while (!stop.load(std::memory_order_relaxed) && it.good()) {
-				/*if (it.count() >= promiscuous_cutoff) {
-					++it;
-					continue;
-				}*/
-				if (unid)
-					get_pairs_uni_cov(it, buffers);
-				else
-					get_pairs_mutual_cov(it, buffers);
-				++it;
-			}
-			};
-		for (int i = 0; i < data.parts(); ++i)
-			pool.spawn(worker, i);
-		pool.join_all();
-		file.remove();
-		++buckets_processed;
-	}
-	const vector<string> buckets = output_files.buckets();
-	Atomic finished(seed_table_base + PATH_SEPARATOR + "pair_table_finished");
-	finished.fetch_add(buckets_processed);
-	finished.await(seed_table.size());
-	return buckets;
-}
 
 struct SizeCounter {
 	void add(int64_t oid, int32_t len) {
@@ -238,14 +151,14 @@ struct ClusterChunk {
 	mutex mtx;
 };
 
-static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string>& pair_table, int64_t max_oid) {
-	const int64_t BUF_SIZE = 4096, shift = bit_length(max_oid) - RADIX_BITS, max_chunk_size = Util::String::interpret_number(config.linclust_chunk_size) / 64,
+static pair<RadixedTable, int> build_chunk_table(Job& job, const RadixedTable& pair_table, int64_t max_oid) {
+	const int64_t BUF_SIZE = 4096, shift = std::max(bit_length(max_oid) - RADIX_BITS, 0), max_chunk_size = Util::String::interpret_number(config.linclust_chunk_size) / 64,
 		max_processed = std::max(std::min(INT64_C(262144), max_chunk_size / config.threads_ / 16), INT64_C(1)); // ???
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "chunk_table",
 		chunks_path = job.base_dir() + PATH_SEPARATOR + "chunks" + PATH_SEPARATOR;
 	mkdir(base_path);
 	mkdir(chunks_path);
-	unique_ptr<FileArray> output_files(new FileArray(base_path, RADIX_COUNT, job.worker_id()));
+	unique_ptr<FileArray> output_files(new FileArray(base_path, RADIX_COUNT, job.worker_id(), false));
 	Atomic queue(base_path + PATH_SEPARATOR + "queue");
 	Atomic next_chunk(base_path + PATH_SEPARATOR + "next_chunk");
 	shared_ptr<ClusterChunk> current_chunk(new ClusterChunk(next_chunk, chunks_path));
@@ -267,9 +180,8 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 			int64_t distinct_pairs = 0, processed = 0;
 			auto it = merge_keys(data.begin(thread_id), data.end(thread_id), PairEntry::Key());
 			while (!stop.load(std::memory_order_relaxed) && it.good()) {
-				const int64_t rep_oid = it.begin()->rep_oid;
-				int radix = int(rep_oid >> shift); // Hashing?
-				buffers.write(radix, ChunkTableEntry(rep_oid, my_chunk->id));
+				const uint64_t rep_oid = it.begin()->rep_oid;
+				buffers.write(rep_oid >> shift, ChunkTableEntry(rep_oid, my_chunk->id));
 				size.add(rep_oid, it.begin()->rep_len);
 				processed += it.begin()->rep_len;
 				for (auto j = it.begin(); j < it.end(); ++j) {
@@ -328,7 +240,7 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 		++buckets_processed;
 	}
 	log_stream << "build_chunk_table chunk=" << current_chunk->id << " est_size=" << current_chunk->size.estimate() << " total_pairs=" << total_pairs << " total_distinct_pairs=" << total_distinct_pairs << endl;
-	const vector<string> buckets = output_files->buckets();
+	const RadixedTable buckets = output_files->buckets();
 	TaskTimer timer("Closing the output files");
 	output_files.reset();
 	current_chunk.reset();
@@ -339,11 +251,11 @@ static pair<vector<string>, int> build_chunk_table(Job& job, const vector<string
 	return { buckets, (int)next_chunk.get() };
 }
 
-static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& chunk_table, int chunk_count) {
+static void build_chunks(Job& job, const VolumedFile& db, const RadixedTable& chunk_table, int chunk_count) {
 	const int64_t BUF_SIZE = 64 * 1024;
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "chunks" + PATH_SEPARATOR,
 		queue_path = base_path + "queue";
-	unique_ptr<FileArray> output_files(new FileArray(base_path, chunk_count, job.worker_id(), 1024 * 1024 * 1024));
+	unique_ptr<FileArray> output_files(new FileArray(base_path, chunk_count, job.worker_id(), false, 1024 * 1024 * 1024));
 	Atomic queue(queue_path);
 	int64_t bucket, buckets_processed = 0;
 	atomic<int64_t> oid_counter(0), distinct_oid_counter(0);
@@ -359,7 +271,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 			SimpleThreadPool pool;
 			auto worker = [&](const atomic<bool>& stop) {
 				int64_t volume;
-				const ChunkTableEntry* table_ptr = data.begin();
+				auto table_ptr = data.cbegin();
 				BufferArray output_bufs(*output_files, chunk_count);
 				TextBuffer buf;
 				while (!stop.load(std::memory_order_relaxed) && (volume = next.fetch_add(1, std::memory_order_relaxed), volume < volumes.second - volumes.first)) {
@@ -378,7 +290,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const vector<string>& 
 							continue;
 						}
 						Util::Seq::format(seq, std::to_string(file_oid).c_str(), nullptr, buf, "fasta", amino_acid_traits);
-						const ChunkTableEntry* begin = table_ptr;
+						auto begin = table_ptr;
 						while (table_ptr < data.end() && table_ptr->oid == file_oid) {
 							if (table_ptr == begin || table_ptr->chunk != table_ptr[-1].chunk) {
 								output_bufs.write(table_ptr->chunk, buf.data(), buf.size());
@@ -421,24 +333,24 @@ string round(Job& job, const VolumedFile& volumes) {
 	job.set_round(volumes.sparse_records());
 	const string pair_table_base = job.base_dir() + PATH_SEPARATOR + "pair_table";
 	mkdir(pair_table_base);
-	unique_ptr<FileArray> pair_table_files(new FileArray(pair_table_base, RADIX_COUNT, job.worker_id()));
-	vector<string> pair_table;
+	unique_ptr<FileArray> pair_table_files(new FileArray(pair_table_base, RADIX_COUNT, job.worker_id(), false));
+	RadixedTable pair_table;
 	for (int shape = 0; shape < ::shapes.count(); ++shape) {
-		const vector<string> buckets = build_seed_table(job, volumes, shape);
-		const vector<string> sorted_seed_table = radix_sort<SeedEntry>(job, buckets, shapes[0].bit_length() - RADIX_BITS);
+		const RadixedTable buckets = build_seed_table(job, volumes, shape);
+		const RadixedTable sorted_seed_table = radix_sort<SeedEntry>(job, buckets, 64 - RADIX_BITS);
 		pair_table = build_pair_table(job, sorted_seed_table, shape, volumes.max_oid(), *pair_table_files);
 	}
 	pair_table_files.reset();
-	const vector<string> sorted_pair_table = radix_sort<PairEntry>(job, pair_table, bit_length(volumes.max_oid()) - RADIX_BITS);
-	const pair<vector<string>, int> chunk_table = build_chunk_table(job, sorted_pair_table, volumes.max_oid());
-	const vector<string> sorted_chunk_table = radix_sort<ChunkTableEntry>(job, chunk_table.first, bit_length(volumes.max_oid()) - RADIX_BITS);
+	const RadixedTable sorted_pair_table = radix_sort<PairEntry>(job, pair_table, 64 - RADIX_BITS);
+	const pair<RadixedTable, int> chunk_table = build_chunk_table(job, sorted_pair_table, volumes.max_oid());
+	const RadixedTable sorted_chunk_table = radix_sort<ChunkTableEntry>(job, chunk_table.first, bit_length(volumes.max_oid()) - RADIX_BITS);
 	build_chunks(job, volumes, sorted_chunk_table, chunk_table.second);
-	const vector<string> edges = align(job, chunk_table.second, volumes.max_oid());
+	const RadixedTable edges = align(job, chunk_table.second, volumes.max_oid());
 	if (config.mutual_cover.present()) {
 		return cluster_bidirectional(job, edges, volumes);
 	}
 	else {
-		const vector<string> sorted_edges = radix_sort<Edge>(job, edges, bit_length(volumes.max_oid()) - RADIX_BITS);
+		const RadixedTable sorted_edges = radix_sort<Edge>(job, edges, 64 - RADIX_BITS);
 		//const vector<string> sorted_edges = read_list(job.base_dir() + PATH_SEPARATOR + "alignments" + PATH_SEPARATOR + "radix_sort_out");
 		return cluster(job, sorted_edges, volumes);
 	}
@@ -482,8 +394,8 @@ void external() {
 		if (i < steps.size() - 1)
 			job.next_round();
 	}
-	Atomic output_lock(job.base_dir() + PATH_SEPARATOR + "output_lock");
+	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock");
 	if(output_lock.fetch_add() == 0)
-		output(job);
+		output(job, volumes);
 	log_stream << "Total time = " << (double)total.milliseconds() / 1000 << 's' << endl;
 }
