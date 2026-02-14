@@ -152,22 +152,20 @@ struct SimpleThreadPool {
         }
     }
 
-    void join(std::thread::id thread_id) {
-		std::map<std::thread::id, std::thread>::iterator it;
+    void join(std::thread::id thread_id) {		
+        std::thread t;
         {
             std::lock_guard<std::mutex> lock(data_mutex);
-            it = threads.find(thread_id);
-        }
-        if(it == threads.end()) {
-            throw std::runtime_error("Thread ID not found in thread pool.");
-		}
-        if (it->second.joinable()) {
-            it->second.join();
-		}
-        {
-            std::lock_guard<std::mutex> lock(data_mutex);
+            auto it = threads.find(thread_id);
+            if (it == threads.end()) {
+                throw std::runtime_error("Thread ID not found in thread pool.");
+            }
+            t = std::move(it->second);
             threads.erase(it);
-        }
+        }        
+        if (t.joinable()) {
+            t.join();
+		}
 	}
 
     void request_stop() {
