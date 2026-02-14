@@ -23,6 +23,7 @@ limitations under the License.
 #include <assert.h>
 #include "input_stream_buffer.h"
 #include "../system/endianness.h"
+#include "util/memory/memory_resource.h"
 
 struct Deserializer {
 
