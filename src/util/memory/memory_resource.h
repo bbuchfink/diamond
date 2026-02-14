@@ -16,7 +16,18 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
-#if (__GNUC__ >= 5 && __has_include(<memory_resource>)) || (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603) || _MSC_VER
+
+#if __GNUC__ >= 5 || _MSC_VER || __clang__
+#if __has_include(<memory_resource>)
+#define HAVE_MEMORY_RESOURCE
+#endif
+#endif
+
+#if defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603
+#define HAVE_MEMORY_RESOURCE
+#endif
+
+#ifdef HAVE_MEMORY_RESOURCE
 #include <memory_resource>
 #else
 #warning "Old compiler missing memory_resource support."
