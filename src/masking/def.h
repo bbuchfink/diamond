@@ -22,6 +22,7 @@ limitations under the License.
 #include "basic/value.h"
 #include "util/enum.h"
 #include "util/intrin.h"
+#include "util/log_stream.h"
 
 enum struct MaskingAlgo { NONE = 0, TANTAN = 1, SEG = 2, MOTIF = 4 };
 
@@ -46,13 +47,17 @@ struct MaskingStat {
 			masked_letters[i] += other.masked_letters[i];
 		return *this;
 	}
-	template<typename T>
-	friend T& operator<<(T& str, const MaskingStat& stat) {
+	void print(MessageStream& str) const {
 		str << "Masked letters: "
-			<< "  tantan: " << stat.get(MaskingAlgo::TANTAN)
-			<< "  seg: " << stat.get(MaskingAlgo::SEG)
-			<< "  motif: " << stat.get(MaskingAlgo::MOTIF) << std::endl;
-		return str;
+			<< "  tantan: " << get(MaskingAlgo::TANTAN)
+			<< "  seg: " << get(MaskingAlgo::SEG)
+			<< "  motif: " << get(MaskingAlgo::MOTIF) << std::endl;
+	}
+	void print(std::ostream& str) const {
+		str << "Masked letters: "
+			<< "  tantan: " << get(MaskingAlgo::TANTAN)
+			<< "  seg: " << get(MaskingAlgo::SEG)
+			<< "  motif: " << get(MaskingAlgo::MOTIF) << std::endl;
 	}
 	std::array<uint64_t, 3> masked_letters;
 };

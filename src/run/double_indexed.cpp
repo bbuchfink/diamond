@@ -139,7 +139,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << stats;
+		stats.print(log_stream);
 	}
 
 	if (flag_any(cfg.output_format->flags, Output::Flags::SELF_ALN_SCORES)) {

@@ -78,8 +78,8 @@ void Job::log(const char* format, ...) {
 }
 
 void Job::log(const ClusterStats& stats) {
-	std::stringstream ss;
-	ss << stats.masking_stat;
+	std::ostringstream ss;
+	stats.masking_stat.print(ss);
 	log(ss.str().c_str());
 	log("Seeds considered: %" PRIu64, stats.seeds_considered);
 	log("Seeds indexed: %" PRIu64, stats.seeds_indexed);	

@@ -108,7 +108,7 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << stats;
+		stats.print(log_stream);
 	}
 
 	timer.go("Computing alignments");
@@ -200,7 +200,7 @@ void extend(Search::Config& cfg, Consumer& out) {
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		log_stream << stats;
+		stats.print(log_stream);
 	}
 
 	if (cfg.iterated()) {
