@@ -33,6 +33,7 @@ limitations under the License.
 #warning "Old compiler missing memory_resource support."
 #include <list>
 #include <vector>
+#include <string>
 
 namespace std { namespace pmr {
 
