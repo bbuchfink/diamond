@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,14 +42,10 @@ struct SeedEntry {
 		return seed < e.seed || (seed == e.seed && (len > e.len || (len == e.len && oid < e.oid)));
 	}
 	friend void serialize(const SeedEntry& e, CompressedBuffer& buf) {
-		buf.write((const char*)&e.seed, sizeof(e.seed));
-		buf.write((const char*)&e.oid, sizeof(e.oid));
-		buf.write((const char*)&e.len, sizeof(e.len));
+		buf.write((const char*)&e, sizeof(e));
 	}
 	friend void deserialize(InputFile& in, SeedEntry& e) {
-		in.read((char*)&e.seed, sizeof(e.seed));
-		in.read((char*)&e.oid, sizeof(e.oid));
-		in.read((char*)&e.len, sizeof(e.len));
+		in.read(&e);
 	}
 	struct Key {
 		uint64_t operator()(const SeedEntry& e) const {
