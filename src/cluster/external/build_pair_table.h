@@ -22,6 +22,7 @@ limitations under the License.
 #include "input_buffer.h"
 
 #pragma pack(1)
+
 struct SeedEntry {
 	static constexpr bool POD = true;
 	SeedEntry() :
@@ -59,6 +60,7 @@ struct SeedEntry {
 	int64_t oid;
 	int32_t len;
 } PACKED_ATTRIBUTE;
+
 #pragma pack()
 
 inline void get_pairs_uni_cov(KeyMergeIterator<InputBuffer<SeedEntry>::ConstIterator, SeedEntry::Key>& it, BufferArray& buffers) {

@@ -16,6 +16,7 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
+#include <type_traits>
 #include "util/memory/memory_resource.h"
 #include "volume.h"
 #include "util/algo/partition.h"
@@ -24,7 +25,7 @@ limitations under the License.
 template<typename T>
 struct InputBuffer {
 
-	using Container = std::conditional_t<T::POD, std::vector<T>, std::pmr::list<T>>;
+	using Container = typename std::conditional<T::POD, std::vector<T>, std::pmr::list<T>>::type;
 	using Iterator = typename Container::iterator;
 	using ConstIterator = typename Container::const_iterator;
 

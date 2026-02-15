@@ -17,6 +17,7 @@ limitations under the License.
 
 #pragma once
 #include <atomic>
+#include <type_traits>
 #include <sstream>
 #include "external.h"
 #include "util/io/input_file.h"
@@ -26,6 +27,29 @@ limitations under the License.
 #include "util/string/string.h"
 #include "file_array.h"
 #include "util/memory/memory_resource.h"
+
+template<typename T>
+typename std::enable_if<T::POD>::type
+radix_cluster_read(InputFile& in, size_t n, BufferArray& buffers, uint64_t shift) {
+	T x;
+	for (size_t i = 0; i < n; ++i) {
+ 		in.read(&x, sizeof(T));
+		const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
+		buffers.write(radix, x);
+	}
+}
+
+template<typename T>
+typename std::enable_if<!T::POD>::type
+radix_cluster_read(InputFile& in, size_t n, BufferArray& buffers, uint64_t shift) {
+	std::pmr::monotonic_buffer_resource pool;
+	T x(pool);
+	for (size_t i = 0; i < n; ++i) {
+ 		deserialize(in, x);
+		const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
+		buffers.write(radix, x);
+	}
+}
 
 template<typename T>
 RadixedTable radix_cluster(Job& job, const VolumedFile& bucket, const std::string& output_dir, int bits_unsorted) {
@@ -43,23 +67,7 @@ RadixedTable radix_cluster(Job& job, const VolumedFile& bucket, const std::strin
 		while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)bucket.size())) {
 			InputFile in(bucket[v].path);
 			const size_t n = bucket[v].record_count;
-			if constexpr (T::POD) {
-				T x;
-				for (size_t i = 0; i < n; ++i) {
-					in.read(&x, sizeof(T));
-					const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
-					buffers.write(radix, x);
-				}
-			}
-			else {
-				std::pmr::monotonic_buffer_resource pool;
-				T x(pool);
-				for (size_t i = 0; i < n; ++i) {
-					deserialize(in, x);
-					const uint64_t radix = (x.key() >> shift) & (RADIX_COUNT - 1);
-					buffers.write(radix, x);
-				}
-			}
+			radix_cluster_read<T>(in, n, buffers, shift);
 			in.close();
 		}
 		};
