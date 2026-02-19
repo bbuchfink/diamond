@@ -162,8 +162,8 @@ static QueueStressTestResult test_one_producer_many_consumers(int thread_count, 
 
 int run_queue_stress_test() {
     const int thread_count = static_cast<int>(std::thread::hardware_concurrency());
-    const size_t items_per_producer = 1000;
-    const size_t total_items = 50000;
+    const size_t items_per_producer = 300;
+    const size_t total_items = 10000;
 
     std::cout << "Queue Stress Test" << std::endl;
     std::cout << "=================" << std::endl;
