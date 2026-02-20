@@ -114,7 +114,11 @@ struct Config {
     /**
      * Whether we are on 64 bit or 32 bit.
      */
+#if defined(__CHERI__) || defined(__CHERI_PURE_CAPABILITY__)     
+    static constexpr const bool kIs64Bit = true; // The underlying CPU words are still 64-bit
+#else
     static constexpr const bool kIs64Bit = sizeof(std::uintptr_t) == 8;
+#endif    
     static_assert(kIs64Bit || sizeof(std::uintptr_t) == 4, "Architecture must be 32 or 64 bit");
 
     /**

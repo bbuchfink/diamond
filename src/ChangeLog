@@ -1,3 +1,6 @@
+[2.1.24]
+- Fixed a compiler error on the CHERI architecture.
+
 [2.1.23]
 - Clustering in parallel across multiple nodes using the `--parallel-tmpdir` option now outputs
   accessions (separated into volumed files) instead of ordinal ids if not using `--oid-output`,
