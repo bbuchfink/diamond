@@ -1,4 +1,4 @@
-![DIAMOND](/../../../../bbuchfink/diamond-data/blob/main/diamond_coat_of_arms1.jpg)
+<img src="/../../../../bbuchfink/diamond-data/blob/main/diamond_coat_of_arms2.png" height=280>
 
 Introduction
 ============
