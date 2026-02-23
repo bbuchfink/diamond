@@ -250,7 +250,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("no-block-size-limit", 0, "", no_block_size_limit);
 
 	auto& align_clust = parser.add_group("Aligner/Clustering options", { blastp, blastx, cluster, RECLUSTER, CLUSTER_REASSIGN, DEEPCLUST, LINCLUST });
-	align_clust.add()		
+	align_clust.add()
+		("gapopen", 0, "gap open penalty", gap_open, -1)
+		("gapextend", 0, "gap extension penalty", gap_extend, -1)
+		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
+		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
 		("approx-id", 0, "minimum approx. identity% to report an alignment/to cluster sequences", approx_min_id)
@@ -296,10 +300,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
 		("index-chunks", 'c', "number of chunks for index processing (default=4)", lowmem_)
-		("gapopen", 0, "gap open penalty", gap_open, -1)
-		("gapextend", 0, "gap extension penalty", gap_extend, -1)
-		("matrix", 0, "score matrix for protein alignment (default=BLOSUM62)", matrix, string("blosum62"))
-		("custom-matrix", 0, "file containing custom scoring matrix", matrix_file)
 		("frameshift", 'F', "frame shift penalty (default=disabled)", frame_shift)
 		("long-reads", 0, "short for --range-culling --top 10 -F 15", long_reads)
 		("query-gencode", 0, "genetic code to use to translate query (see user manual)", query_gencode, 1u)
