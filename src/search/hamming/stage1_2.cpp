@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #include "../util/simd/dispatch.h"
 #include "../stage2.h"
@@ -41,7 +28,9 @@ typedef void Stage1KernelPackedLoc(const ::PackedLoc*, ::uint_fast32_t, const ::
 typedef void Stage1KernelPackedLocId(const ::PackedLocId*, ::uint_fast32_t, const ::PackedLocId*, ::uint_fast32_t, ::Search::WorkSet&);
 
 static Stage1KernelPackedLocId* stage1_dispatch(const Search::Config* cfg, PackedLocId) {
-	if (config.lin_stage1) {
+	if (config.lin_stage1_combo)
+		return stage1_longest_combo_lin;
+	if (config.lin_stage1_query) {
 		return cfg->min_length_ratio > 0.0 ? stage1_mutual_cov_query_lin : stage1_query_lin_ranked;
 	}
 	if (cfg->lin_stage1_target) {
@@ -57,7 +46,7 @@ static Stage1KernelPackedLocId* stage1_dispatch(const Search::Config* cfg, Packe
 }
 
 static Stage1KernelPackedLoc* stage1_dispatch(const Search::Config* cfg, PackedLoc) {
-	return config.lin_stage1 ? stage1_query_lin
+	return config.lin_stage1_query ? stage1_query_lin
 		: (cfg->lin_stage1_target ? stage1_target_lin<PackedLoc>
 			: (config.self && cfg->current_ref_block == 0 ? stage1_self<PackedLoc> : stage1<PackedLoc>));
 }
@@ -78,11 +67,20 @@ void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const 
 	}
 }
 
+bool keep_target_id(const Search::Config& cfg) {
+#ifdef HIT_KEEP_TARGET_ID
+	return true;
+#else
+	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets || (config.self && cfg.current_ref_block == 0) || config.lin_stage1_combo;
+#endif
+}
+
 }}
 
 namespace Search {
 	
 DISPATCH_3V(run_stage1, JoinIterator<PackedLoc>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
 DISPATCH_3V(run_stage1, JoinIterator<PackedLocId>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
+DISPATCH_1(bool, keep_target_id, const Search::Config&, cfg)
 
 }

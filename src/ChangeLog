@@ -1,6 +1,13 @@
 [2.1.24]
+- Fixed a crash in the `greedy-vertex-cover` workflow.
+- Fixed a bug that could cause a crash when using `--swipe`.
+- Added the option `--lin-combo` to linearize the search comparing against the longest query
+  or target sequence for identical seeds.
+- Added the options `--qnum-offset` and `--snum-offset` to set non-zero offsets for ordinal
+  ids (`qnum` and `snum` output fields).
 - Fixed a compiler error on the CHERI architecture.
 - Clustering workflows now support `--gapopen`, `--gapextend`, `--matrix` and `--custom-matrix`.
+- Fixed a potential hanging issue.
 
 [2.1.23]
 - Clustering in parallel across multiple nodes using the `--parallel-tmpdir` option now outputs

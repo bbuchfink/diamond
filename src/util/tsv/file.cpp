@@ -94,6 +94,10 @@ File::File(const Schema& schema, unique_ptr<TextInputFile>&& file, Flags flags, 
 	//file_->set_separator(config_.line_delimiter.c_str());
 }
 
+void File::read(int64_t max_size, int threads, function<void(int64_t chunk, const char*, const char*)>& callback) {
+	read_text_mt(*file_, max_size, threads, callback);
+}
+
 void File::rewind() {
 	if (out_file_)
 		out_file_->rewind();

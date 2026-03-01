@@ -80,19 +80,20 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 		return target;
 	}
 	std::sort(begin, end);
+	const bool use_hauser = ::Stats::CBS::hauser(config.comp_based_stats);
 	for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit) {
 		const auto f = hit->frame;
 		target.ungapped_score[f] = std::max(target.ungapped_score[f], hit->score);
 		if (!diagonal_segments[f].empty() && diagonal_segments[f].back().diag() == hit->diag() && diagonal_segments[f].back().subject_end() >= hit->j)
 			continue;
-		const int8_t* cbs = ::Stats::CBS::hauser(config.comp_based_stats) ? query_cb[f].int8.data() : nullptr;
+		const int8_t* cbs = use_hauser ? query_cb[f].int8.data() : nullptr;
 		const DiagonalSegment d = xdrop_ungapped(query_seq[f], cbs, target.seq, hit->i, hit->j, with_diag_filter);
 		if (d.score > 0)
 			diagonal_segments[f].push_back(d);
 	}
 
 	if (with_diag_filter) {
-		const ApproxHsp h = Chaining::hamming_ext(diagonal_segments[0].begin(), diagonal_segments[0].end(), query_seq[0].length(), target.seq.length(), !cfg.lin_stage1_target && !config.lin_stage1);
+		const ApproxHsp h = Chaining::hamming_ext(diagonal_segments[0].begin(), diagonal_segments[0].end(), query_seq[0].length(), target.seq.length(), !cfg.lin_stage1_target && !config.lin_stage1_query);
 		if (h.score > 0) {
 			target.done = true;
 			target.hsp[0].push_back(h);

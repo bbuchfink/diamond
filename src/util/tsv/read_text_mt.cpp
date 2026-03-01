@@ -1,8 +1,25 @@
+/****
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+****/
+// SPDX-License-Identifier: Apache-2.0
+
 #include <queue>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include "tsv.h"
+#include "util/io/text_input_file.h"
 #include "file.h"
 
 using std::mutex;
@@ -15,11 +32,9 @@ using std::thread;
 using std::back_inserter;
 using std::lock_guard;
 
-namespace Util { namespace Tsv {
-
 static const int64_t READ_SIZE = 1 * (1 << 20);
 
-void File::read(int64_t max_size, int threads, function<void(int64_t chunk, const char*, const char*)>& callback) {
+void read_text_mt(TextInputFile& file, int64_t max_size, int threads, function<void(int64_t chunk, const char*, const char*)>& callback) {
 	queue<vector<char>> buffers;
 	int64_t next_chunk = 0;
 	bool stop = false;
@@ -31,9 +46,9 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 		vector<char> buf(READ_SIZE);
 		int64_t total = 0;
 		for (;;) {
-			int64_t n = file_->read_raw(buf.data(), READ_SIZE);
+			int64_t n = file.read_raw(buf.data(), READ_SIZE);
 			if (n == READ_SIZE) {
-				file_->read_to(back_inserter(buf), '\n');
+				file.read_to(back_inserter(buf), '\n');
 				n = buf.size();
 			}
 			total += n;
@@ -46,17 +61,18 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 				}
 			}
 			if (n < READ_SIZE || total + READ_SIZE > max_size) {
-				{ 
+				{
 					lock_guard<mutex> lock(mtx);
 					stop = true;
 				}
 				consume_cv.notify_all();
 				break;
-			} else
+			}
+			else
 				consume_cv.notify_one();
 			buf.resize(READ_SIZE);
 		}
-	};
+		};
 
 	auto consumer = [&] {
 		vector<char> buf;
@@ -76,7 +92,7 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 			read_cv.notify_one();
 			callback(chunk, buf.data(), buf.data() + buf.size());
 		}
-	};
+		};
 
 	vector<thread> thread;
 	thread.emplace_back(reader);
@@ -85,5 +101,3 @@ void File::read(int64_t max_size, int threads, function<void(int64_t chunk, cons
 	for (auto& t : thread)
 		t.join();
 }
-
-}}

@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <string>
@@ -85,3 +72,34 @@ void from_string(const std::string& s, std::vector<Letter>& out, const ValueTrai
 std::string remove_newlines(const std::string& s);
 
 }}
+
+template<typename Callback>
+void read_fasta(std::istream& in, Callback& f)
+{
+	std::string line, id, seq;
+	std::streampos pos = in.tellg(), start = pos;
+	std::getline(in, line);
+	if (line.empty() || line.front() != '>')
+		throw std::runtime_error("FASTA format error: file does not start with '>'");
+	do {
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		if (line.empty())
+			continue;
+		if (line[0] == '>') {			
+			if (!id.empty())
+				f(id, seq, start);
+			start = pos;
+			id = line.substr(1);
+			if (id.empty())
+				throw std::runtime_error("FASTA format error: empty id at file offset " + std::to_string(pos));
+			seq.clear();
+		}
+		else {
+			seq += line;
+		}
+		pos = in.tellg();
+	} while (std::getline(in, line));
+	if (!id.empty())
+		f(id, seq, start);
+}

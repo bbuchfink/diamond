@@ -317,14 +317,6 @@ bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letter
 		return query_letters < 3000000llu && query_letters * 2000llu < ref_letters;
 }
 
-bool keep_target_id(const Search::Config& cfg) {
-#ifdef HIT_KEEP_TARGET_ID
-	return true;
-#else
-	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets || (config.self && cfg.current_ref_block == 0);
-#endif
-}
-
 MaskingAlgo soft_masking_algo(const SensitivityTraits& traits) {
 	if (config.motif_masking.empty())
 		return (!config.swipe_all && !config.freq_masking && traits.motif_masking) ? MaskingAlgo::MOTIF : MaskingAlgo::NONE;
@@ -333,11 +325,11 @@ MaskingAlgo soft_masking_algo(const SensitivityTraits& traits) {
 			return MaskingAlgo::NONE;
 		else if (config.motif_masking == "1") {
 			if (config.swipe_all)
-				throw std::runtime_error("Soft masking is not supported for --swipe.");
+				throw runtime_error("Soft masking is not supported for --swipe.");
 			return MaskingAlgo::MOTIF;
 		}
 		else
-			throw std::runtime_error("Permitted values for --motif-masking: 0, 1");
+			throw runtime_error("Permitted values for --motif-masking: 0, 1");
 	}
 }
 
@@ -368,8 +360,8 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		::shapes = ShapeConfig(config.shape_mask.empty() ? shape_codes.at(sens) : config.shape_mask, config.shapes);
 
 	Reduction::set_reduction(traits.reduction);
-	if ((cfg.lin_stage1_target || config.lin_stage1) && shapes[0].weight_ < 10)
-		throw std::runtime_error("Linearization is only supported for seed shapes of weight >= 10.");
+	if ((cfg.lin_stage1_target || config.lin_stage1_query || config.lin_stage1_combo) && shapes[0].weight_ < 10)
+		throw runtime_error("Linearization is only supported for seed shapes of weight >= 10.");
 
 	config.gapped_filter_diag_score = score_matrix.rawscore(config.gapped_filter_diag_bit_score);
 	const double seed_cut = config.seed_cut_ == 0.0 ? traits.seed_cut : config.seed_cut_;
@@ -381,7 +373,7 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	cfg.cutoff_table_short = { cfg.ungapped_evalue_short };
 
 	if (config.ext_.empty()) {
-		if (config.global_ranking_targets || config.swipe_all || ((config.lin_stage1 || cfg.lin_stage1_target) && !config.linclust_banded_ext))
+		if (config.global_ranking_targets || config.swipe_all || ((config.lin_stage1_query || cfg.lin_stage1_target || config.lin_stage1_combo) && !config.linclust_banded_ext))
 			cfg.extension_mode = Extension::Mode::FULL;
 		else
 			cfg.extension_mode = Extension::default_ext_mode.at(sens);

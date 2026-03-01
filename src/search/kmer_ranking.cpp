@@ -28,9 +28,10 @@ KmerRanking::KmerRanking(const SequenceSet& queries, SeedPartition seedp_count, 
 		while ((p = rel_seedp.fetch_add(1, std::memory_order_relaxed)) < seedp_count) {
 			for (auto it = JoinIterator<PackedLocId>(query_seed_hits[p].begin(), ref_seed_hits[p].begin()); it;) {
 				const Range<PackedLocId*> query_hits = *it.r;
+				const float contribution = (float)sqrt(it.s->size());
 				for (PackedLocId s : query_hits) {
 					float value = counts[s.block_id].load();
-					while (!counts[s.block_id].compare_exchange_weak(value, value + (float)sqrt(it.s->size())));
+					while (!counts[s.block_id].compare_exchange_weak(value, value + contribution));
 					//counts[s.block_id] += it.s->size();
 				}
 				++it;

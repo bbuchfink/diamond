@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #include "fasta_file.h"
 #include "util/sequence/sequence.h"
@@ -37,6 +24,8 @@ using std::pair;
 using std::runtime_error;
 using std::unique_ptr;
 using std::tie;
+using std::ifstream;
+using std::ofstream;
 using std::next;
 using namespace Util::Tsv;
 using Util::String::TokenizerBase;
@@ -58,7 +47,7 @@ SeqFileFormat guess_format(TextInputFile& file) {
 	}
 }
 
-FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, const ValueTraits& value_traits):
+FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, const ValueTraits& value_traits, const std::string& index_file):
 	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
 	oid_(0)
 {
@@ -74,11 +63,10 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, con
 	file_.emplace_back(schema, std::move(input_file), Util::Tsv::Flags(), config);
 	if (file_name.size() > 1)
 		file_.emplace_back(schema, file_name[1], Util::Tsv::Flags(), config);
-	file_ptr_ = file_.begin();
-	
+	file_ptr_ = file_.begin();	
 	if (!flag_any(flags, Flags::NEED_LETTER_COUNT))
 		return;
-	tie(seqs_, letters_) = init_read();
+	tie(seqs_, letters_) = init_read(index_file);
 	set_seqinfo_ptr(0);
 }
 
@@ -294,17 +282,43 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 		seq_length_.push_back(seq.length());
 }
 
-std::pair<int64_t, int64_t> FastaFile::init_read() {
+pair<int64_t, int64_t> FastaFile::init_read(const std::string& index_file) {
 	vector<Letter> seq;
 	string id;
 	int64_t seqs = 0, letters = 0;
-	while (read_seq(seq, id)) {
-		if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
-			add_seqid_mapping(id, seqs);
-		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
-			seq_length_.push_back((Loc)seq.size());
-		++seqs;
-		letters += seq.size();
+	if (index_file.empty()) {
+		while (read_seq(seq, id)) {
+			if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
+				add_seqid_mapping(id, seqs);
+			if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+				seq_length_.push_back((Loc)seq.size());
+			++seqs;
+			letters += seq.size();
+		}
+	}
+	else {
+		ifstream in(index_file);
+		if (!in)
+			throw runtime_error("Error opening file: " + index_file);
+		uint64_t offset;
+		Loc len;
+		while (in >> offset) {
+			in >> len;
+			seq_length_.push_back(len);
+			++seqs;
+			letters += len;
+		}
 	}
 	return { seqs, letters };
+}
+
+void FastaFile::index(const string& path, const string& dst) {
+	ofstream out(dst);
+	auto f = [&](const string& id, const string& seq, std::streampos pos) {
+		out << pos << '\t' << seq.length() << std::endl;
+		};
+	ifstream in(path);
+	if (!in)
+		throw runtime_error("Failed to open file: " + path);
+	read_fasta(in, f);
 }

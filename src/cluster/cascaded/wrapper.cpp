@@ -43,8 +43,10 @@ using std::back_inserter;
 using std::unique_ptr;
 using std::bind;
 using std::function;
+using std::runtime_error;
 
 void external();
+void multinode();
 
 namespace Cluster {
 		
@@ -127,9 +129,9 @@ static vector<SuperBlockId> search_vs_centroids(shared_ptr<FastaFile>& super_blo
 		config.subject_cover = 0;
 	}
 	config.query_or_target_cover = 0;
-	config.linsearch = cfg.linclust;
+	config.lin_stage1_target = cfg.linclust;
 	config.iterate = vector<string>();
-	config.lin_stage1 = false;
+	config.lin_stage1_query = false;
 	tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)),
 		std::max(super_block->letters(), cfg.centroids->letters()), cfg.sens, cfg.linclust, config.threads_);
 	//if (cfg.linclust)
@@ -163,9 +165,9 @@ void Cascaded::run() {
 	init_thresholds();
 	if (!config.parallel_tmpdir.empty()) {
 		if (config.command == ::Config::LINCLUST)
-			external();
+			multinode();
 		else
-			throw std::runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
+			throw runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
 		return;
 	}
 	config.hamming_ext = config.approx_min_id >= 50.0;
@@ -174,7 +176,7 @@ void Cascaded::run() {
 	TaskTimer timer("Opening the input file");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::OID_TO_ACC_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP));
 	if (db->type() == SequenceFile::Type::BLAST)
-		throw std::runtime_error("Clustering is not supported for BLAST databases.");
+		throw runtime_error("Clustering is not supported for BLAST databases.");
 	timer.finish();
 	message_stream << "Input database: " << db->file_name() << " (" << db->sequence_count() << " sequences, " << db->letters() << " letters)" << endl;
 	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));

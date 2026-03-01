@@ -1,3 +1,20 @@
+/****
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+****/
+// SPDX-License-Identifier: Apache-2.0
+
 #include "config.h"
 #include "basic/config.h"
 #include "data/block/block.h"
@@ -46,7 +63,7 @@ Config::Config() :
 			throw runtime_error("Iterated search is not compatible with --target-indexed.");
 		if (config.self)
 			throw runtime_error("Iterated search is not compatible with --self.");
-		if (config.lin_stage1)
+		if (config.lin_stage1_query)
 			throw runtime_error("Iterated search is not compatible with --lin-stage1.");
 		if (config.iterate.empty()) {
 			sensitivity = { {Sensitivity::FASTER, true} };
@@ -54,7 +71,7 @@ Config::Config() :
 			sensitivity.insert(sensitivity.end(), rounds.begin(), rounds.end());
 		}
 		else {
-			const Round target = Round(config.sensitivity, config.lin_stage1 || config.linsearch);
+			const Round target = Round(config.sensitivity, config.lin_stage1_query || config.lin_stage1_target);
 			for (const string& s : config.iterate) {
 				if (ends_with(s, "_lin"))
 					sensitivity.push_back({ from_string<Sensitivity>(rstrip(s, "_lin")),true });
@@ -66,8 +83,8 @@ Config::Config() :
 		}
 	}
 	
-	if (sensitivity.empty() || (!sensitivity.empty() && sensitivity.back() != Round(config.sensitivity, config.linsearch)))
-		sensitivity.emplace_back(config.sensitivity, config.linsearch);
+	if (sensitivity.empty() || (!sensitivity.empty() && sensitivity.back() != Round(config.sensitivity, config.lin_stage1_target)))
+		sensitivity.emplace_back(config.sensitivity, config.lin_stage1_target);
 	std::sort(sensitivity.begin(), sensitivity.end());
 	if (std::adjacent_find(sensitivity.begin(), sensitivity.end()) != sensitivity.end())
 		throw std::runtime_error("The same sensitivity level was specified multiple times for --iterate.");
@@ -89,17 +106,17 @@ Config::Config() :
 		track_aligned_queries = true;
 
 	if (config.multiprocessing && (!config.taxonlist.empty() || !config.taxon_exclude.empty()))
-		throw std::runtime_error("Multiprocessing mode is not compatible with database filtering.");
+		throw runtime_error("Multiprocessing mode is not compatible with database filtering.");
 
 	if (config.global_ranking_targets) {
 		if (config.frame_shift)
-			throw std::runtime_error("Global ranking mode is not compatible with frameshift alignments.");
+			throw runtime_error("Global ranking mode is not compatible with frameshift alignments.");
 		if(config.multiprocessing)
-			throw std::runtime_error("Global ranking mode is not compatible with --multiprocessing.");
+			throw runtime_error("Global ranking mode is not compatible with --multiprocessing.");
 	}
 
 	if (config.target_indexed && config.algo != ::Config::Algo::AUTO && config.algo != ::Config::Algo::DOUBLE_INDEXED)
-		throw std::runtime_error("--target-indexed requires --algo 0");
+		throw runtime_error("--target-indexed requires --algo 0");
 
     if(config.command != ::Config::blastn) {
         const MaskingMode masking_mode = from_string<MaskingMode>(config.masking_.get("tantan"));
@@ -134,7 +151,7 @@ Config::Config() :
 		throw runtime_error("Minimizer setting is not compatible with contiguous seed mode.");
 
 	if (config.query_cover >= 50 && config.query_cover == config.subject_cover && config.min_length_ratio == 0.0 && !align_mode.query_translated) {
-		min_length_ratio = config.lin_stage1 && sensitivity.back().sensitivity < Sensitivity::LINCLUST_40
+		min_length_ratio = config.lin_stage1_query && sensitivity.back().sensitivity < Sensitivity::LINCLUST_40
 			? std::min(config.query_cover / 100 + 0.05, 0.92) : std::max(config.query_cover / 100 - 0.05, 0.0);
 	}
 	else {

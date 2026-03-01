@@ -1,5 +1,5 @@
 /****
-Copyright ï¿½ 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,10 @@ limitations under the License.
 
 #pragma once
 #include <fstream>
+#include <algorithm>
+#include <sstream>
 #include "util/system/system.h"
+#include "util/parallel/filestack.h"
 
 struct Volume {
 	Volume() :
@@ -65,7 +68,7 @@ struct Bucket {
 	static constexpr uint64_t NIL = std::numeric_limits<uint64_t>::max();
 	Bucket() = default;
 	Bucket(const std::string& path, uint64_t records) : path(path), records_(records) {}
-	std::string path;	
+	std::string path;
 	std::string containing_directory() const {
 		return ::containing_directory(path);
 	}
@@ -80,9 +83,10 @@ private:
 };
 
 struct VolumedFile : public std::vector<Volume> {
-	VolumedFile(const Bucket& bucket):
+	VolumedFile(const Bucket& bucket) :
 		VolumedFile(bucket.path)
-	{ }
+	{
+	}
 	VolumedFile(const std::string& file_name) :
 		list_file_(file_name),
 		records_(0),
@@ -169,7 +173,7 @@ struct RadixedTable : public std::vector<Bucket> {
 
 	void append(FileStack& out) const {
 		std::ostringstream ss;
-		for(const Bucket& b : *this) {
+		for (const Bucket& b : *this) {
 			ss << b.path << '\t' << b.records_ << std::endl;
 		}
 		out.push(ss.str());

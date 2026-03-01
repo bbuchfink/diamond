@@ -16,8 +16,8 @@ limitations under the License.
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
+#include <thread>
 #include "filestack.h"
-#include "util/log_stream.h"
 
 struct Atomic {
 

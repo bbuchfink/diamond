@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -317,7 +304,7 @@ static void run_query_iteration(const unsigned query_iteration,
 
 	if (options.current_query_block == 0 && query_iteration == 0) {
 		message_stream << "Algorithm: " << to_string(config.algo) << endl;
-		if (config.freq_masking && !config.lin_stage1)
+		if (config.freq_masking && !config.lin_stage1_query)
 			verbose_stream << "Seed frequency SD: " << options.freq_sd << endl;
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
 	}	
@@ -405,12 +392,12 @@ static void run_query_iteration(const unsigned query_iteration,
 		else if (!config.self || options.current_query_block != 0 || !db_file.eof())
 			db_file.set_seqinfo_ptr(0);*/
 		timer.go("Seeking in database");
-		db_file.set_seqinfo_ptr((config.self && !config.lin_stage1) ? options.query->oid_end() : 0);
+		db_file.set_seqinfo_ptr((config.self && !config.lin_stage1_query) ? options.query->oid_end() : 0);
 		timer.finish();
 		for (options.current_ref_block = 0; ; ++options.current_ref_block) {
-			if (config.self && ((config.lin_stage1 && options.current_ref_block == options.current_query_block) || (!config.lin_stage1 && options.current_ref_block == 0))) {
+			if (config.self && ((config.lin_stage1_query && options.current_ref_block == options.current_query_block) || (!config.lin_stage1_query && options.current_ref_block == 0))) {
 				options.target = options.query;
-				if (config.lin_stage1) {
+				if (config.lin_stage1_query) {
 					timer.go("Seeking in database");
 					db_file.set_seqinfo_ptr(options.query->oid_end());
 					timer.finish();
@@ -479,7 +466,16 @@ static void run_query_chunk(Consumer &master_out,
 
 	BlockId aligned = 0;
 	for (unsigned query_iteration = 0; query_iteration < options.sensitivity.size() && aligned < options.query->source_seq_count(); ++query_iteration) {
-		options.lin_stage1_target = config.linsearch || options.sensitivity[query_iteration].linearize;
+		options.lin_stage1_target = config.lin_stage1_target || options.sensitivity[query_iteration].linearize;
+		int n = 0;
+		if (options.lin_stage1_target)
+			++n;
+		if (config.lin_stage1_query)
+			++n;
+		if(config.lin_stage1_combo)
+			++n;
+		if (n > 1)
+			throw runtime_error("Multiple linearization options are not allowed to be used together");
 		setup_search(options.sensitivity[query_iteration].sensitivity, options);
 		run_query_iteration(query_iteration, master_out, unaligned_file, aligned_file, tmp_file, options);
 		if (options.iterated()) {
@@ -708,7 +704,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		if ((config.mp_query_chunk >= 0) && (options.current_query_block != config.mp_query_chunk))
 			continue;
 
-		if ((!Search::keep_target_id(options) && config.lin_stage1 && !config.kmer_ranking) || options.min_length_ratio > 0.0) {
+		if ((!Search::keep_target_id(options) && config.lin_stage1_query && !config.kmer_ranking) || options.min_length_ratio > 0.0) {
 			timer.go("Length sorting queries");
 			options.query.reset(options.query->length_sorted(config.threads_));
 			timer.finish();

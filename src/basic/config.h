@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -211,7 +211,7 @@ struct Config
 	int col_bin;
 	int64_t file_buffer_size;
 	bool self;
-	int64_t trace_pt_fetch_size;
+	uint64_t trace_pt_fetch_size;
 	uint32_t tile_size;
 	double short_query_ungapped_bitscore;
 	int short_query_max_len;
@@ -277,7 +277,9 @@ struct Config
 	Option<string> memory_limit;
 	int64_t swipe_task_size;
 	Loc minimizer_window_;
-	bool lin_stage1;
+	bool lin_stage1_query;
+	bool lin_stage1_target;
+	bool lin_stage1_combo;
 	int64_t min_task_trace_pts;
 	Loc sketch_size;
 	string soft_masking;
@@ -320,7 +322,6 @@ struct Config
 	bool no_chaining_merge_hsps;
 	bool pipeline_short;
 	string graph_algo;
-	bool linsearch;
 	int64_t tsv_read_size;
     int zdrop;
 	bool heartbeat;
@@ -363,6 +364,8 @@ struct Config
 	bool hit_membuf;
 	size_t minichunk;
 	std::string aln_out;
+	int64_t qnum_offset;
+	int64_t snum_offset;
 
     SequenceType dbtype;
 

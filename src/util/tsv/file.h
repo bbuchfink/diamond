@@ -1,23 +1,19 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2019-2024 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <functional>
@@ -25,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../io/text_input_file.h"
 #include "table.h"
 #include "../enum.h"
+
+void read_text_mt(TextInputFile& file, int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 
 namespace Util { namespace Tsv {
 
@@ -60,16 +58,16 @@ struct File {
 	int64_t size();
 	~File();
 
-	void read(int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 	void read(int threads, std::function<void(int64_t chunk, const Table&)>& callback);
 	Table read(int64_t max_size, int threads);
 	Table read(int threads);
 	Table read_record();
+	void read(int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 
 	template<typename... Targs, typename Out> void read(Out out);
 
-	template<typename F, typename Out>
-	void read(int threads, F& f, Out& out) {
+	//template<typename F, typename Out>
+	//void read(int threads, F& f, Out& out) {
 		/*using T = typename std::result_of<F(const Record&)>::type;
 		auto f2 = [](std::vector<T>* v) {
 			for (std::vector<T>::const_iterator i = v->cbegin(); i != v->cend(); ++i)
@@ -84,7 +82,7 @@ struct File {
 				v->push_back(f(table[i]));
 			queue.push(chunk, v);
 		};*/
-	}
+	//}
 
 	Schema schema() const {
 		return schema_;

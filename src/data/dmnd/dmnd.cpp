@@ -112,6 +112,34 @@ Serializer& operator<<(Serializer& file, const SequenceFile::SeqInfo& r) {
 	return file;
 }
 
+SeqLengthIterator::SeqLengthIterator(const string& file_name, uint64_t pos_array_offset, OId start, OId total)
+	: file_(new InputFile(file_name, InputFile::BUFFERED | InputFile::NO_AUTODETECT))
+	, oid_(start)
+	, total_(total)
+	, current_len_(0)
+{
+	file_->seek((int64_t)(pos_array_offset + (uint64_t)SequenceFile::SeqInfo::SIZE * start));
+	if (valid())
+		load_current();
+}
+
+void SeqLengthIterator::load_current() {
+	SequenceFile::SeqInfo r;
+	*file_ >> r;
+	current_len_ = r.seq_len;
+}
+
+SeqLengthIterator& SeqLengthIterator::operator++() {
+	++oid_;
+	if (valid())
+		load_current();
+	return *this;
+}
+
+SeqLengthIterator DatabaseFile::seq_length_iterator(OId start) const {
+	return SeqLengthIterator(InputFile::file_name, ref_header.pos_array_offset, start, ref_header.sequences);
+}
+
 SequenceFile::SeqInfo DatabaseFile::read_seqinfo() {
 	SeqInfo r;
 	(*this) >> r;

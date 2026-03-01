@@ -388,7 +388,7 @@ set(OBJECTS
         src/cluster/output.cpp
         src/cluster/realign.cpp
         src/cluster/reassign.cpp
-        src/util/tsv/read_tsv.cpp
+        src/util/tsv/read_text_mt.cpp
         src/tools/greedy_vertex_cover.cpp
         src/cluster/cascaded/recluster.cpp
         src/cluster/helpers.cpp
@@ -409,12 +409,12 @@ set(OBJECTS
         src/util/tsv/join.cpp
         src/dp/scalar/smith_waterman.cpp
         src/tools/tsv.cpp
-        src/cluster/external/external.cpp
-        src/cluster/external/seed_table.cpp
-        src/cluster/external/pair_table.cpp
-        src/cluster/external/align.cpp
-        src/cluster/external/cluster.cpp
-        src/cluster/external/output.cpp
+        #src/cluster/external/external.cpp
+        #src/cluster/external/seed_table.cpp
+        #src/cluster/external/pair_table.cpp
+        #src/cluster/external/align.cpp
+        #src/cluster/external/cluster.cpp
+        #src/cluster/external/output.cpp
         #src/util/algo/mcl.cpp
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
@@ -426,6 +426,10 @@ set(OBJECTS
         src/data/blastdb/asn1.cpp
         src/data/blastdb/blastdb.cpp
         src/test/queue.cpp
+        src/test/hit_buffer_stress.cpp
+        src/cluster/multinode/multinode.cpp
+        src/cluster/multinode/data.cpp
+        src/cluster/multinode/output.cpp
 )
 
 if(WITH_DNA)

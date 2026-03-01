@@ -190,6 +190,20 @@ struct SequenceFile {
 	void get_seq();
 	Util::Tsv::File* make_seqid_list();
 	size_t total_blocks() const;
+	std::vector<OId> partition(int64_t max_block_size) const {
+		std::vector<OId> result;
+		result.push_back(0);
+		int64_t block_size = 0;
+		for (OId i = 0; i < (OId)seq_length_.size(); ++i) {
+			if (block_size + seq_length_[i] > max_block_size && block_size > 0) {
+				result.push_back(i);
+				block_size = 0;
+			}
+			block_size += seq_length_[i];
+		}
+		result.push_back((OId)seq_length_.size());
+		return result;
+	}
 	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end);
 	std::vector<Letter> seq_by_accession(const std::string& acc);
 	DbFilter* filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude);

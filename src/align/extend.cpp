@@ -238,7 +238,7 @@ vector<Match> extend(
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);
 	vector<TargetScore>::const_iterator i0 = l.target_scores.cbegin(), i1 = i0 + std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i0);
 
-	if (config.toppercent.blank() && config.min_bit_score == 0.0 && (i1 - i0) < cfg.max_target_seqs && (config.ext_chunk_size == 0 || config.lin_stage1))
+	if (config.toppercent.blank() && config.min_bit_score == 0.0 && (i1 - i0) < cfg.max_target_seqs && (config.ext_chunk_size == 0 || config.lin_stage1_query))
 #ifdef EVAL_TARGET
 		while (i1 < l.target_scores.cend() && i1->evalue <= config.max_evalue && size_t(i1 - i0) < config.max_alignments) ++i1;
 #else

@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ limitations under the License.
 #pragma once
 #include <atomic>
 #include <assert.h>
-#include <cstddef>
 #include <type_traits>
 #include <new>
 #include "../parallel/semaphore.h"
 
 template <class T>
 class Queue {
+
 public:
     using value_type = T;
 
@@ -170,10 +170,8 @@ private:
                     return;
                 }
             }
-            else if (dif < 0) {
-                pos = enqueue_pos_.load(std::memory_order_relaxed);
-            }
             else {
+                std::this_thread::yield();
                 pos = enqueue_pos_.load(std::memory_order_relaxed);
             }
         }
@@ -201,6 +199,7 @@ private:
                 return false;
             }
             else {
+                std::this_thread::yield();
                 pos = dequeue_pos_.load(std::memory_order_relaxed);
             }
         }
@@ -216,8 +215,8 @@ private:
     char _pad0[(64 - sizeof(enqueue_pos_) % 64) % 64]{};
     alignas(64) std::atomic<size_t> dequeue_pos_;
     char _pad1[(64 - sizeof(dequeue_pos_) % 64) % 64]{};
-    std::counting_semaphore<> items_{ (ptrdiff_t)0 };
-    std::counting_semaphore<> spaces_{ (ptrdiff_t)capacity_ };
+    CountingSemaphore<> items_{ (ptrdiff_t)0 };
+    CountingSemaphore<> spaces_{ (ptrdiff_t)capacity_ };
     std::atomic<size_t> pills_received_;
 
 };

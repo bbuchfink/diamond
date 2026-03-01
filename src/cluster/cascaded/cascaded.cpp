@@ -86,16 +86,16 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<DbFi
 	config.self = true;
 	config.iterate.unset();
 	config.mapany = false;
-	config.linsearch = false;
+	config.lin_stage1_target = false;
 	//if (config.db_size == 0 && filter) {
 	if(filter) {
 		config.db_size = db->letters_filtered(*filter);
 	}
-	tie(config.chunk_size, config.lowmem_) = config.lin_stage1 && round == 0 ? make_pair<double, int>(32768, 1) :
+	tie(config.chunk_size, config.lowmem_) = config.lin_stage1_query && round == 0 ? make_pair<double, int>(32768, 1) :
 		block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)),
 			filter ? config.db_size : db->letters(),
 			config.sensitivity,
-			config.lin_stage1,
+			config.lin_stage1_query,
 			config.threads_);
 
 	shared_ptr<Callback> callback(mutual_cover ? (Callback*)new CallbackBidirectional : (Callback*)new CallbackUnidirectional);
@@ -116,7 +116,7 @@ vector<SuperBlockId> cluster(shared_ptr<SequenceFile>& db, const shared_ptr<DbFi
 	timer.finish();
 
 	const auto algo = from_string<GraphAlgo>(config.graph_algo);
-	const int ccd = round_ccd(round, round_count, config.lin_stage1);
+	const int ccd = round_ccd(round, round_count, config.lin_stage1_query);
 	return algo == GraphAlgo::GREEDY_VERTEX_COVER ?
 		Util::Algo::greedy_vertex_cover<SuperBlockId>(edge_array, config.weighted_gvc ? member_counts : nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd)
 		: len_sorted_clust(edge_array);
@@ -148,8 +148,8 @@ vector<SuperBlockId> cascaded(shared_ptr<SequenceFile>& db, bool linear) {
 
 	for (int i = 0; i < (int)steps.size(); i++) {
 		TaskTimer timer;
-		config.lin_stage1 = ends_with(steps[i], "_lin");
-		config.anchored_swipe = anchored_swipe && (linclust || !config.lin_stage1);
+		config.lin_stage1_query = ends_with(steps[i], "_lin");
+		config.anchored_swipe = anchored_swipe && (linclust || !config.lin_stage1_query);
 		if (anchored_swipe)
 			config.ext_ = "banded-fast";
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));

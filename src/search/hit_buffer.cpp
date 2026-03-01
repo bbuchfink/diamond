@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef WIN32
 #include <sys/mman.h>
@@ -54,12 +41,18 @@ using std::tuple;
 namespace Search {
 
 HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count, Config& cfg) :
+	HitBuffer(key_partition, tmpdir, long_subject_offsets, query_contexts, thread_count,
+		(uint32_t)cfg.query->seqs().size(), (uint64_t)cfg.target->seqs().raw_len(),
+		cfg.search_pool)
+{}
+
+HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, bool long_subject_offsets, int query_contexts, int thread_count, uint32_t max_query, uint64_t max_target, SimpleThreadPool& search_pool) :
 	key_partition_(key_partition),
 	long_subject_offsets_(long_subject_offsets),
 	query_contexts_(query_contexts),
-	max_query_(cfg.query->seqs().size()),
-	max_target_(cfg.target->seqs().raw_len()),
-	search_pool_(cfg.search_pool),
+	max_query_(max_query),
+	max_target_(max_target),
+	search_pool_(search_pool),
 	bins_processed_(0),
 	total_disk_size_(0),
 	load_worker_(nullptr),
@@ -68,8 +61,6 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
 	count_ = new atomic_size_t[key_partition.size()];
 
-	// first populate queues, then initiate workers
-	// to avoid multi-threaded data access.
 	for (size_t i = 0; i < key_partition.size(); ++i) {
 		count_[i].store(0, std::memory_order_relaxed);
 		if (config.swipe_all)
@@ -208,7 +199,7 @@ void HitBuffer::load_bin(Hit* out, int bin)
 	SimpleThreadPool pool;
 	auto worker = [&](const atomic<bool>& stop, int worker_id) {
 		uint64_t my_count = 0;
-		while (!stop) {
+		while (true) {
 			pair<vector<char>*, uint32_t> v;
 			if (!queue.wait_and_dequeue(v)) {
 				break;
@@ -269,15 +260,28 @@ void HitBuffer::load_bin(Hit* out, int bin)
 		};
 	for (int i = 0; i < p; ++i)
 		pool.spawn(worker, i);
-	while(!pool.stop()) {
-		uint32_t n;
-		size_t l;
-		if (f.read_max(&l, sizeof(size_t)) < sizeof(size_t))
-			break;
-		f.read(n);
-		vector<char>* v = new vector<char>(l);
-		f.read(v->data(), l);
-		queue.enqueue(pair<vector<char>*, uint32_t>(v, n));
+	try {
+		while (!pool.stop()) {
+			uint32_t n;
+			size_t l;
+			if (f.read_max(&l, sizeof(size_t)) < sizeof(size_t))
+				break;
+			f.read(n);
+			vector<char>* v = new vector<char>(l);
+			try {
+				f.read(v->data(), l);
+			}
+			catch (...) {
+				delete v;
+				throw;
+			}
+			queue.enqueue(pair<vector<char>*, uint32_t>(v, n));
+		}
+	}
+	catch (...) {
+		queue.close();
+		try { pool.join_all(); } catch (...) {}
+		throw;
 	}
 	queue.close();
 	pool.join_all();

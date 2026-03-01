@@ -167,7 +167,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		timer.finish();
 		log_rss();
 
-		if(config.freq_masking && !config.lin_stage1 && !cfg.lin_stage1_target) {
+		if(config.freq_masking && !config.lin_stage1_query && !cfg.lin_stage1_target) {
 			timer.go("Building seed filter");
 			frequent_seeds.build(sid, range, query_seed_hits.data(), ref_seed_hits.data(), cfg);
 		}
@@ -176,7 +176,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 
 		log_rss();
 		unique_ptr<KmerRanking> kmer_ranking;
-		if (keep_target_id(cfg) && config.lin_stage1) {
+		if (keep_target_id(cfg) && config.lin_stage1_query) {
 			timer.go("Building kmer ranking");
 			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), range.size(), query_seed_hits.data(), ref_seed_hits.data())
 				: new KmerRanking(cfg.query->seqs()));

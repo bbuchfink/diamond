@@ -95,8 +95,8 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	//tie(config.chunk_size, config.lowmem_) = block_size(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), Search::iterated_sens.at(config.sensitivity).front(), false);
 	config.lowmem_ = 1;
 	config.chunk_size = 4.0;
-	config.lin_stage1 = false;
-	config.linsearch = false;
+	config.lin_stage1_query = false;
+	config.lin_stage1_target = false;
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(unal_members.size());
 	Search::run(centroid_db, unaligned, mapback);
 

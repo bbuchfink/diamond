@@ -1,22 +1,19 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021-2024 Max Planck Society for the Advancement of Science e.V.
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
+// SPDX-License-Identifier: Apache-2.0
 
 #include <fstream>
 #include <atomic>
@@ -53,7 +50,7 @@ void greedy_vertex_cover() {
 	const double cov = std::max(config.query_or_target_cover, config.member_cover.get(Cluster::DEFAULT_MEMBER_COVER));
 	const bool triplets = config.edge_format == "triplet", symmetric = config.symmetric;
 	if (!triplets && symmetric)
-		throw std::runtime_error("--symmetric requires triplet edge format");
+		throw runtime_error("--symmetric requires triplet edge format");
 	message_stream << "Coverage cutoff: " << cov << '%' << endl;
 	TaskTimer timer("Reading mapping file");
 	//unordered_map<Acc, OId, Acc::Hash> acc2oid;
@@ -151,7 +148,8 @@ void greedy_vertex_cover() {
 	timer.finish();
 	log_rss();
 
-	auto r = Util::Algo::greedy_vertex_cover<Int>(edge_array, nullptr, !config.strict_gvc, !config.no_gvc_reassign, (Int)atoi(config.connected_component_depth.front().c_str()));
+	const Int ccd = config.connected_component_depth.empty() ? 0 : (Int)atoi(config.connected_component_depth.front().c_str());
+	auto r = Util::Algo::greedy_vertex_cover<Int>(edge_array, nullptr, !config.strict_gvc, !config.no_gvc_reassign, ccd);
 
 	timer.go("Building reverse mapping");
 	vector<string> acc(acc2oid.size());

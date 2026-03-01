@@ -152,7 +152,7 @@ struct SimpleThreadPool {
         }
     }
 
-    void join(std::thread::id thread_id) {		
+    void join(std::thread::id thread_id) {
         std::thread t;
         {
             std::lock_guard<std::mutex> lock(data_mutex);
@@ -162,7 +162,7 @@ struct SimpleThreadPool {
             }
             t = std::move(it->second);
             threads.erase(it);
-        }        
+        }
         if (t.joinable()) {
             t.join();
 		}

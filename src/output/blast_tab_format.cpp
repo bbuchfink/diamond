@@ -481,14 +481,14 @@ map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
         };
 
     callbacks[FieldId::QNum].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
-        info.out << r.query_oid;
+        info.out << r.query_oid + config.qnum_offset;
         };
     callbacks[FieldId::QNum].query_intro = [](const TabularFormat&, Output::Info& info) {
         info.out << "-1";
         };
 
     callbacks[FieldId::SNum].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
-        info.out << r.subject_oid;
+        info.out << r.subject_oid + config.snum_offset;
         };
     callbacks[FieldId::SNum].query_intro = [](const TabularFormat&, Output::Info& info) {
         info.out << "-1";

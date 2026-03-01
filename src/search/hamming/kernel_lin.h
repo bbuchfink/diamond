@@ -82,6 +82,62 @@ static void FLATTEN stage1_query_lin_ranked(const PackedLocId* __restrict q, uin
 	}
 }
 
+static void FLATTEN stage1_longest_combo_lin(const PackedLocId* __restrict q, uint_fast32_t nq, const PackedLocId* __restrict s, uint_fast32_t ns, WorkSet& work_set)
+{
+#ifdef __APPLE__
+	thread_local Container vq, vs;
+#else
+	Container& vq = work_set.vq, & vs = work_set.vs;
+#endif
+
+	const uint_fast32_t tile_size = config.tile_size;
+	const SequenceSet& queries = work_set.cfg.query->seqs(), &targets = work_set.cfg.target->seqs();
+	bool query_pivot = true;
+	uint_fast32_t pivot = 0;
+	Loc pivot_len = queries.length(q[0].block_id);
+	for (uint_fast32_t i = 1; i < nq; ++i) {
+		const Loc len = queries.length(q[i].block_id);
+		if (len > pivot_len) {
+			pivot = i;
+			pivot_len = len;
+		}
+	}
+	for (uint_fast32_t i = 0; i < ns; ++i) {
+		const Loc len = targets.length(s[i].block_id);
+		if (len > pivot_len) {
+			query_pivot = false;
+			pivot = i;
+			pivot_len = len;
+		}
+	}
+	if (query_pivot) {
+		::DISPATCH_ARCH::load_fps(q + pivot, 1, vq, queries);
+		::DISPATCH_ARCH::load_fps(s, ns, vs, targets);
+		work_set.stats.inc(Statistics::SEED_HITS, ns);
+
+		const uint_fast32_t ss = (uint_fast32_t)vs.size();
+		for (uint_fast32_t j = 0; j < ss; j += tile_size) {
+			const uint_fast32_t ts = std::min(tile_size, ss - j);
+			work_set.hits.init(1, ts);
+			all_vs_all(vq.data(), 1, vs.data() + j, ts, work_set.hits, work_set.cfg.hamming_filter_id);
+			search_tile(work_set.hits, pivot, j, q, s, work_set);
+		}
+	}
+	else {
+		::DISPATCH_ARCH::load_fps(q, nq, vq, queries);
+		::DISPATCH_ARCH::load_fps(s + pivot, 1, vs, targets);
+		work_set.stats.inc(Statistics::SEED_HITS, nq);
+
+		const uint_fast32_t qs = (uint_fast32_t)vq.size();
+		for (uint_fast32_t j = 0; j < qs; j += tile_size) {
+			const uint_fast32_t tq = std::min(tile_size, qs - j);
+			work_set.hits.init(tq, 1);
+			all_vs_all(vq.data() + j, tq, vs.data(), 1, work_set.hits, work_set.cfg.hamming_filter_id);
+			search_tile(work_set.hits, j, pivot, q, s, work_set);
+		}
+	}
+}
+
 template<typename SeedLoc>
 static void FLATTEN stage1_target_lin(const SeedLoc* __restrict q, uint_fast32_t nq, const SeedLoc* __restrict s, uint_fast32_t ns, WorkSet& work_set)
 {

@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -338,7 +338,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	auto& format = parser.add_group("Output format options", { blastp, blastx, view, CLUSTER_REALIGN });
 	format.add()
-		("outfmt", 'f', format_str.str().c_str(), output_format);
+		("outfmt", 'f', format_str.str().c_str(), output_format)
+		("qnum-offset", 0, "offset added to query ordinal id (qnum field)", qnum_offset, INT64_C(0))
+		("snum-offset", 0, "offset added to subject ordinal id (snum field)", snum_offset, INT64_C(0));
 
 	auto& taxon_format = parser.add_group("Taxon output format options", { blastp, blastx });
 	taxon_format.add()
@@ -419,8 +421,9 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("sketch-size", 0, "Subsample seeds based on minimizer sketch of the given size", sketch_size)
 		("tile-size", 0, "Loop tiling size (default=1024)", tile_size, (uint32_t)1024)
 		("id2", 0, "minimum number of identities for stage 1 hit", min_identities_)
-		("linsearch", 0, "only consider seed hits against longest target for identical seeds", linsearch)
-		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1)
+		("linsearch", 0, "only consider seed hits against longest target for identical seeds", lin_stage1_target)
+		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1_query)
+		("lin-combo", 0, "only consider seed hits against the longest of query and target for identical seeds", lin_stage1_combo)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("ungapped-evalue", 0, "E-value threshold for ungapped filter (auto)", ungapped_evalue_, -1.0)
 		("ungapped-evalue-short", 0, "E-value threshold for ungapped filter (short reads) (auto)", ungapped_evalue_short_, -1.0)
@@ -557,7 +560,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
-		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, (int64_t)10e9)
+		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, UINT64_C(10000000000))
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
 		("ext-yield", 0, "", ext_min_yield)

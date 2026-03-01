@@ -29,6 +29,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
+#include <memory>
 #include <string>
 #include <stdint.h>
 #include "util/io/serializer.h"
@@ -82,6 +83,23 @@ struct Database_format_exception : public std::exception
 {
 	virtual const char* what() const throw()
 	{ return "Database file is not a DIAMOND database."; }
+};
+
+// Iterator for reading sequence lengths sequentially from a given OId.
+// Each iterator holds its own file handle so multiple instances can run in parallel.
+struct SeqLengthIterator {
+	SeqLengthIterator(const std::string& file_name, uint64_t pos_array_offset, OId start, OId total);
+	SeqLengthIterator(const SeqLengthIterator&) = delete;
+	SeqLengthIterator& operator=(const SeqLengthIterator&) = delete;
+	Loc operator*() const { return (Loc)current_len_; }
+	SeqLengthIterator& operator++();
+	bool valid() const { return oid_ < total_; }
+	OId oid() const { return oid_; }
+private:
+	std::unique_ptr<InputFile> file_;
+	OId oid_, total_;
+	uint32_t current_len_;
+	void load_current();
 };
 
 Chunk to_chunk(const std::string& line);
@@ -161,6 +179,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void end_random_access(bool dictionary = true) override;
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;
+	SeqLengthIterator seq_length_iterator(OId start = 0) const;
 
 	static const char* FILE_EXTENSION;
 

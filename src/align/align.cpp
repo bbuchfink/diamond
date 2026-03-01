@@ -224,7 +224,7 @@ static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 
 void align_queries(Consumer* output_file, Search::Config& cfg)
 {
-	const int64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
+	const uint64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
 
 	pair<BlockId, BlockId> query_range;
 	TaskTimer timer("Allocating memory", 3);
@@ -232,16 +232,16 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->init_random_access(cfg.current_query_block, 0, false);
 
-	int64_t res_size = cfg.query->mem_size() + cfg.target->mem_size();
+	uint64_t res_size = cfg.query->mem_size() + cfg.target->mem_size();
 	cfg.seed_hit_buf->alloc_buffer();
-	cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+	cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->next_bin_size() * (uint64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 	bool goon = true;
 
 	while (goon) {
 		timer.go("Loading trace points");
 		tuple<Search::Hit*, int64_t, BlockId, BlockId> input = cfg.seed_hit_buf->retrieve();
 		statistics.inc(Statistics::TIME_LOAD_SEED_HITS, timer.microseconds());
-		goon = cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->bin_size(1) * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
+		goon = cfg.seed_hit_buf->load(std::min(mem_limit - res_size - cfg.seed_hit_buf->next_bin_size() * (int64_t)sizeof(Search::Hit), config.trace_pt_fetch_size));
 		timer.finish();
 		Search::Hit* hit_buf = get<0>(input);
 		const int64_t hit_count = get<1>(input);

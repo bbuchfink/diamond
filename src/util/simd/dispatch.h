@@ -1,32 +1,19 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -67,6 +54,34 @@ HAVE_AVX2(case ::SIMD::Arch::AVX2: ARCH_AVX2::name(); break;)\
 HAVE_SSE4_1(case ::SIMD::Arch::SSE4_1: ARCH_SSE4_1::name(); break;)\
 HAVE_SIMD(default:)\
 ARCH_GENERIC::name();\
+HAVE_SIMD(})\
+}
+
+#define DISPATCH_1V(name, t1, n1)\
+HAVE_SSE4_1(namespace ARCH_SSE4_1 { void name(t1 n1); })\
+HAVE_AVX2(namespace ARCH_AVX2 { void name(t1 n1); })\
+HAVE_NEON(namespace ARCH_NEON { void name(t1 n1); })\
+void name(t1 n1) {\
+HAVE_SIMD(switch(::SIMD::arch()) {)\
+HAVE_NEON(case ::SIMD::Arch::NEON: ARCH_NEON::name(n1); break;)\
+HAVE_AVX2(case ::SIMD::Arch::AVX2: ARCH_AVX2::name(n1); break;)\
+HAVE_SSE4_1(case ::SIMD::Arch::SSE4_1: ARCH_SSE4_1::name(n1); break;)\
+HAVE_SIMD(default:)\
+ARCH_GENERIC::name(n1);\
+HAVE_SIMD(})\
+}
+
+#define DISPATCH_1(ret, name, t1, n1)\
+HAVE_SSE4_1(namespace ARCH_SSE4_1 { ret name(t1 n1); })\
+HAVE_AVX2(namespace ARCH_AVX2 { ret name(t1 n1); })\
+HAVE_NEON(namespace ARCH_NEON { ret name(t1 n1); })\
+ret name(t1 n1) {\
+HAVE_SIMD(switch(::SIMD::arch()) {)\
+HAVE_NEON(case ::SIMD::Arch::NEON: return ARCH_NEON::name(n1);)\
+HAVE_AVX2(case ::SIMD::Arch::AVX2: return ARCH_AVX2::name(n1);)\
+HAVE_SSE4_1(case ::SIMD::Arch::SSE4_1: return ARCH_SSE4_1::name(n1);)\
+HAVE_SIMD(default:)\
+return ARCH_GENERIC::name(n1);\
 HAVE_SIMD(})\
 }
 
@@ -213,6 +228,8 @@ HAVE_SIMD(})\
 #else
 
 #define DISPATCH_0V(name)
+#define DISPATCH_1V(name, t1, n1)
+#define DISPATCH_1(ret, name, t1, n1)
 #define DISPATCH_2(ret, name, t1, n1, t2, n2)
 #define DISPATCH_3(ret, name, t1, n1, t2, n2, t3, n3)
 #define DISPATCH_4(ret, name, t1, n1, t2, n2, t3, n3, t4, n4)
