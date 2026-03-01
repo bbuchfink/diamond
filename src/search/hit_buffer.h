@@ -177,11 +177,12 @@ struct HitBuffer
 		if (config.trace_pt_membuf || config.swipe_all) {
 			if (bins_processed_ >= bins())
 				return std::tuple<Hit*, size_t, Key, Key> { nullptr, 0, 0, 0 };
+			const int bin = bins_processed_;
 			++bins_processed_;
 			if(config.swipe_all)
 				return std::tuple<Hit*, size_t, Key, Key> { nullptr, 0, input_range_next_.first, input_range_next_.second };
 			else {
-				auto& buf = hit_buf_[bins_processed_];
+				auto& buf = hit_buf_[bin];
 				return std::tuple<Hit*, size_t, Key, Key> { buf.data(), buf.size(), input_range_next_.first, input_range_next_.second };
 			}
 		}
