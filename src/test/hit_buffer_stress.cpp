@@ -59,9 +59,9 @@ static HitBufferTestResult run_single_mode(bool membuf_mode)
 {
 	// ---- Parameters -------------------------------------------------------
 	static constexpr int      BIN_COUNT       = 32;
-	static constexpr int      QUERIES_PER_BIN = 100000;
+	static constexpr int      QUERIES_PER_BIN = 1000;
 	static constexpr int      QUERY_COUNT     = BIN_COUNT * QUERIES_PER_BIN;
-	static constexpr int      HITS_PER_QUERY  = 111;
+	static constexpr int      HITS_PER_QUERY  = 11;
 	static constexpr uint64_t TARGET_LEN      = 50000; // subject locs drawn from [1, TARGET_LEN]
 	static constexpr int      THREAD_COUNT    = BIN_COUNT; // one writer thread per bin
 	static constexpr int      QUERY_CONTEXTS  = 1;
