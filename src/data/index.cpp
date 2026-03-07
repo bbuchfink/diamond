@@ -48,7 +48,7 @@ void makeindex() {
 	config.algo = Config::Algo::DOUBLE_INDEXED;
 
 	db.flags() |= SequenceFile::Flags::SEQS;
-	Block* block = db.load_seqs(MAX_LETTERS, nullptr);
+	Block* block = db.load_seqs(MAX_LETTERS, 0, nullptr);
 
 	TaskTimer timer("Building index");
 	HashedSeedSet index(*block, nullptr, 0.0, Search::soft_masking_algo(Search::sensitivity_traits.at(config.sensitivity)));

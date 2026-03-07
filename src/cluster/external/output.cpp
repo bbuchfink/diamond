@@ -39,6 +39,8 @@ using std::ifstream;
 using std::pair;
 using std::ofstream;
 
+namespace External {
+
 static vector<OId> read_clustering(Job& job, int round) {
 	vector<OId> v(job.max_oid + 1);
 	vector<OId>::iterator ptr = v.begin();
@@ -227,4 +229,6 @@ void output(Job& job, const VolumedFile& volumes) {
 		for (size_t i = 0; i < job.volumes; ++i)
 			remove((job.base_dir(round) + PATH_SEPARATOR + "clustering" + PATH_SEPARATOR + "volume" + std::to_string(i)).c_str());
 	}
+}
+
 }

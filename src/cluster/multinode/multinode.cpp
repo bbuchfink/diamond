@@ -33,6 +33,7 @@ limitations under the License.
 #include "cluster/cascaded/cascaded.h"
 #include "cluster/cluster.h"
 #include "data/fasta/fasta_file.h"
+#include "util/io/file.h"
 
 void greedy_vertex_cover();
 
@@ -308,13 +309,46 @@ void multinode() {
 
 	Atomic lock(job.root_dir() + "startup_lock"), done(job.root_dir() + "startup_done");
 	if (lock.fetch_add() == 0) {
+		job.log("Memory limit = %" PRIu64, job.mem_limit);
+		const uint64_t block_size = job.mem_limit / 20;
+		job.log("Block size = %" PRIu64, block_size);
 		const string index_dir = job.root_dir() + "index" + PATH_SEPARATOR;
 		mkdir(index_dir);
-		for (std::vector<Volume>::const_iterator i = volumes.begin(); i != volumes.end(); ++i) {
+		vector<OId> global_partition;
+		vector<uint64_t> sizes;
+		uint64_t letters = 0;
+		for (vector<Volume>::const_iterator i = volumes.begin(); i != volumes.end(); ++i) {
 			job.log("Indexing volume %td/%zu", i - volumes.begin(), volumes.size());
-			FastaFile::index(i->path, index_dir + std::to_string(i - volumes.begin()));
+			const string index_path = index_dir + std::to_string(i - volumes.begin());
+			FastaFile::index(i->path, index_path);
+			FastaFile volume_file({ i->path }, SequenceFile::Flags::NEED_LETTER_COUNT, amino_acid_traits, index_path);
+			letters += volume_file.letters();
+			const pair<vector<OId>, vector<uint64_t>> vol_partition = volume_file.partition(block_size, i == volumes.begin() ? 0 : sizes.back());
+			if (i == volumes.begin()) {
+				global_partition = vol_partition.first;
+				sizes = vol_partition.second;
+			}
+			else {
+				global_partition.back() = vol_partition.first[1] + i->oid_begin;
+				sizes.back() += vol_partition.second[0];
+				for (size_t j = 2; j < vol_partition.first.size(); ++j) {
+					global_partition.push_back(vol_partition.first[j] + i->oid_begin);
+					sizes.push_back(vol_partition.second[j - 1]);
+				}
+			}
 		}
+		File blocks_file(job.base_dir() + "blocks", "wb");
+		blocks_file.write(global_partition.data(), global_partition.size() * sizeof(OId));
+		blocks_file.close();
 		done.fetch_add();
+		std::ostringstream ss;
+		ss << "Sequences in database = " << volumes.max_oid() + 1 << endl;
+		ss << "Letters in database = " << letters << endl;
+		ss << "Database blocks:" << endl;
+		for (size_t i = 0; i < sizes.size(); ++i) {
+			ss << global_partition[i] << '\t' << sizes[i] << endl;
+		}
+		job.log(ss.str().c_str());
 	}
 	else
 		done.await(1);

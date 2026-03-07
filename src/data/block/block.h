@@ -1,5 +1,5 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -112,6 +112,10 @@ struct Block {
 	}
 	BlockId oid_count() const {
 		return (BlockId)block2oid_.size();
+	}
+	void offset_oids(OId offset) {
+		for (auto& oid : block2oid_)
+			oid += offset;
 	}
 
 private:

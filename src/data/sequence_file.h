@@ -1,28 +1,19 @@
 /****
-Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+	http://www.apache.org/licenses/LICENSE-2.0
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
-OF THE POSSIBILITY OF SUCH DAMAGE.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 ****/
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -186,24 +177,11 @@ struct SequenceFile {
 	virtual void print_info() const;
 
 	Type type() const { return type_; }
-    Block* load_seqs(const int64_t max_letters, const BitVector* filter = nullptr, const Chunk& chunk = Chunk());
+    Block* load_seqs(const int64_t max_letters, OId max_seqs = 0, const BitVector* filter = nullptr, const Chunk& chunk = Chunk());
 	void get_seq();
 	Util::Tsv::File* make_seqid_list();
 	size_t total_blocks() const;
-	std::vector<OId> partition(int64_t max_block_size) const {
-		std::vector<OId> result;
-		result.push_back(0);
-		int64_t block_size = 0;
-		for (OId i = 0; i < (OId)seq_length_.size(); ++i) {
-			if (block_size + seq_length_[i] > max_block_size && block_size > 0) {
-				result.push_back(i);
-				block_size = 0;
-			}
-			block_size += seq_length_[i];
-		}
-		result.push_back((OId)seq_length_.size());
-		return result;
-	}
+	std::pair<std::vector<OId>, std::vector<uint64_t>> partition(uint64_t max_block_size, uint64_t start_size = 0) const;
 	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end);
 	std::vector<Letter> seq_by_accession(const std::string& acc);
 	DbFilter* filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude);
@@ -292,7 +270,7 @@ private:
 	bool load_dict_entry(InputFile& f, const size_t ref_block);
 	void reserve_dict(const size_t ref_blocks);
     std::pair<Block*, int64_t> load_twopass(const int64_t max_letters, const BitVector* filter, const Chunk& chunk);
-    std::pair<Block*, int64_t> load_onepass(const int64_t max_letters, const BitVector* filter);
+    std::pair<Block*, int64_t> load_onepass(const int64_t max_letters, OId max_seqs, const BitVector* filter);
 	void load_dict_block(InputFile* f, const size_t ref_block);
 	void set_cached(TaxId taxon_id, bool contained)
 	{

@@ -17,6 +17,8 @@ limitations under the License.
 
 #pragma once
 
+namespace External {
+
 const int RADIX_BITS = 8;
 const uint64_t RADIX_COUNT = UINT64_C(1) << RADIX_BITS;
 const uint64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
@@ -199,3 +201,5 @@ private:
 	FileArray& file_array_;
 
 };
+
+}

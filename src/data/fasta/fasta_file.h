@@ -73,6 +73,7 @@ private:
 	std::list<Util::Tsv::File> file_;
 	std::list<Util::Tsv::File>::iterator file_ptr_;
 	std::unique_ptr<OutputFile> out_file_;
+	std::vector<std::streampos> index_;
 	SeqFileFormat format_;
 	OId oid_;
 	int64_t seqs_, letters_;

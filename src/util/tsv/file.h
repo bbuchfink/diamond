@@ -114,6 +114,10 @@ struct File {
 	void close();
 	bool eof() const;
 	std::string file_name() const;
+
+	void seek(std::streampos pos) {
+		file_->seek(pos);
+	}
 	
 private:
 

@@ -19,6 +19,8 @@ limitations under the License.
 #include <fstream>
 #include "util/system/system.h"
 
+namespace External {
+
 struct Volume {
 	Volume() :
 		path(),
@@ -176,3 +178,5 @@ struct RadixedTable : public std::vector<Bucket> {
 	}
 
 };
+
+}

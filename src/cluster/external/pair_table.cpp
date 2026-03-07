@@ -30,6 +30,8 @@ using std::atomic;
 using std::vector;
 using std::string;
 
+namespace External {
+
 RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shape, int64_t max_oid, FileArray& output_files) {
 	const int64_t BUF_SIZE = 4096, shift = bit_length(max_oid) - RADIX_BITS; // promiscuous_cutoff = db_size / config.promiscuous_seed_ratio;
 	const string seed_table_base = job.base_dir() + PATH_SEPARATOR + "seed_table_" + std::to_string(shape);
@@ -80,4 +82,6 @@ RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shap
 	finished.fetch_add(buckets_processed);
 	finished.await(seed_table.size());
 	return buckets;
+}
+
 }

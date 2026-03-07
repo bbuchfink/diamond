@@ -295,7 +295,7 @@ void DatabaseFile::make_db()
 	try {
 		while (true) {
 			timer.go("Loading sequences");
-			block = db_file.load_seqs((int64_t)1e9, nullptr);
+			block = db_file.load_seqs((int64_t)1e9, 0, nullptr);
 			if (block->empty()) {
 				delete block;
 				break;

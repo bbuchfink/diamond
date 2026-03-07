@@ -15,9 +15,6 @@ limitations under the License.
 ****/
 // SPDX-License-Identifier: Apache-2.0
 
-// Stress test for HitBuffer::load() / retrieve() pipeline.
-// Covers both the in-memory (trace_pt_membuf) and disk-backed code paths.
-
 #include <vector>
 #include <thread>
 #include <atomic>
@@ -29,12 +26,6 @@ limitations under the License.
 #include "basic/config.h"
 #include "util/parallel/simple_thread_pool.h"
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// Per-hit fingerprint: order-independent accumulation is safe because we use
-// plain addition as the outer reduce operator.
 static uint64_t hit_fp(uint32_t query, uint64_t subject, uint32_t seed_offset, uint16_t score)
 {
 	return (uint64_t)query       * 2654435769ULL
@@ -42,10 +33,6 @@ static uint64_t hit_fp(uint32_t query, uint64_t subject, uint32_t seed_offset, u
 		 + (uint64_t)seed_offset * 3266489917ULL
 		 + (uint64_t)score       *  668265261ULL;
 }
-
-// ---------------------------------------------------------------------------
-// Single-mode test
-// ---------------------------------------------------------------------------
 
 struct HitBufferTestResult {
 	bool   passed;
@@ -57,7 +44,6 @@ struct HitBufferTestResult {
 
 static HitBufferTestResult run_single_mode(bool membuf_mode)
 {
-	// ---- Parameters -------------------------------------------------------
 	static constexpr int      BIN_COUNT       = 32;
 	static constexpr int      QUERIES_PER_BIN = 1000;
 	static constexpr int      QUERY_COUNT     = BIN_COUNT * QUERIES_PER_BIN;
@@ -66,29 +52,22 @@ static HitBufferTestResult run_single_mode(bool membuf_mode)
 	static constexpr int      THREAD_COUNT    = BIN_COUNT; // one writer thread per bin
 	static constexpr int      QUERY_CONTEXTS  = 1;
 
-	// max_query / max_target bounds used by load_bin validation
 	const uint32_t max_query  = (uint32_t)QUERY_COUNT;
-	const uint64_t max_target = TARGET_LEN + 1; // subject values top out at TARGET_LEN
-
-	// ---- Set global config flags for this run -----------------------------
+	const uint64_t max_target = TARGET_LEN + 1;
 	const bool saved_membuf = config.trace_pt_membuf;
 	const bool saved_swipe  = config.swipe_all;
 	config.trace_pt_membuf  = membuf_mode;
 	config.swipe_all        = false;
-
-	// ---- Build key_partition: 4 equal bins --------------------------------
 	std::vector<uint32_t> key_partition;
 	for (int i = 1; i <= BIN_COUNT; ++i)
 		key_partition.push_back(uint32_t(i * QUERIES_PER_BIN));
 
-	// ---- Construct HitBuffer ----------------------------------------------
 	SimpleThreadPool search_pool;
 	Search::HitBuffer buf(
-		key_partition, /*tmpdir=*/".", /*long_subject_offsets=*/false,
+		key_partition, ".", false,
 		QUERY_CONTEXTS, THREAD_COUNT,
 		max_query, max_target, search_pool);
 
-	// ---- Writing phase: one thread per bin --------------------------------
 	std::atomic<uint64_t> expected_cs{ 0 };
 	{
 		std::vector<std::thread> writers;
@@ -104,26 +83,22 @@ static HitBufferTestResult run_single_mode(bool membuf_mode)
 					const uint32_t query    = (uint32_t)q;
 					w.new_query(query, seed_off);
 					for (int j = 0; j < HITS_PER_QUERY; ++j) {
-						// subject in [1, TARGET_LEN]
 						const uint32_t subj  = uint32_t((q * HITS_PER_QUERY + j) % TARGET_LEN + 1);
-						// score in [1, 65534]
 						const uint16_t score = uint16_t((q * 7 + j * 13) % 65534 + 1);
 						w.write(query, PackedLoc(subj), score);
 						local_cs += hit_fp(query, subj, (uint32_t)seed_off, score);
 					}
 				}
 				expected_cs.fetch_add(local_cs, std::memory_order_relaxed);
-				// Writer destructor flushes all bins automatically
 			});
 		}
 		for (auto& t : writers)
 			t.join();
-	} // Writers destroyed here, flushing is complete
+	}
 
 	buf.finish_writing();
 	buf.alloc_buffer();
 
-	// ---- Loading phase ----------------------------------------------------
 	size_t   actual_total = 0;
 	uint64_t actual_cs    = 0;
 
@@ -144,7 +119,6 @@ static HitBufferTestResult run_single_mode(bool membuf_mode)
 
 	buf.free_buffer();
 
-	// ---- Restore config ---------------------------------------------------
 	config.trace_pt_membuf = saved_membuf;
 	config.swipe_all       = saved_swipe;
 
@@ -153,10 +127,6 @@ static HitBufferTestResult run_single_mode(bool membuf_mode)
 	const bool passed = (actual_total == expected_total) && (actual_cs == expected_sum);
 	return { passed, expected_total, actual_total, expected_sum, actual_cs };
 }
-
-// ---------------------------------------------------------------------------
-// Public entry point
-// ---------------------------------------------------------------------------
 
 int run_hit_buffer_stress_test()
 {

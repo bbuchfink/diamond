@@ -35,8 +35,10 @@ limitations under the License.
 #include <linux/futex.h>
 #include <atomic>
 #else
-#error "Platform not supported"
+#define NO_FUTEX
 #endif
+
+#ifndef NO_FUTEX
 
 template <ptrdiff_t least_max_value = 2147483647>
 class CountingSemaphore {
@@ -132,3 +134,46 @@ private:
 #endif
 
 };
+
+#else
+
+#warning "Futex not supported on this platform."
+
+#include <mutex>
+#include <condition_variable>
+
+template <std::ptrdiff_t LeastMaxValue = -1>
+class CountingSemaphore {
+private:
+    std::ptrdiff_t counter;
+    std::mutex mtx;
+    std::condition_variable cv;
+
+public:
+    explicit CountingSemaphore(std::ptrdiff_t desired = 0) : counter(desired) {}
+    CountingSemaphore(const CountingSemaphore&) = delete;
+    CountingSemaphore& operator=(const CountingSemaphore&) = delete;
+
+    void release(std::ptrdiff_t update = 1) {
+        std::lock_guard<std::mutex> lock(mtx);
+        counter += update;
+        if (update > 1) {
+            cv.notify_all();
+        } else {
+            cv.notify_one();
+        }
+    }
+
+    void acquire() {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [this] { return counter > 0; });
+        --counter;
+    }
+    
+    static constexpr std::ptrdiff_t max() noexcept {
+        return LeastMaxValue;
+    }
+
+};
+
+#endif

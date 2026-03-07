@@ -355,7 +355,7 @@ static void run_query_iteration(const unsigned query_iteration,
 
 			P->log("SEARCH BEGIN " + std::to_string(options.current_query_block) + " " + std::to_string(chunk.i));
 
-			options.target.reset(db_file.load_seqs((size_t)(0), &options.db_filter->oid_filter, chunk));
+			options.target.reset(db_file.load_seqs((size_t)(0), 0, &options.db_filter->oid_filter, chunk));
 			options.current_ref_block = chunk.i;
 			options.blocked_processing = true;
 			if (!config.mp_self || chunk.i >= options.current_query_block)
@@ -405,7 +405,7 @@ static void run_query_iteration(const unsigned query_iteration,
 			}
 			else {
 				timer.go("Loading reference sequences");
-				options.target.reset(db_file.load_seqs(config.block_size(), &options.db_filter->oid_filter));
+				options.target.reset(db_file.load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
 				const auto t = timer.microseconds();
 				timer.finish();				
 				if(options.target->raw_bytes() > 0)
@@ -645,11 +645,11 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			if (options.self) {
 				db_file->set_seqinfo_ptr(query_file_offset);
 				db_file->flags() |= qflags;
-				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), &options.db_filter->oid_filter));
+				options.query.reset(db_file->load_seqs((size_t)(config.chunk_size * 1e9), 0, &options.db_filter->oid_filter));
 				query_file_offset = db_file->tell_seq();
 			}
 			else
-				options.query.reset(options.query_file->load_seqs((int64_t)(config.chunk_size * 1e9), nullptr));
+				options.query.reset(options.query_file->load_seqs((int64_t)(config.chunk_size * 1e9), 0, nullptr));
 			++block_count;
 		} while (!options.query->empty());
 		if (options.self) {
@@ -689,12 +689,12 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			timer.finish();
 			timer.go("Loading query sequences");
 			db_file->flags() |= qflags;
-			options.query.reset(db_file->load_seqs(config.block_size(), &options.db_filter->oid_filter));
+			options.query.reset(db_file->load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
 			query_file_offset = db_file->tell_seq();
 		}
 		else {
 			timer.go("Loading query sequences");
-			options.query.reset(options.query_file->load_seqs(config.block_size(), nullptr));
+			options.query.reset(options.query_file->load_seqs(config.block_size(), 0, nullptr));
 		}
 		timer.finish();
 

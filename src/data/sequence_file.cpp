@@ -278,10 +278,10 @@ static int frame_mask() {
 		return (1 << 3) - 1;
 	else if (config.query_strands == "minus")
 		return ((1 << 3) - 1) << 3;
-	throw std::runtime_error("frame_mask");
+	throw runtime_error("frame_mask");
 }
 
-std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, const BitVector* filter) {
+pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, OId max_seqs, const BitVector* filter) {
 	static const char* DNA_ERR = "The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.";
 	vector<Letter> seq;
 	string id;
@@ -295,6 +295,7 @@ std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters,
 	const int frame_mask = ::frame_mask();
 	const int64_t modulo = file_count();
 	int looks_like_dna = 0;
+	auto goon = [&]() { return max_seqs > 0 ? seq_count < max_seqs : letters < max_letters; };
 	do {
 		if (!read_seq(seq, id, q))
 			break;
@@ -311,13 +312,13 @@ std::pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters,
 		if (first_block && seq_count <= CHECK_FOR_DNA_COUNT && value_traits_.seq_type == SequenceType::amino_acid && Util::Seq::looks_like_dna(Sequence(seq)) && !config.ignore_warnings) {
 			++looks_like_dna;
 			if (looks_like_dna >= CHECK_FOR_DNA_COUNT)
-				throw std::runtime_error(DNA_ERR);
+				throw runtime_error(DNA_ERR);
 		}
-	} while (letters < max_letters || seq_count % modulo != 0);
+	} while (goon() || seq_count % modulo != 0);
 	if (seq_count > 0 && looks_like_dna == seq_count)
-		throw std::runtime_error(DNA_ERR);
+		throw runtime_error(DNA_ERR);
 	if (file_count() == 2 && !files_synced())
-		throw std::runtime_error("Unequal number of sequences in paired read files.");
+		throw runtime_error("Unequal number of sequences in paired read files.");
 	block->seqs_.finish_reserve();
 	if (value_traits_.seq_type == SequenceType::nucleotide)
 		block->source_seqs_.finish_reserve();
@@ -333,7 +334,7 @@ size_t SequenceFile::dict_block(const size_t ref_block)
 	return config.multiprocessing ? ref_block : 0;
 }
 
-Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filter, const Chunk& chunk)
+Block* SequenceFile::load_seqs(const int64_t max_letters, OId max_seqs, const BitVector* filter, const Chunk& chunk)
 {
 	if (max_letters == 0)
 		seek_chunk(chunk);
@@ -348,7 +349,7 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, const BitVector* filte
 	else {
 		if (chunk.n_seqs)
 			throw OperationNotSupported();
-		tie(block, seqs_processed) = load_onepass(max_letters, filter);
+		tie(block, seqs_processed) = load_onepass(max_letters, max_seqs, filter);
 	}
 
 	if (block->empty())
@@ -1163,4 +1164,21 @@ void SequenceFile::init_taxon_output_fields() {
 
 RawChunk* SequenceFile::raw_chunk(size_t letters, SequenceFile::Flags flags) {
 	throw OperationNotSupported();
+}
+
+pair<vector<OId>, vector<uint64_t>> SequenceFile::partition(uint64_t max_block_size, uint64_t start_size) const {
+	pair<vector<OId>, vector<uint64_t>> result;
+	result.first.push_back(0);
+	uint64_t block_size = start_size;
+	for (OId i = 0; i < (OId)seq_length_.size(); ++i) {
+		if (block_size + seq_length_[i] > max_block_size && block_size > 0) {
+			result.first.push_back(i);
+			result.second.push_back(block_size - (result.second.empty() ? start_size : 0));
+			block_size = 0;
+		}
+		block_size += seq_length_[i];
+	}
+	result.first.push_back((OId)seq_length_.size());
+	result.second.push_back(block_size - (result.second.empty() ? start_size : 0));
+	return result;
 }

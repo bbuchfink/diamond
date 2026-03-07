@@ -95,7 +95,7 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	InputFile query_list(merged_query_list);
 	db.set_seqinfo_ptr(0);
 	db.flags() |= SequenceFile::Flags::SEQS;
-	cfg.target.reset(db.load_seqs(INT64_MAX, &ranking_db_filter));
+	cfg.target.reset(db.load_seqs(INT64_MAX, 0, &ranking_db_filter));
 	TargetMap db2block_id;
 	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);
@@ -187,7 +187,7 @@ void extend(Search::Config& cfg, Consumer& out) {
 		cfg.db->flags() |= SequenceFile::Flags::TITLES;
 	if (bool(cfg.output_format->flags & Output::Flags::FULL_TITLES))
 		cfg.db->flags() |= SequenceFile::Flags::FULL_TITLES;
-	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, &filter));
+	cfg.target.reset(cfg.db->load_seqs(INT64_MAX, 0, &filter));
 	TargetMap db2block_id;
 	const BlockId db_count = cfg.target->seqs().size();
 	db2block_id.reserve(db_count);

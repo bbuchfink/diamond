@@ -28,6 +28,8 @@ limitations under the License.
 #include "file_array.h"
 #include "util/memory/memory_resource.h"
 
+namespace External {
+
 template<typename T>
 typename std::enable_if<T::POD>::type
 radix_cluster_read(InputFile& in, size_t n, BufferArray& buffers, uint64_t shift) {
@@ -86,7 +88,7 @@ template<typename T>
 RadixedTable radix_sort(Job& job, const RadixedTable& buckets, int bits_unsorted) {
 	if (bits_unsorted < RADIX_BITS)
 		return buckets;
-	const std::string base_path = ::base_path(buckets.front().path),
+	const std::string base_path = ::External::base_path(buckets.front().path),
 		queue_path = base_path + PATH_SEPARATOR + "radix_sort_queue",
 		result_path = base_path + PATH_SEPARATOR + "radix_sort_out";
 	Atomic queue(queue_path);
@@ -113,4 +115,6 @@ RadixedTable radix_sort(Job& job, const RadixedTable& buckets, int bits_unsorted
 	finished.fetch_add(buckets_processed);
 	finished.await(buckets.size());
 	return RadixedTable(result_path);
+}
+
 }

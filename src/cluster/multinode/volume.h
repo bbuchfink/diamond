@@ -1,5 +1,5 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+Copyright ï¿½ 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ limitations under the License.
 #include <fstream>
 #include <algorithm>
 #include <sstream>
+#include <memory>
 #include "util/system/system.h"
 #include "util/parallel/filestack.h"
+#include "data/sequence_file.h"
 
 struct Volume {
 	Volume() :
@@ -137,6 +139,37 @@ private:
 	const std::string list_file_;
 	OId records_, max_oid_;
 };
+
+inline Block* load_seqs(const VolumedFile& volumes, OId oid_begin, OId oid_end, SequenceFile::Flags flags = SequenceFile::Flags::ALL) {
+	auto [vol_begin, vol_end] = volumes.find(oid_begin, oid_end);
+	Block* combined = nullptr;
+	for (auto v = vol_begin; v != vol_end; ++v) {
+		const OId local_begin = std::max(oid_begin, v->oid_begin) - v->oid_begin;
+		const OId local_end = std::min(oid_end, v->oid_end) - v->oid_begin;
+		const OId count = local_end - local_begin;
+		std::unique_ptr<SequenceFile> file(SequenceFile::auto_create({ v->path }, flags));
+		Block* vol_block;
+		if (flag_any(file->format_flags(), SequenceFile::FormatFlags::LENGTH_LOOKUP)) {
+			vol_block = file->load_seqs(0, 0, nullptr, Chunk(0, local_begin, count));
+		}
+		else {
+			file->set_seqinfo_ptr(local_begin);
+			vol_block = file->load_seqs(INT64_MAX, count);
+		}
+		vol_block->offset_oids(v->oid_begin);
+		if (!combined) {
+			combined = vol_block;
+		}
+		else {
+			combined->append(*vol_block);
+			delete vol_block;
+		}
+		file->close();
+	}
+	if (!combined)
+		combined = new Block();
+	return combined;
+}
 
 struct RadixedTable : public std::vector<Bucket> {
 

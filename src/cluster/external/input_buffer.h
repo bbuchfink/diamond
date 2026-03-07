@@ -22,6 +22,8 @@ limitations under the License.
 #include "util/algo/partition.h"
 #include "util/parallel/simple_thread_pool.h"
 
+namespace External {
+
 template<typename T>
 struct InputBuffer {
 
@@ -141,3 +143,5 @@ private:
 	const Partition<int64_t> part_;
 
 };
+
+}

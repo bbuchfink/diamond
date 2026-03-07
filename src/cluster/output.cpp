@@ -130,7 +130,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	while (centroid_offset < db.sequence_count()) {
 		timer.go("Loading centroid block");
 		db.set_seqinfo_ptr(centroid_offset);
-		cfg.centroid_block.reset(db.load_seqs(block_size, nullptr));
+		cfg.centroid_block.reset(db.load_seqs(block_size, 0, nullptr));
 		centroid_offset = db.tell_seq();
 
 		db.set_seqinfo_ptr(0);
@@ -145,7 +145,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 				cfg.member_block = cfg.centroid_block;
 			else {
 				timer.go("Loading member block");
-				cfg.member_block.reset(db.load_seqs(block_size, nullptr));
+				cfg.member_block.reset(db.load_seqs(block_size, 0, nullptr));
 			}
 			if (cfg.member_block->empty())
 				break;

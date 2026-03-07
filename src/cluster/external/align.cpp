@@ -44,6 +44,8 @@ using std::pair;
 using std::ofstream;
 using std::array;
 
+namespace External {
+
 static void align_rep(ThreadPool& tp, const ChunkSeqs& chunk_seqs, vector<PairEntryShort>::const_iterator begin, vector<PairEntryShort>::const_iterator end, int64_t max_oid, BufferArray& out, ofstream* aln_out, ClusterStats &cstats) {
 	const int64_t rep_oid = begin->rep_oid, shift = bit_length(max_oid) - RADIX_BITS;
 	const Sequence rep = chunk_seqs[rep_oid];
@@ -208,4 +210,6 @@ RadixedTable align(Job& job, int chunk_count, int64_t db_size) {
 		if (rep[i] == i)
 			++n;
 	log_stream << n << endl;*/
+}
+
 }

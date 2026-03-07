@@ -19,6 +19,8 @@ limitations under the License.
 #include "data/sequence_file.h"
 #include "external.h"
 
+namespace External {
+
 struct ChunkSeqs {
 
 	ChunkSeqs(const std::string& chunk_path) :
@@ -128,3 +130,5 @@ private:
 	std::vector<std::unordered_map<int64_t, Sequence>*> oid2seq_;
 
 };
+
+}

@@ -60,6 +60,8 @@ using std::to_string;
 using std::ofstream;
 using std::pmr::monotonic_buffer_resource;
 
+namespace External {
+
 void Job::log(const char* format, ...) {
 	char buffer[1024];
 	const long long int t = std::chrono::duration_cast<std::chrono::duration<long long int>>(std::chrono::system_clock::now() - start_).count();
@@ -397,4 +399,6 @@ void external() {
 	if(output_lock.fetch_add() == 0)
 		output(job, volumes);
 	log_stream << "Total time = " << (double)total.milliseconds() / 1000 << 's' << endl;
+}
+
 }

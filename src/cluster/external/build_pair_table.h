@@ -21,6 +21,8 @@ limitations under the License.
 #include "external.h"
 #include "input_buffer.h"
 
+namespace External {
+
 #pragma pack(1)
 
 struct SeedEntry {
@@ -98,4 +100,6 @@ inline void get_pairs_mutual_cov(KeyMergeIterator<InputBuffer<SeedEntry>::ConstI
 				break;
 		}
 	}
+}
+
 }

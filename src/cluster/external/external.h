@@ -36,6 +36,8 @@ limitations under the License.
 #include <sys/stat.h>
 #endif
 
+namespace External {
+
 struct ClusterStats {
 	uint64_t hits_evalue_filtered = 0, extensions_computed = 0, hits_filtered = 0, seeds_considered = 0, seeds_indexed = 0;
 	MaskingStat masking_stat;
@@ -279,3 +281,5 @@ std::string cluster_bidirectional(Job& job, const RadixedTable& edges, const Vol
 void output(Job& job, const VolumedFile& volumes);
 RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape);
 RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shape, int64_t max_oid, FileArray& output_files);
+
+}

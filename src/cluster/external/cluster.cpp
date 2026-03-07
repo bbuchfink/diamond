@@ -44,6 +44,8 @@ using std::atomic;
 using std::ofstream;
 using std::ostringstream;
 
+namespace External {
+
 static void compute_closure(Job& job, const VolumedFile& volumes, vector<uint64_t>& rep) {
 	Partition<int64_t> parts(volumes.max_oid() + 1, config.threads_);
 	auto closure_worker = [&](int thread_id) {
@@ -262,4 +264,6 @@ string cluster_bidirectional(Job& job, const RadixedTable& edges, const VolumedF
 	else
 		finished.await(1);
 	return get_reps(job, volumes);
+}
+
 }

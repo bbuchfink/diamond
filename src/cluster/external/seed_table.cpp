@@ -41,6 +41,8 @@ using std::string;
 using std::ofstream;
 using std::runtime_error;
 
+namespace External {
+
 RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
 	const int64_t BUF_SIZE = 4096;
 	const double SKETCH_SIZE_RATIO = 0.1;
@@ -131,4 +133,6 @@ RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
 	finished.await(volumes.size());
 	job.log(stats_all);
 	return buckets;
+}
+
 }

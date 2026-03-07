@@ -45,7 +45,9 @@ using std::bind;
 using std::function;
 using std::runtime_error;
 
-void external();
+namespace External {
+	void external();
+}
 void multinode();
 
 namespace Cluster {
@@ -165,7 +167,8 @@ void Cascaded::run() {
 	init_thresholds();
 	if (!config.parallel_tmpdir.empty()) {
 		if (config.command == ::Config::LINCLUST)
-			multinode();
+			External::external();
+			//multinode();
 		else
 			throw runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
 		return;

@@ -130,13 +130,20 @@ void FastaFile::close() {
 void FastaFile::set_seqinfo_ptr(OId i) {
 	if (out_file_)
 		out_file_->rewind();
-	for (auto& f : file_)
-		f.rewind();
-	oid_ = 0;
-	vector<Letter> seq;
-	string id;
-	while (oid_ != i) {
-		read_seq(seq, id, nullptr);
+	if (index_.empty()) {
+		for (auto& f : file_)
+			f.rewind();
+		oid_ = 0;
+		vector<Letter> seq;
+		string id;
+		while (oid_ != i) {
+			read_seq(seq, id, nullptr);
+		}
+	}
+	else {
+		if (file_.size() != 1 || i >= index_.size())
+			throw runtime_error("FastaFile::set_seqinfo_ptr");
+		file_.front().seek(index_[i]);
 	}
 }
 
@@ -304,6 +311,7 @@ pair<int64_t, int64_t> FastaFile::init_read(const std::string& index_file) {
 		Loc len;
 		while (in >> offset) {
 			in >> len;
+			index_.push_back(offset);
 			seq_length_.push_back(len);
 			++seqs;
 			letters += len;
