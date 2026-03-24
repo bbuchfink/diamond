@@ -62,9 +62,9 @@ was developed by Benjamin Buchfink at the Huson lab, University of Tübingen, Ge
 
 For sequence clustering:
 
--   Buchfink B, Ashkenazy H, Reuter K, Kennedy JA, Drost HG, \"Sensitive clustering
-    of protein sequences at tree-of-life scale using DIAMOND DeepClust\", *bioRxiv*
-    2023.01.24.525373; doi: https://doi.org/10.1101/2023.01.24.525373 
+-   Buchfink BJ, Barbé E, Ashkenazy H, Reuter K, Kennedy JA, Drost HG, \"Clustering the protein
+    universe of life using DIAMOND DeepClust\", *Nature Methods* (2026).
+    [doi:10.1038/s41592-026-03030-z](https://doi.org/10.1038/s41592-026-03030-z)
 
 Original publication to cite DIAMOND until v0.9.25:
 
