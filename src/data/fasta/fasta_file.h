@@ -15,6 +15,7 @@ limitations under the License.
 ****/
 // SPDX-License-Identifier: Apache-2.0
 
+#pragma once
 #include <vector>
 #include <list>
 #include "../sequence_file.h"

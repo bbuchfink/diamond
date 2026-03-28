@@ -62,6 +62,10 @@ void IntermediateRecord::read(BinaryBuffer::Iterator& f, const OutputFormat* out
 	f.read_varint(query_end);
 	f.read_packed((flag >> 4) & 3, subject_begin);
 
+	if (seed_only()) {
+		f.read_varint(subject_end);
+		return;
+	}
 	if (flag_any(output_format->hsp_values, HspValues::TRANSCRIPT))
 		transcript.read(f);
 	else {
@@ -117,6 +121,7 @@ void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query
 	buf.write_packed(oriented_range.begin_);
 	buf.write_varint(oriented_range.end_);
 	buf.write_packed(match.subject_range.begin_);
+	if (match.seed_only) { 		buf.write_varint(match.subject_range.end_); 		return; 	}
 
 	if (flag_any(output_format->hsp_values, HspValues::TRANSCRIPT))
 		buf << match.transcript.data();
@@ -215,6 +220,10 @@ OutputFormat* get_output_format()
 OutputFormat* init_output(int64_t& max_target_seqs)
 {
 	OutputFormat* output_format = get_output_format();
+	if (config.ext_ == "none" && config.frame_shift != 0)
+		throw std::runtime_error("Frameshift alignment does not support --ext none.");
+	if (config.ext_ == "none" && *output_format == OutputFormat::daa)
+		throw std::runtime_error("--ext none is not supported for DAA output.");
 	if(config.command == Config::view && (output_format->needs_taxon_id_lists || output_format->needs_taxon_nodes || output_format->needs_taxon_scientific_names))
 		throw runtime_error("Taxonomy features are not supported for the DAA format.");
 

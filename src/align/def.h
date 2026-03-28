@@ -4,7 +4,7 @@
 namespace Extension {
 
 enum class Mode {
-	BANDED_FAST, BANDED_SLOW, FULL, GLOBAL
+	BANDED_FAST, BANDED_SLOW, FULL, GLOBAL, NONE
 };
 
 int band(int len, const Mode mode);

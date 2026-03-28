@@ -58,13 +58,13 @@ bool Hsp::is_weakly_enveloped(const Hsp &j) const
 
 HspContext& HspContext::parse(const OutputFormat* output_format)
 {
-	if (output_format && !flag_any(output_format->hsp_values, HspValues::TRANSCRIPT) && config.command != Config::view) {
+	if (hsp_.seed_only || (output_format && !flag_any(output_format->hsp_values, HspValues::TRANSCRIPT) && config.command != Config::view)) {
 		hsp_.query_source_range = TranslatedPosition::absolute_interval(
 			TranslatedPosition(hsp_.query_range.begin_, Frame(hsp_.frame)),
 			TranslatedPosition(hsp_.query_range.end_, Frame(hsp_.frame)),
 			(int)query.source().length());
 		hsp_.subject_source_range = hsp_.subject_range;
-		if (subject_seq.length() > 0)
+		if (!hsp_.seed_only && subject_seq.length() > 0)
 			hsp_.approx_id = hsp_.approx_id_percent(this->query.index(hsp_.frame), subject_seq);
 		return *this;
 	}
@@ -225,6 +225,7 @@ void Hsp::set_end(int i, int j, Frame frame, int dna_len)
 
 void Hsp::clear()
 {
+	seed_only = false;
 	score = frame = length = identities = mismatches = positives = gap_openings = gaps = 0;
 	transcript.clear();
 }
@@ -301,7 +302,8 @@ Hsp::Hsp(const IntermediateRecord &r, unsigned query_source_len, Loc qlen, Loc t
 #else
 Hsp::Hsp(const IntermediateRecord& r, unsigned query_source_len, Loc qlen, Loc tlen, const OutputFormat* output_format) :
 #endif
-	backtraced(!IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
+	backtraced(!r.seed_only() && !IntermediateRecord::stats_mode(output_format->hsp_values) && output_format->hsp_values != HspValues::NONE),
+	seed_only(r.seed_only()),
 	score(r.score),
 	evalue(r.evalue),
 	transcript(r.transcript)
@@ -317,6 +319,26 @@ Hsp::Hsp(const IntermediateRecord& r, unsigned query_source_len, Loc qlen, Loc t
     }        
 
     subject_range.begin_ = r.subject_begin;
+	if (seed_only) {
+		length = identities = mismatches = positives = gap_openings = gaps = 0;
+#ifdef WITH_DNA
+        mapping_quality = 0;
+        n_anchors = 0;
+#endif
+		subject_range.end_ = r.subject_end;
+		if (align_mode.mode == AlignMode::blastx) {
+			frame = r.frame(query_source_len, align_mode.mode);
+			set_translated_query_begin(r.query_begin, query_source_len);
+			set_translated_query_end(r.query_end, query_source_len);
+		}
+		else {
+			frame = 0;
+			query_range.begin_ = r.query_begin;
+			query_range.end_ = r.query_end + 1;
+		}
+		subject_source_range = subject_range;
+		return;
+	}
 	if (align_mode.mode == AlignMode::blastx) {
 		frame = r.frame(query_source_len, align_mode.mode);
 		set_translated_query_begin(r.query_begin, query_source_len);

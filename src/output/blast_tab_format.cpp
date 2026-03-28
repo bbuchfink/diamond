@@ -701,6 +701,45 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
 {
     TextBuffer& out = info.out;
     const char* prepos = "\t";
+    const auto seed_only_field_available = [](const FieldId id) {
+        switch (id) {
+        case FieldId::QSeqId:
+        case FieldId::QLen:
+        case FieldId::SSeqId:
+        case FieldId::SAllSeqId:
+        case FieldId::SLen:
+        case FieldId::QStart:
+        case FieldId::QEnd:
+        case FieldId::SStart:
+        case FieldId::SEnd:
+        case FieldId::Score:
+        case FieldId::QFrame:
+        case FieldId::STaxIds:
+        case FieldId::SSciNames:
+        case FieldId::SSKingdoms:
+        case FieldId::STitle:
+        case FieldId::SAllTitles:
+        case FieldId::QTitle:
+        case FieldId::FullSSeq:
+        case FieldId::QNum:
+        case FieldId::SNum:
+        case FieldId::FullQQual:
+        case FieldId::FullQSeq:
+        case FieldId::QStrand:
+        case FieldId::SKingdoms:
+        case FieldId::SPhylums:
+        case FieldId::FullQSeqMate:
+        case FieldId::HspNum:
+        case FieldId::SLineages:
+            return true;
+        default:
+            return false;
+        }
+    };
+    const auto print_seed_only_blank = [&](const OutputField& field) {
+        if (is_json && !flag_any(field.flags, Flags::IS_STRING) && !flag_any(field.flags, Flags::IS_ARRAY))
+            out << "N/A";
+    };
     if (is_json) {
         if (r.hit_num != 0)
             out << ",";
@@ -715,8 +754,12 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
             if (flag_any(field.flags, Flags::IS_ARRAY))
                 out << "[";
         }
-        const FieldCallbacks& callbacks = field_callbacks.at(*i);
-        callbacks.match(*this, r, info);
+        if (r.seed_only() && !seed_only_field_available(*i))
+            print_seed_only_blank(field);
+        else {
+            const FieldCallbacks& callbacks = field_callbacks.at(*i);
+            callbacks.match(*this, r, info);
+        }
         if (is_json) {
             if (flag_any(field.flags, Flags::IS_STRING))
                 out << "\"";

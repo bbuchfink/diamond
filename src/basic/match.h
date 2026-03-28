@@ -58,6 +58,7 @@ struct Hsp
 
 	Hsp(const bool backtraced = false) :
 		backtraced(backtraced),
+		seed_only(false),
 		score(0),
 		frame(0),
 		length(0),
@@ -82,6 +83,7 @@ struct Hsp
 
 	Hsp(const bool backtraced, int score, int swipe_target = 0) :
 		backtraced(backtraced),
+		seed_only(false),
 		score(score),
 		frame(0),
 		length(0),
@@ -266,6 +268,7 @@ struct Hsp
 	bool is_weakly_enveloped(const Hsp &j) const;
 	std::pair<int, int> diagonal_bounds() const;
 	bool backtraced;
+	bool seed_only;
 	int score, frame, length, identities, mismatches, positives, gap_openings, gaps, swipe_target, swipe_bin, d_begin, d_end;
 #ifdef DP_STAT
 	int reserved1, reserved2;
@@ -437,6 +440,9 @@ struct HspContext
 	{ return hsp_.transcript; }
 	bool operator<(const HspContext& h) const {
 		return query_oid < h.query_oid;
+	}
+	bool seed_only() const {
+		return hsp_.seed_only;
 	}
 #ifdef DP_STAT
 	int reserved1() const {

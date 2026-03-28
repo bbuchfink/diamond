@@ -40,6 +40,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/data_structures/reorder_queue.h"
 #include "util/ptr_vector.h"
 
+inline constexpr uint8_t INTERMEDIATE_RECORD_SEED_ONLY = 1u << 7;
+
 inline unsigned get_length_flag(unsigned x)
 {
 	if (x <= (unsigned)std::numeric_limits<uint8_t>::max())
@@ -60,7 +62,8 @@ inline uint8_t get_segment_flag(const Hsp &match)
 	return (uint8_t)(get_length_flag(match.score)
 		| (get_length_flag(match.oriented_range().begin_) << 2)
 		| (get_length_flag(match.subject_range.begin_) << 4)
-		| rev << 6);
+		| rev << 6
+		| (match.seed_only ? INTERMEDIATE_RECORD_SEED_ONLY : 0));
 }
 
 inline uint8_t get_segment_flag(const HspContext &match)
@@ -69,11 +72,13 @@ inline uint8_t get_segment_flag(const HspContext &match)
 	return (uint8_t)(get_length_flag(match.score())
 		| (get_length_flag(match.oriented_query_range().begin_) << 2)
 		| (get_length_flag(match.subject_range().begin_) << 4)
-		| rev << 6);
+		| rev << 6
+		| (match.seed_only() ? INTERMEDIATE_RECORD_SEED_ONLY : 0));
 }
 
 struct IntermediateRecord
 {
+	static constexpr uint8_t SEED_ONLY = INTERMEDIATE_RECORD_SEED_ONLY;
 	void read(BinaryBuffer::Iterator& f, const OutputFormat* output_format);
 	unsigned frame(Loc query_source_len, int align_mode) const;
 	Interval absolute_query_range() const;
@@ -84,6 +89,9 @@ struct IntermediateRecord
 	static void finish_file(Consumer& f);
 	static bool stats_mode(const HspValues v) {
 		return !flag_any(v, HspValues::TRANSCRIPT) && v != HspValues::NONE;
+	}
+	bool seed_only() const {
+		return (flag & SEED_ONLY) != 0;
 	}
 	static const uint32_t FINISHED;
 	BlockId query_id;

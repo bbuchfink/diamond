@@ -278,7 +278,7 @@ void multinode() {
 	config.file_buffer_size = 64 * 1024;
 	
 	VolumedFile volumes(config.database.get_present());
-	Job job(volumes.max_oid(), volumes.size());
+	Job job(volumes.max_oid());
 	if (job.worker_id() == 0) {
 		if (config.mutual_cover.present())
 			job.log("Bi-directional coverage = %f", config.mutual_cover.get_present());
@@ -308,6 +308,7 @@ void multinode() {
 		target_approx_id = config.approx_min_id.get_present();
 
 	Atomic lock(job.root_dir() + "startup_lock"), done(job.root_dir() + "startup_done");
+	const string input_parts = job.root_dir() + "input.tsv";
 	if (lock.fetch_add() == 0) {
 		job.log("Memory limit = %" PRIu64, job.mem_limit);
 		const uint64_t block_size = job.mem_limit / 20;
@@ -339,31 +340,48 @@ void multinode() {
 		}
 		File blocks_file(job.base_dir() + "blocks", "wb");
 		blocks_file.write(global_partition.data(), global_partition.size() * sizeof(OId));
-		blocks_file.close();
-		done.fetch_add();
+		blocks_file.close();		
 		std::ostringstream ss;
 		ss << "Sequences in database = " << volumes.max_oid() + 1 << endl;
 		ss << "Letters in database = " << letters << endl;
 		ss << "Database blocks:" << endl;
+		ofstream idx(input_parts);
+		OId oid = 0;
+		const SequenceFile::Flags flags = SequenceFile::Flags::ALL | SequenceFile::Flags::NEED_LETTER_COUNT;
 		for (size_t i = 0; i < sizes.size(); ++i) {
+			const string name = job.root_dir() + "input" + std::to_string(i) + ".faa";
 			ss << global_partition[i] << '\t' << sizes[i] << endl;
+			Block* b = load_seqs(volumes, global_partition[i], global_partition[i + 1], index_dir, flags);
+			ofstream out(name);
+			TextBuffer buf;
+			for (size_t j = 0; j < b->seqs().size(); ++j) {
+				Util::Seq::format(b->seqs()[j], std::to_string(oid).c_str(), nullptr, buf, "fasta", amino_acid_traits);
+				//Util::Seq::format(b->seqs()[j], b->ids()[j], nullptr, buf, "fasta", amino_acid_traits);
+				++oid;
+				out.write(buf.data(), buf.size());
+				buf.clear();
+			}
+			idx << name << '\t' << b->seqs().size() << endl;
+			delete b;
 		}
 		job.log(ss.str().c_str());
+		done.fetch_add();
 	}
 	else
 		done.await(1);
 
+	VolumedFile input_volumes(input_parts);
 	for (size_t i = 0; i < steps.size(); ++i) {
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
 		const vector<string> round_approx_id = config.round_approx_id.empty() ? Cluster::default_round_approx_id(job.round_count()) : config.round_approx_id;
 		config.approx_min_id = std::max(target_approx_id, Cluster::round_value(round_approx_id, "--round-approx-id", job.round(), job.round_count()));
 		config.max_evalue = i == steps.size() - 1 ? evalue_cutoff : std::min(evalue_cutoff, CASCADED_ROUND_MAX_EVALUE);
-		reps = round(job, i == 0 ? volumes : VolumedFile(reps));
+		reps = round(job, i == 0 ? input_volumes : VolumedFile(reps));
 		if (i < steps.size() - 1)
 			job.next_round();
 	}
 	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock");
 	config.output_file = output_file;
 	if (output_lock.fetch_add() == 0)
-		merge(job, volumes);
+		merge(job, input_volumes);
 }

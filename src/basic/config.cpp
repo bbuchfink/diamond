@@ -258,7 +258,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
 		("approx-id", 0, "minimum approx. identity% to report an alignment/to cluster sequences", approx_min_id)
-		("ext", 0, "Extension mode (banded-fast/banded-slow/full)", ext_);
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full/global/none)", ext_);
 
 	auto& aligner_view = parser.add_group("Aligner/view options", { blastp, blastx, view });
 	aligner_view.add()

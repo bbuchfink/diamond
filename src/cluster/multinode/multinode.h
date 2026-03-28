@@ -43,9 +43,8 @@ struct ClusterStats {
 
 struct Job {
 
-	Job(OId max_oid, size_t volumes) :
+	Job(OId max_oid) :
 		max_oid(max_oid),
-		volumes(volumes),
 		mem_limit(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT))),
 		base_dir_(config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-" + Const::version_string),
 		round_(0),
@@ -103,7 +102,6 @@ struct Job {
 	}
 
 	const OId max_oid;
-	const size_t volumes;
 	const uint64_t mem_limit;
 
 private:

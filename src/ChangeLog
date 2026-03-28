@@ -1,3 +1,6 @@
+[2.1.25]
+- Added the option `--ext none` to skip seed extension and output seed hits instead.
+
 [2.1.24]
 - Fixed a crash in the `greedy-vertex-cover` workflow.
 - Fixed a bug that could cause a crash when using `--swipe`.

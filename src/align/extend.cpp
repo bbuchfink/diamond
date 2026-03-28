@@ -64,6 +64,7 @@ const SEMap<Extension::Mode> EnumTraits<Extension::Mode>::from_string = {
 	{ "banded-fast", Extension::Mode::BANDED_FAST},
 	{ "banded-slow", Extension::Mode::BANDED_SLOW},
 	{ "full", Extension::Mode::FULL},
+	{ "none", Extension::Mode::NONE},
 	{ "global", Extension::Mode::GLOBAL}
 };
 
@@ -144,6 +145,36 @@ static bool add_self_aln(const Search::Config& cfg) {
 	return config.add_self_aln && ((config.self && cfg.current_ref_block == 0) || (!config.self && cfg.current_query_block == cfg.current_ref_block));
 }
 
+
+static Hsp seed_only_hsp(const SeedHit& hit, unsigned query_source_len) {
+	Hsp hsp;
+	hsp.seed_only = true;
+	hsp.score = hit.score;
+	hsp.evalue = 0.0;
+	hsp.d_begin = hsp.d_end = hit.diag();
+	hsp.set_begin(hit.i, hit.j, Frame(hit.frame), query_source_len);
+	hsp.set_end(hit.i + 1, hit.j + 1, Frame(hit.frame), query_source_len);
+	hsp.subject_source_range = hsp.subject_range;
+	return hsp;
+}
+
+static vector<Match> seed_only_matches(BlockId query_id, const Search::Config& cfg, SeedHitList& l) {
+	const unsigned query_source_len = align_mode.query_translated ? (unsigned)cfg.query->source_seqs()[query_id].length() : (unsigned)cfg.query->seqs()[query_id].length();
+	vector<Match> matches;
+	matches.reserve(l.target_scores.size());
+	for (const TargetScore& target_score : l.target_scores) {
+		const BlockId target_block_id = l.target_block_ids[target_score.target];
+		Match match(target_block_id, cfg.target->seqs()[target_block_id], nullptr, target_score.score, target_score.score, 0.0);
+		for (auto i = l.seed_hits.begin(target_score.target); i < l.seed_hits.end(target_score.target); ++i)
+			match.hsp.push_back(seed_only_hsp(*i, query_source_len));
+		match.hsp.sort();
+		if (config.max_hsps > 0 && match.hsp.size() > config.max_hsps)
+			match.hsp.resize(config.max_hsps);
+		matches.push_back(std::move(match));
+	}
+	culling(matches, cfg);
+	return matches;
+}
 
 static size_t lazy_masking(std::vector<uint32_t>::const_iterator target_block_ids, vector<uint32_t>::const_iterator target_block_ids_end, Block& targets, const MaskingAlgo algo) {
 	if (algo == MaskingAlgo::NONE)
@@ -235,6 +266,7 @@ vector<Match> extend(
 	const int source_query_len = align_mode.query_translated ? (int)cfg.query->source_seqs()[query_id].length() : (int)cfg.query->seqs()[query_id].length();
 	const double self_aln_score = cfg.query->has_self_aln() ? cfg.query->self_aln_score(query_id) : 0.0;
 	const size_t target_count = l.target_block_ids.size();
+	if (cfg.extension_mode == Mode::NONE) { 		std::sort(l.target_scores.begin(), l.target_scores.end()); 		return seed_only_matches(query_id, cfg, l); 	}
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);
 	vector<TargetScore>::const_iterator i0 = l.target_scores.cbegin(), i1 = i0 + std::min((ptrdiff_t)chunk_size, l.target_scores.cend() - i0);
 
@@ -332,6 +364,8 @@ vector<Match> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, con
 
 	const int64_t target_count = (int64_t)l.target_block_ids.size();
 	if (target_count == 0 && !config.swipe_all) {
+		if (cfg.extension_mode == Mode::NONE)
+			return vector<Match>();
 		if (add_self_aln(cfg)) {
 			vector<Match> r;
 			Match match = Match::self_match(query_id, cfg.query->seqs()[query_id]);

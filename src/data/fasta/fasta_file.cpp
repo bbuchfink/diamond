@@ -131,6 +131,8 @@ void FastaFile::set_seqinfo_ptr(OId i) {
 	if (out_file_)
 		out_file_->rewind();
 	if (index_.empty()) {
+		//fprintf(stderr, "Missing FASTA index\n");
+		//exit(1);
 		for (auto& f : file_)
 			f.rewind();
 		oid_ = 0;

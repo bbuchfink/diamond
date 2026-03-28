@@ -96,7 +96,8 @@ struct StringSetBase
 		//limits_.reserve(limits_.size() + n);
 		for (Id i = 0; i < n; ++i)
 			limits_.push_back(*it++ + offset);
-		data_.insert(data_.end(), s.ptr(0), s.end(n - 1) + 1);
+		data_.resize(data_.size() - PERIMETER_PADDING);
+		data_.insert(data_.end(), s.ptr(0), s.end(n - 1) + 1 + PERIMETER_PADDING);
 	}
 
 	template<typename It>
