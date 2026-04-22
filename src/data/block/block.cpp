@@ -109,9 +109,9 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 	return letters;
 }
 
-void Block::append(const Block& b) {
-	seqs_.append(b.seqs_);
-	ids_.append(b.ids_);
+void Block::append(const Block& b, bool remove_padding) {
+	seqs_.append(b.seqs_, remove_padding);
+	ids_.append(b.ids_, remove_padding);
 	block2oid_.insert(block2oid_.end(), b.block2oid_.begin(), b.block2oid_.end());
 }
 

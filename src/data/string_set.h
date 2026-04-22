@@ -86,18 +86,21 @@ struct StringSetBase
 		data_.insert(data_.end(), padding_len, padding_char);
 	}
 
-	void append(const StringSetBase& s) {
+	void append(const StringSetBase& s, bool remove_padding = false) {
 		const Id n = s.size();
 		if (n == 0)
 			return;
 		auto it = s.limits_.cbegin() + 1;
 		assert(raw_len() >= s.limits_.front());
 		const Pos offset = raw_len() - s.limits_.front();
-		//limits_.reserve(limits_.size() + n);
 		for (Id i = 0; i < n; ++i)
 			limits_.push_back(*it++ + offset);
-		data_.resize(data_.size() - PERIMETER_PADDING);
-		data_.insert(data_.end(), s.ptr(0), s.end(n - 1) + 1 + PERIMETER_PADDING);
+		if (remove_padding) {
+			data_.resize(data_.size() - PERIMETER_PADDING);
+			data_.insert(data_.end(), s.ptr(0), s.end(n - 1) + 1 + PERIMETER_PADDING);
+		}
+		else
+			data_.insert(data_.end(), s.ptr(0), s.end(n - 1) + 1);
 	}
 
 	template<typename It>
