@@ -133,7 +133,7 @@ static void search_query_offset(const SeedLoc& q,
 					|| left_most_filter(query_clipped + interval_overhang, subjects[j] + interval_overhang, window_left - interval_overhang, shapes[sid].length_, work_set.context, sid == 0, sid, score_cutoff, chunked, hamming_filter_id)) {
 					work_set.stats.inc(Statistics::TENTATIVE_MATCHES3);
 					if (work_set.cfg.target_seed_hits)
-						work_set.cfg.target_seed_hits->operator[](sid).atomic_set(s[*(i + j)]);
+						work_set.cfg.target_seed_hits->operator[](sid).atomic_set((uint64_t)s[*(i + j)]);
 #ifndef COUNT_ONLY
 					if (config.global_ranking_targets)
 						work_set.global_ranking_buffer->write({ query_id, (uint64_t)s[*(i + j)], seed_offset, (uint16_t)scores[j], block_id(s[*(i + j)]) });
