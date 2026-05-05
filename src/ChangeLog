@@ -13,6 +13,7 @@
 - Added support for clustering BLAST databases.
 - Temporarily removed the `recluster` workflow.
 - Removed the `--qnum-offset` and `--snum-offset` options.
+- Fixed an error when using the taxonomic output format with single-block database processing.
 
 [2.1.24]
 - Fixed a crash in the `greedy-vertex-cover` workflow.

@@ -1,3 +1,8 @@
 .git
 .vs
 out
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+*.cmake
