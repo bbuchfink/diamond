@@ -1,42 +1,38 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <stdexcept>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <errno.h>
+#include <cstring>
+#include <system_error>
+#include <random>
+
 #include "system.h"
 #include "../string/string.h"
 #include "../log_stream.h"
-#ifdef _MSC_VER
+#include "basic/config.h"
+
+#ifdef _WIN32
+  #define NOMINMAX
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
 #else
@@ -433,4 +429,118 @@ bool is_absolute_path(const std::string& path) {
 		return true;
 	}
 	return false;
+}
+
+void remove_tmp_file(const std::string& file_name) {
+	if (config.keep_temp_files)
+		return;
+	if(remove(file_name.c_str()) != 0)
+		fprintf(stderr, "Warning: Failed to delete temporary file %s\n", file_name.c_str());
+}
+
+static std::string join_path(const std::string& dir, const std::string& name) {
+	if (dir.empty()) {
+		return name;
+	}
+
+	char last = dir[dir.size() - 1];
+
+#ifdef _WIN32
+	if (last == '/' || last == '\\') {
+		return dir + name;
+	}
+	return dir + "\\" + name;
+#else
+	if (last == '/') {
+		return dir + name;
+	}
+	return dir + "/" + name;
+#endif
+}
+
+static std::string random_suffix(std::mt19937_64& rng) {
+	static const char alphabet[] =
+		"0123456789"
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz";
+
+	std::uniform_int_distribution<std::size_t> dist(
+		0, sizeof(alphabet) - 2
+	);
+
+	std::string s;
+	s.reserve(12);
+
+	for (int i = 0; i < 12; ++i) {
+		s.push_back(alphabet[dist(rng)]);
+	}
+
+	return s;
+}
+
+#ifdef _WIN32
+
+static std::wstring utf8_to_wide(const std::string& s) {
+	if (s.empty()) {
+		return std::wstring();
+	}
+	int needed = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		s.data(),
+		static_cast<int>(s.size()),
+		NULL,
+		0
+	);
+	if (needed <= 0) {
+		throw std::runtime_error("invalid UTF-8 path");
+	}
+	std::wstring out(static_cast<std::size_t>(needed), L'\0');
+	int written = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		s.data(),
+		static_cast<int>(s.size()),
+		&out[0],
+		needed
+	);
+	if (written != needed) {
+		throw std::runtime_error("UTF-8 to UTF-16 conversion failed");
+	}
+	return out;
+}
+
+#endif
+
+std::string create_temp_directory(const std::string& parent_dir, const std::string& prefix, unsigned max_attempts) {
+	if (parent_dir.find('\0') != std::string::npos) {
+		throw std::invalid_argument("parent_dir contains NUL byte");
+	}	
+	std::random_device rd;
+	std::mt19937_64 rng((static_cast<std::uint64_t>(rd()) << 32) ^ static_cast<std::uint64_t>(rd()));
+	for (unsigned attempt = 0; attempt < max_attempts; ++attempt) {
+		std::string name = prefix + random_suffix(rng);
+		std::string path = join_path(parent_dir, name);
+#ifdef _WIN32
+		std::wstring wide_path = utf8_to_wide(path);
+		if (CreateDirectoryW(wide_path.c_str(), NULL)) {
+			return path;
+		}
+		DWORD err = GetLastError();
+		if (err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS) {
+			continue;
+		}
+		throw std::system_error(static_cast<int>(err), std::system_category(), "CreateDirectoryW failed for " + path);
+#else
+		if (::mkdir(path.c_str(), 0700) == 0) {
+			return path;
+		}
+		int err = errno;
+		if (err == EEXIST) {
+			continue;
+		}
+		throw std::system_error(err, std::generic_category(), "mkdir failed for " + path);
+#endif
+	}
+	throw runtime_error("could not create unique temporary directory after many attempts");
 }

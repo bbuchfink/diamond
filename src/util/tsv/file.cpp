@@ -181,6 +181,24 @@ Table File::read_record() {
 	return table;
 }
 
+size_t File::read_raw(string& dst, size_t count) {
+	const size_t offset = dst.size();
+	dst.resize(offset + count);
+	const size_t n = file_->read(&dst[offset], count);
+	dst.resize(offset + n);
+	return n;
+}
+
+pair<bool, size_t> File::read_to_fasta_record_end(string& dst) {
+	const size_t offset = dst.size();
+	pair<bool, int64_t> r = file_->read_to(std::back_inserter(dst), '\n', '>');
+	return { r.first, dst.size() - offset + (r.first ? 1 : 0) };
+}
+
+string File::peek(int64_t n) {
+	return file_->peek(n);
+}
+
 void File::write_record(int i) {
 	if (i != (flag_any(flags_, Flags::RECORD_ID_COLUMN) ? 1 : 0))
 		throw runtime_error("write_record with insufficient field count.");

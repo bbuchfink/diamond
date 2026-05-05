@@ -1,19 +1,21 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -59,6 +61,7 @@ using std::tie;
 using std::shared_ptr;
 using std::string;
 using std::vector;
+using std::atomic;
 
 namespace Search {
 
@@ -115,7 +118,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 	if ((cfg.lin_stage1_target || cfg.min_length_ratio > 0.0) && !config.kmer_ranking && cfg.target.use_count() == 1) {
 		timer.go("Length sorting reference");
 		cfg.target.reset(cfg.target->length_sorted(config.threads_));
-	}
+	}	
 
 	//if (config.comp_based_stats == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST || flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
 	if (flag_any(cfg.output_format->flags, Output::Flags::TARGET_SEQS)) {
@@ -152,18 +155,24 @@ static void run_ref_chunk(SequenceFile &db_file,
 			config.tmpdir,
 			cfg.target->long_offsets(), align_mode.query_contexts, config.threads_, cfg));
 
+	if (cfg.target_seed_hits && cfg.target_seed_hits->empty()) {
+		cfg.target_seed_hits->reserve(shapes.count());
+		for (int i = 0; i < shapes.count(); ++i)
+			cfg.target_seed_hits->emplace_back(cfg.target->seqs().raw_len());
+	}
+
 	if (!config.swipe_all) {
 		timer.go("Building reference histograms");
 		if (query_seeds_bitset.get()) {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size };
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size, cfg.target_seed_hits.get() };
 			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_bitset.get(), enum_cfg, cfg.seedp_bits);
 		}
 		else if (query_seeds_hashed.get()) {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size };
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, MaskingAlgo::NONE, cfg.minimizer_window, false, false, cfg.sketch_size, cfg.target_seed_hits.get() };
 			cfg.target->hst() = SeedHistogram(*cfg.target, true, query_seeds_hashed.get(), enum_cfg, cfg.seedp_bits);
 		}
-		else {
-			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, false, false, cfg.sketch_size };
+		else {	
+			EnumCfg enum_cfg{ nullptr, 0, 0, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, false, false, cfg.sketch_size, cfg.target_seed_hits.get() };
 			cfg.target->hst() = SeedHistogram(*cfg.target, false, &no_filter, enum_cfg, cfg.seedp_bits);
 		}
 
@@ -307,7 +316,7 @@ static void run_query_iteration(const unsigned query_iteration,
 		if (config.freq_masking && !config.lin_stage1_query)
 			verbose_stream << "Seed frequency SD: " << options.freq_sd << endl;
 		verbose_stream << "Shape configuration: " << ::shapes << endl;
-	}	
+	}
 
 	if (config.global_ranking_targets) {
 		timer.go("Allocating global ranking table");
@@ -316,8 +325,13 @@ static void run_query_iteration(const unsigned query_iteration,
 
 	if (!config.swipe_all && !config.target_indexed) {
 		timer.go("Building query histograms");
+		if (config.self && options.target_seed_hits && options.target_seed_hits->empty()) {
+			options.target_seed_hits->reserve(shapes.count());
+			for (int i = 0; i < shapes.count(); ++i)
+				options.target_seed_hits->emplace_back(options.query->seqs().raw_len());
+		}
 		EnumCfg enum_cfg{ nullptr, 0, 0, options.seed_encoding, options.query_skip.get(), false, false, options.seed_complexity_cut,
-		options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false, options.sketch_size };
+		options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false, options.sketch_size, config.self ? options.target_seed_hits.get() : nullptr };
 		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg, options.seedp_bits);
 		timer.finish();
 	}
@@ -392,7 +406,9 @@ static void run_query_iteration(const unsigned query_iteration,
 		else if (!config.self || options.current_query_block != 0 || !db_file.eof())
 			db_file.set_seqinfo_ptr(0);*/
 		timer.go("Seeking in database");
-		db_file.set_seqinfo_ptr((config.self && !config.lin_stage1_query) ? options.query->oid_end() : 0);
+		const bool lin_self_first_query_block = config.self && (0 == options.current_query_block) && config.lin_stage1_query;
+		if (!lin_self_first_query_block)
+			db_file.set_seqinfo_ptr((config.self && !config.lin_stage1_query) ? options.query->oid_end() : 0);
 		timer.finish();
 		for (options.current_ref_block = 0; ; ++options.current_ref_block) {
 			if (config.self && ((config.lin_stage1_query && options.current_ref_block == options.current_query_block) || (!config.lin_stage1_query && options.current_ref_block == 0))) {
@@ -407,9 +423,8 @@ static void run_query_iteration(const unsigned query_iteration,
 				timer.go("Loading reference sequences");
 				options.target.reset(db_file.load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
 				const auto t = timer.microseconds();
-				timer.finish();				
-				if(options.target->raw_bytes() > 0)
-					message_stream << "Loaded " << options.target->raw_bytes() << " bytes from disk at " << ((double)options.target->raw_bytes() / MEGABYTES / t * 1e6) << " MB/s" << endl;
+				timer.finish();
+				options.target->load_stats(message_stream, t);
 			}
 			if (options.current_ref_block == 0) {
 				const int64_t db_seq_count = options.db_filter ? options.db_filter->oid_filter.one_count() : options.db->sequence_count();
@@ -680,7 +695,8 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		aligned_file = unique_ptr<OutputFile>(new OutputFile(config.aligned_file));
 	timer.finish();
 
-	for (;query_file_offset < db_file->sequence_count(); ++options.current_query_block) {
+	//for (;query_file_offset < db_file->sequence_count(); ++options.current_query_block) { TODO
+	for (;; ++options.current_query_block) {
 		log_rss();
 
 		if (options.self) {
@@ -690,11 +706,17 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			timer.go("Loading query sequences");
 			db_file->flags() |= qflags;
 			options.query.reset(db_file->load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
+			const auto t = timer.microseconds();
+			timer.finish();
+			options.query->load_stats(message_stream, t);
 			query_file_offset = db_file->tell_seq();
 		}
 		else {
 			timer.go("Loading query sequences");
 			options.query.reset(options.query_file->load_seqs(config.block_size(), 0, nullptr));
+			const auto t = timer.microseconds();
+			timer.finish();
+			options.query->load_stats(message_stream, t);
 		}
 		timer.finish();
 
@@ -765,7 +787,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 	//print_warnings();
 }
 
-void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<DbFilter>& db_filter)
+void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<DbFilter>& db_filter)
 {
 	TaskTimer total;
 
@@ -779,12 +801,14 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 	else
 		::Config::set_option(config.chunk_size, 2.0);
 
-	Config cfg;
+	Config cfg(target_seed_hits);
 	statistics.reset();
 
 	const bool taxon_filter = !config.taxonlist.empty() || !config.taxon_exclude.empty();
 	const bool taxon_culling = config.taxon_k != 0;
-	SequenceFile::Flags flags(SequenceFile::Flags::NEED_LETTER_COUNT);
+	SequenceFile::Flags flags = SequenceFile::Flags::NONE;
+	if (config.db_size == 0)
+		flags |= SequenceFile::Flags::NEED_LETTER_COUNT;
 	if (cfg.output_format->needs_taxon_id_lists || taxon_filter || taxon_culling)
 		flags |= SequenceFile::Flags::TAXON_MAPPING;
 	if (cfg.output_format->needs_taxon_nodes || taxon_filter || taxon_culling)
@@ -813,13 +837,15 @@ void run(const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& que
 
 	if (db) {
 		cfg.db = db;
-		if (!query)
+		if (!query && config.query_file.empty())
 			cfg.self = true;
 	}
 	else {
 		timer.go("Opening the database");
 		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, value_traits));
 		timer.finish();
+		if (!cfg.db->open_stats().empty())
+			message_stream << cfg.db->open_stats();
 	}
 	if (config.multiprocessing && cfg.db->type() == SequenceFile::Type::FASTA)
 		throw runtime_error("Multiprocessing mode is not compatible with FASTA databases.");

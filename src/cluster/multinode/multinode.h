@@ -1,28 +1,28 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <chrono>
 #include "basic/config.h"
 #include "util/string/string.h"
 #include "util/parallel/filestack.h"
-#include "basic/const.h"
 #include "util/parallel/atomic.h"
-#include "masking/masking.h"
 #include "util/system/system.h"
 #include "volume.h"
 
@@ -43,10 +43,10 @@ struct ClusterStats {
 
 struct Job {
 
-	Job(OId max_oid) :
-		max_oid(max_oid),
+	Job() :
+		max_oid_(0),
 		mem_limit(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT))),
-		base_dir_(config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-" + Const::version_string),
+		base_dir_(config.tmpdir),
 		round_(0),
 		start_(std::chrono::system_clock::now())
 	{
@@ -55,6 +55,12 @@ struct Job {
 		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log"));
 		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id");
 		worker_id_ = worker_id.fetch_add();
+	}
+
+	void finish() {
+		remove_tmp_file(base_dir_ + PATH_SEPARATOR + "worker_id");
+		log_file_->remove();
+		//rmdir(base_dir_);
 	}
 
 	int64_t worker_id() const {
@@ -89,8 +95,9 @@ struct Job {
 		return input_count_[round];
 	}
 
-	void set_round_count(int n) {
+	void set_round_count(int n, const std::vector<std::string>& steps) {
 		round_count_ = n;
+		steps_ = steps;
 	}
 
 	int round_count() const {
@@ -101,19 +108,51 @@ struct Job {
 		return round_ == round_count_ - 1;
 	}
 
-	const OId max_oid;
+	const std::vector<std::string>& steps() const {
+		return steps_;
+	}
+	
+	const std::string& current_round() const {
+		return steps_[round_];
+	}
+
+	bool is_linear_round() const {
+		return ends_with(current_round(), "_lin");
+	}
+
+	ClusterStats& stats() {
+		return stats_;
+	}
+
+	OId max_oid() const {
+		if (max_oid_ == 0)
+			throw std::runtime_error("max_oid not set");
+		return max_oid_;
+	}
+
+	void set_max_oid(OId max_oid) {
+		max_oid_ = max_oid;
+	}
+
 	const uint64_t mem_limit;
 
 private:
 
+	OId max_oid_;
 	std::string base_dir_;
 	int64_t worker_id_;
 	int round_, round_count_;
+	std::vector<std::string> steps_;
 	std::unique_ptr<FileStack> log_file_;
 	std::chrono::system_clock::time_point start_;
 	std::vector<uint64_t> input_count_;
+	ClusterStats stats_;
 
 };
 
-std::string get_reps(Job& job, const VolumedFile& volumes);
+std::pair<std::string, uint64_t> get_reps(Job& job, const VolumedFile& volumes);
 void merge(Job& job, const VolumedFile& volumes);
+void extend(Job& job, std::vector<std::pair<OId, OId>>& out, const VolumedFile& volumes);
+std::string len_sort(Job& job, VolumedFile& volumes);
+std::vector<OId> build_merged(Job& job);
+void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, std::string base_dir, std::unique_ptr<std::vector<BitVector>>& seed_hit_table);

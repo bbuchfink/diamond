@@ -150,7 +150,8 @@ void view_daa()
 	message_stream << "DB sequences used = " << daa.db_seqs_used() << endl;
 	message_stream << "DB letters = " << daa.db_letters() << endl;
 
-	Search::Config cfg;
+	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
+	Search::Config cfg(target_seed_hits);
 	cfg.db_seqs = daa.db_seqs();
 	cfg.db_letters = daa.db_letters();
 	taxonomy.init();

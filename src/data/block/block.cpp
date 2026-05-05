@@ -1,32 +1,21 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <atomic>
 #include <thread>
@@ -54,7 +43,7 @@ Block::Block():
 	source_seqs_(),
 	unmasked_seqs_(),
 	soft_masked_(false),
-	raw_bytes_(0)
+	raw_bytes_(0)	
 {
 }
 
@@ -83,6 +72,7 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 	static const char* const OVERFLOW_ERR = "Sequences in block exceed supported maximum.";
 	if (block2oid_.size() == numeric_limits<BlockId>::max())
 		throw runtime_error(OVERFLOW_ERR);
+	const BlockId block_id = (BlockId)block2oid_.size();
 	if (id)
 		ids_.push_back(id, id + strlen(id));
 	if (quals)
@@ -209,11 +199,14 @@ double Block::self_aln_score(const int64_t block_id) const {
 }
 
 BlockId Block::oid2block_id(OId i) const {
-	if (block2oid_.back() - block2oid_.front() != seqs_.size() - 1)
-		throw std::runtime_error("Block has a sparse OId range.");
 	if (i < block2oid_.front() || i > block2oid_.back())
 		throw std::runtime_error("OId not contained in block.");
 	return BlockId(i - block2oid_.front());
+}
+
+void Block::offset_oids(OId offset) {
+	for (auto& oid : block2oid_)
+		oid += offset;
 }
 
 SeqInfo Block::seq_info(const BlockId id) const {

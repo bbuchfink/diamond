@@ -1,8 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2021-2023 Max Planck Society for the Advancement of Science e.V.
-
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <mutex>
 #include <memory>
@@ -26,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/dp.h"
 #include "stats/hauser_correction.h"
 #include "output/output.h"
+#include "align/culling.h"
 
 using std::vector;
 using std::unique_ptr;
@@ -44,22 +44,6 @@ using std::string;
 
 namespace Cluster {
 
-struct Cfg {
-	Cfg(HspValues hsp_values, bool lazy_titles, const FlatArray<OId>& clusters, const vector<OId>& centroids, SequenceFile& db):
-		hsp_values(hsp_values),
-		lazy_titles(lazy_titles),
-		clusters(clusters),
-		centroids(centroids),		
-		db(db)
-	{}
-	const HspValues hsp_values;
-	const bool lazy_titles;
-	const FlatArray<OId>& clusters;
-	const vector<OId>& centroids;
-	SequenceFile& db;
-	shared_ptr<Block> centroid_block, member_block;
-};
-
 static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, OutputWriter>& out, Statistics& stats, ThreadPool& tp, Cfg& cfg) {
 	DP::Targets dp_targets;
 	const OId centroid_oid = cfg.centroids[centroid];
@@ -76,20 +60,24 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 	}
 
 	const HauserCorrection cbs(centroid_seq);
-	const string centroid_seqid = cfg.lazy_titles ? cfg.db.seqid(centroid_oid, false, false) : cfg.centroid_block->ids()[centroid_id];
+	const string centroid_seqid = cfg.lazy_titles ? cfg.db->seqid(centroid_oid, false, false) : cfg.centroid_block->ids()[centroid_id];
 	DP::Params p{ centroid_seq, centroid_seqid.c_str(), Frame(0), centroid_seq.length(), config.comp_based_stats == 1 ? cbs.int8.data() : nullptr, DP::Flags::FULL_MATRIX, false, 0, 0, cfg.hsp_values, stats, &tp };
 	list<Hsp> hsps = DP::BandedSwipe::swipe(dp_targets, p);
 
 	TextBuffer* buf = new TextBuffer;
+	const int replen = centroid_seq.length();
 	for (Hsp& hsp : hsps) {
+		const Loc memberlen = cfg.member_block->seqs().length(hsp.swipe_target);
+		if (Extension::filter_hsp(hsp, replen, nullptr, memberlen, nullptr, centroid_seq, Sequence(), 0, 0, nullptr))
+			continue;
 		serialize(HspContext(hsp,
 			centroid_id,
 			centroid_oid,
 			TranslatedSequence(centroid_seq),
 			centroid_seqid.c_str(),
 			cfg.member_block->block_id2oid(hsp.swipe_target),
-			cfg.member_block->seqs().length(hsp.swipe_target),
-			cfg.lazy_titles ? cfg.db.seqid(cfg.member_block->block_id2oid(hsp.swipe_target), false, false).c_str() : cfg.member_block->ids()[hsp.swipe_target],
+			memberlen,
+			cfg.lazy_titles ? cfg.db->seqid(cfg.member_block->block_id2oid(hsp.swipe_target), false, false).c_str() : cfg.member_block->ids()[hsp.swipe_target],
 			0,
 			0,
 			Sequence()), *buf);
@@ -97,7 +85,7 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 	out.push(centroid, buf);
 }
 
-static InputFile* run_block_pair(CentroidId begin, CentroidId end, Cfg& cfg) {
+InputFile* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg) {
 	TempFile out;
 	OutputWriter writer{ &out };
 	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(begin, writer));
@@ -121,7 +109,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	OId centroid_offset = 0;
 	int n1 = 0;
 	TaskTimer timer;
-	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, db };
+	Cfg cfg{ hsp_values, flag_any(db.format_flags(), SequenceFile::FormatFlags::TITLES_LAZY), clusters, centroids, &db };
 
 	db.flags() |= SequenceFile::Flags::SEQS;
 	if (!cfg.lazy_titles)
@@ -150,7 +138,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 			if (cfg.member_block->empty())
 				break;
 			timer.go("Processing centroid block " + to_string(n1 + 1) + ", member block " + to_string(n2 + 1));
-			tmp.push_back(run_block_pair(begin, end, cfg));
+			tmp.push_back(realign_block_pair(begin, end, cfg));
 			++n2;
 			if (cfg.centroid_block->seqs().size() == db.sequence_count())
 				break;

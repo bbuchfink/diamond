@@ -241,6 +241,8 @@ void BlastDB::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek)
 	open_volume(pos);
 	const uint32_t volume_oid = uint32_t(pos - volume_.begin);
 	const vector<Letter> seq = volume_.sequence(volume_oid);
+	if (seq.size() != len)
+		throw runtime_error("BLAST database sequence length mismatch for OID " + std::to_string(pos));
 	copy(seq.begin(), seq.end(), dst);
 	++pos;
 }
@@ -492,7 +494,7 @@ string BlastDB::taxon_scientific_name(TaxId taxid) const {
 void BlastDB::seq_data(size_t oid, vector<Letter>& dst)
 {
 	open_volume(oid);
-	const uint32_t volume_oid = uint32_t(oid_ - volume_.begin);
+	const uint32_t volume_oid = uint32_t(oid - volume_.begin);
 	dst = volume_.sequence(volume_oid);
 }
 

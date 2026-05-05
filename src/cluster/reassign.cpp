@@ -1,8 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2022-2023 Max Planck Society for the Advancement of Science e.V.
-
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "basic/config.h"
 #include "util/log_stream.h"
@@ -24,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/statistics.h"
 #include "run/workflow.h"
 #include "data/fasta/fasta_file.h"
-#include "cascaded/cascaded.h"
 
 using std::endl;
 using std::shared_ptr;
@@ -78,7 +76,8 @@ void reassign() {
 	}
 	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(members.size());
-	Search::run(centroid_db, member_db, mapback);
+	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
+	Search::run(target_seed_hits, centroid_db, member_db, mapback);
 
 	timer.go("Updating clustering");
 	const int64_t n = update_clustering(clustering.begin(), mapback->centroid_id.cbegin(), members.cbegin(), members.cend(), centroids.cbegin());

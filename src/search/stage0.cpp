@@ -1,32 +1,21 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <thread>
 #include <utility>
@@ -55,6 +44,7 @@ using std::endl;
 using std::unique_ptr;
 using Search::Hit;
 using std::thread;
+using std::runtime_error;
 
 namespace Search {
 
@@ -70,7 +60,7 @@ static void seed_join_worker(
 	SeedPartition p;
 	const int bits = query_seeds->key_bits;
 	if (bits != ref_seeds->key_bits)
-		throw std::runtime_error("Joining seed arrays with different key lengths.");
+		throw runtime_error("Joining seed arrays with different key lengths.");
 	while ((p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		std::pair<DoubleArray<SeedLoc>, DoubleArray<SeedLoc>> join = hash_join(
 			Relation<typename SeedArray<SeedLoc>::Entry>(query_seeds->begin(p), query_seeds->size(p)),
@@ -126,7 +116,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		SA *ref_idx;
 		const EnumCfg enum_ref{ &ref_hst.partition(), sid, sid + 1, cfg.seed_encoding, nullptr, false, false, cfg.seed_complexity_cut,
 			query_seeds_bitset.get() || (bool)query_seeds_hashed ? MaskingAlgo::NONE : cfg.soft_masking,
-			cfg.minimizer_window, false, false, cfg.sketch_size };
+			cfg.minimizer_window, false, false, cfg.sketch_size, cfg.target_seed_hits.get() };
 		if (query_seeds_bitset.get())
 			ref_idx = new SA(*cfg.target, ref_hst.get(sid), range, cfg.seedp_bits, ref_buffer, query_seeds_bitset.get(), enum_ref);
 		else if (query_seeds_hashed.get())
@@ -141,7 +131,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		SA* query_idx;
 		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(),
 			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, static_cast<bool>(query_seeds_hashed.get()),
-			static_cast<bool>(query_seeds_hashed.get()), cfg.sketch_size };
+			static_cast<bool>(query_seeds_hashed.get()), cfg.sketch_size, config.self ? cfg.target_seed_hits.get() : nullptr };
 		if (target_seeds)
 			query_idx = new SA(*cfg.query, range, cfg.seedp_bits, target_seeds, enum_query);
 		else

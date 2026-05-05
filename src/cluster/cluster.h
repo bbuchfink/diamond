@@ -1,7 +1,7 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2020 QIAGEN A/S (Aarhus, Denmark)
-Code developed by Patrick Ettenhuber <patrick.ettenhuber@qiagen.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
+With contributions from Patrick Ettenhuber Copyright (C) 2020 QIAGEN A/S (Aarhus, Denmark)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <string>
@@ -28,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "output/output_format.h"
 #include "util/algo/algo.h"
 #include "util/tsv/tsv.h"
+#include "multinode/multinode.h"
 
 class ClusteringAlgorithm {
 public:
@@ -124,5 +126,30 @@ std::vector<OId> cluster_members(It begin, It end, const FlatArray<OId>& cluster
 	}
 	return out;
 }
+
+struct Cfg {
+	Cfg(HspValues hsp_values, bool lazy_titles, const FlatArray<OId>& clusters, const std::vector<OId>& centroids, SequenceFile* db) :
+		hsp_values(hsp_values),
+		lazy_titles(lazy_titles),
+		clusters(clusters),
+		centroids(centroids),
+		db(db)
+	{
+	}
+	const HspValues hsp_values;
+	const bool lazy_titles;
+	const FlatArray<OId>& clusters;
+	const std::vector<OId>& centroids;
+	SequenceFile* db;
+	std::shared_ptr<Block> centroid_block, member_block;
+};
+
+InputFile* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg);
+std::string gvc_input_rep_list(int round, const std::string& tmp_dir, Job* job, OId max_oid);
+std::vector<std::string> cluster_steps(double approx_id, bool linear);
+std::vector<std::string> default_round_cov(int steps);
+bool is_linclust(const std::vector<std::string>& steps);
+std::vector<std::string> default_round_approx_id(int steps);
+int round_ccd(std::vector<std::string> param, int round, int round_count, bool linear);
 
 }

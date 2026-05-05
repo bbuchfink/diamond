@@ -55,15 +55,16 @@ static size_t run_testcase(size_t i, shared_ptr<SequenceFile> &db, shared_ptr<Se
 	statistics.reset();
 	query_file->set_seqinfo_ptr(0);
 	db->set_seqinfo_ptr(0);
+	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
 
 	if (to_cout) {
-		Search::run(db, query_file);
+		Search::run(target_seed_hits, db, query_file);
 		return 0;
 	}
 	
 	shared_ptr<TempFile> output_file(new TempFile(!bootstrap));
 
-	Search::run(db, query_file, output_file);
+	Search::run(target_seed_hits, db, query_file, output_file);
 
 	InputFile out_in(*output_file);
 	uint64_t hash = out_in.hash();
@@ -96,6 +97,7 @@ static void load_seqs(SequenceFile& file) {
 int run() {
 	const bool bootstrap = config.bootstrap, log = config.debug_log, to_cout = config.output_file == "stdout";
 	//filestack();	
+	
 	run_hit_buffer_stress_test();
 	run_queue_stress_test();
 	TaskTimer timer("Generating test dataset");

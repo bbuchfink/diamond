@@ -1,32 +1,21 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <vector>
 #include <sstream>
@@ -41,8 +30,13 @@ using std::runtime_error;
 namespace Cluster {
 
 vector<string> cluster_steps(double approx_id, bool linear) {
-	if (!config.cluster_steps.empty())
+	if (!config.cluster_steps.empty()) {
+		for (vector<string>::const_iterator it = config.cluster_steps.begin() + 1; it != config.cluster_steps.end(); ++it) {
+			if (ends_with(*it, "_lin") && !ends_with(*(it - 1), "_lin"))
+				throw runtime_error("Invalid cluster step sequence: linear steps must be at the start of the list.");
+		}
 		return config.cluster_steps;
+	}
 	vector<string> v = { "faster_lin" };
 	if (approx_id < 90)
 		v.push_back("fast_lin");
@@ -102,14 +96,14 @@ static int round_ccd(const string& depth) {
 	return i;
 }
 
-int round_ccd(int round, int round_count, bool linear) {
-	if (config.connected_component_depth.size() > 1 && config.connected_component_depth.size() != (size_t)round_count)
+int round_ccd(std::vector<std::string> param, int round, int round_count, bool linear) {
+	if (param.size() > 1 && param.size() != (size_t)round_count)
 		throw runtime_error("Parameter count for --connected-component-depth has to be 1 or the number of cascaded clustering rounds.");
-	if (config.connected_component_depth.size() == 0)
+	if (param.size() == 0)
 		return 0;
-	if (config.connected_component_depth.size() > 1)
-		return round_ccd(config.connected_component_depth[round]);
-	return (round == round_count - 1) ^ linear ? 1 : round_ccd(config.connected_component_depth[0]);
+	if (param.size() > 1)
+		return round_ccd(param[round]);
+	return (round == round_count - 1) ^ linear ? 1 : round_ccd(param[0]);
 }
 
 }

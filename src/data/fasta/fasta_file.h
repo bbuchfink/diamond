@@ -1,19 +1,21 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <vector>
@@ -30,7 +32,6 @@ struct FastaFile : public SequenceFile
 
 	FastaFile(const std::vector<std::string> &file_name, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits, const std::string& index_file = std::string());
 	FastaFile(const std::string& file_name, bool overwrite, const WriteAccess&, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
-	static void index(const std::string& path, const std::string& dst);
 
 	virtual int64_t file_count() const override;
 	virtual void create_partition_balanced(int64_t max_letters) override;
@@ -66,17 +67,29 @@ struct FastaFile : public SequenceFile
 	virtual void end_random_access(bool dictionary = true) override;
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;
+	bool is_fasta() const noexcept {
+		return format_ == SeqFileFormat::FASTA;
+	}
+	void advance_seq_count(OId n) {
+		oid_ += n;
+	}
+	virtual RawChunk* raw_chunk(size_t bytes, Flags flags) override;
+	virtual int raw_chunk_no() const override {
+		return raw_chunk_no_;
+	}
 
 private:
 
-	std::pair<int64_t, int64_t> init_read(const std::string& index_file);
+	std::pair<int64_t, int64_t> init_read();
 
+	const std::string index_file_;
 	std::list<Util::Tsv::File> file_;
 	std::list<Util::Tsv::File>::iterator file_ptr_;
 	std::unique_ptr<OutputFile> out_file_;
 	std::vector<std::streampos> index_;
 	SeqFileFormat format_;
 	OId oid_;
+	int raw_chunk_no_;
 	int64_t seqs_, letters_;
 	
 };

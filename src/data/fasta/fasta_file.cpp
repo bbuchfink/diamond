@@ -1,22 +1,25 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "fasta_file.h"
 #include "util/sequence/sequence.h"
+#include "util/system/system.h"
 
 using std::vector;
 using std::string;
@@ -27,6 +30,7 @@ using std::tie;
 using std::ifstream;
 using std::ofstream;
 using std::next;
+using std::unordered_map;
 using namespace Util::Tsv;
 using Util::String::TokenizerBase;
 using Util::String::FastaTokenizer;
@@ -47,9 +51,13 @@ SeqFileFormat guess_format(TextInputFile& file) {
 	}
 }
 
-FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, const ValueTraits& value_traits, const std::string& index_file):
+FastaFile::FastaFile(const vector<string>& file_name, Flags flags, const ValueTraits& value_traits, const string& index_file):
 	SequenceFile(SequenceFile::Type::FASTA, flags, FormatFlags::DICT_LENGTHS | FormatFlags::DICT_SEQIDS, value_traits),
-	oid_(0)
+	index_file_(index_file),
+	oid_(0),
+	raw_chunk_no_(0),
+	seqs_(0),
+	letters_(0)
 {
 	if (file_name.size() > 2)
 		throw OperationNotSupported();
@@ -58,15 +66,21 @@ FastaFile::FastaFile(const std::vector<std::string>& file_name, Flags flags, con
 	unique_ptr<TextInputFile> input_file(new TextInputFile(file_name.front()));
 	format_ = guess_format(*input_file);
 	//Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? FASTA_SEP : FASTQ_SEP, format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
-	Util::Tsv::Config config(format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
+	Util::Tsv::Config cfg(format_ == SeqFileFormat::FASTA ? (TokenizerBase*)(new FastaTokenizer()) : new FastqTokenizer);
 	const auto schema = format_ == SeqFileFormat::FASTA ? FASTA_SCHEMA : FASTQ_SCHEMA;
-	file_.emplace_back(schema, std::move(input_file), Util::Tsv::Flags(), config);
+	file_.emplace_back(schema, std::move(input_file), Util::Tsv::Flags(), cfg);
 	if (file_name.size() > 1)
-		file_.emplace_back(schema, file_name[1], Util::Tsv::Flags(), config);
-	file_ptr_ = file_.begin();	
+		file_.emplace_back(schema, file_name[1], Util::Tsv::Flags(), cfg);
+	file_ptr_ = file_.begin();
+	if (!config.fasta_index_file.empty()) {
+		ifstream in(config.fasta_index_file, std::ios::binary);
+		uint64_t pos;
+		while (in >> pos)
+			index_.push_back(pos);
+	}
 	if (!flag_any(flags, Flags::NEED_LETTER_COUNT))
 		return;
-	tie(seqs_, letters_) = init_read(index_file);
+	tie(seqs_, letters_) = init_read();
 	set_seqinfo_ptr(0);
 }
 
@@ -75,6 +89,7 @@ FastaFile::FastaFile(const string& file_name, bool overwrite, const WriteAccess&
 	out_file_(file_name.empty() ? new TempFile : new OutputFile(file_name, Compressor::NONE, overwrite ? "w+b" : "r+b")),
 	format_(SeqFileFormat::FASTA),
 	oid_(0),
+	raw_chunk_no_(0),
 	seqs_(0),
 	letters_(0)
 {
@@ -128,24 +143,31 @@ void FastaFile::close() {
 }
 
 void FastaFile::set_seqinfo_ptr(OId i) {
-	if (out_file_)
-		out_file_->rewind();
-	if (index_.empty()) {
-		//fprintf(stderr, "Missing FASTA index\n");
-		//exit(1);
+	if (i == oid_)
+		return;
+	if (i == 0) {
+		raw_chunk_no_ = 0;
+		oid_ = 0;
+		if (out_file_)
+			out_file_->rewind();
 		for (auto& f : file_)
 			f.rewind();
-		oid_ = 0;
-		vector<Letter> seq;
-		string id;
-		while (oid_ != i) {
-			read_seq(seq, id, nullptr);
-		}
+		return;
+	}
+	else if (i == seqs_) {
+		oid_ = seqs_;
+		for (auto& f : file_)
+			f.seek(f.size());
+		return;
+	}
+	if (index_.empty()) {
+		throw runtime_error("FastaFile::set_seqinfo_ptr: no index available");
 	}
 	else {
 		if (file_.size() != 1 || i >= index_.size())
 			throw runtime_error("FastaFile::set_seqinfo_ptr");
 		file_.front().seek(index_[i]);
+		oid_ = i;
 	}
 }
 
@@ -176,6 +198,96 @@ bool FastaFile::read_seq(vector<Letter>& seq, string &id, std::vector<char>* qua
 			file_ptr_ = file_.begin();
 	}
 	return !t.empty();
+}
+
+namespace {
+
+struct FastaRawChunk : public RawChunk {
+	FastaRawChunk(const ValueTraits& value_traits) :
+		value_traits_(value_traits),
+		bytes_(0)
+	{}
+
+	virtual bool empty() const override {
+		return data_.empty();
+	}
+
+	virtual OId begin() const noexcept override {
+		return 0;
+	}
+
+	virtual OId end() const noexcept override {
+		return 0;
+	}
+
+	virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<string, bool>* accs) const override {
+		assert(filter == nullptr && accs == nullptr);
+		DecodedPackage* pkg = new DecodedPackage();
+		pkg->no = no;
+		const bool titles = flag_any(flags, SequenceFile::Flags::TITLES),
+			seqs = flag_any(flags, SequenceFile::Flags::SEQS);
+		FastaTokenizer tokenizer;
+		vector<Letter> seq;
+		const char* ptr = data_.data(), *end = ptr + data_.size();
+		while (ptr < end) {
+			const char* record_end = find_record_end(ptr, end);
+			Table table(FASTA_SCHEMA);
+			table.push_back(ptr, record_end, &tokenizer);
+			if (seqs) {
+				Util::Seq::from_string(table.front().get<string>(1), seq, value_traits_, 0);
+				pkg->seqs.push_back(seq.begin(), seq.end());
+			}
+			if (titles) {
+				const string id = table.front().get<string>(0);
+				pkg->ids.push_back(id.begin(), id.end());				
+			}
+			++pkg->seq_count;
+			ptr = record_end == end ? end : record_end + 1;
+		}
+		return pkg;
+	}
+
+	virtual size_t letters() const noexcept override {
+		return 0;
+	}
+
+	virtual size_t bytes() const noexcept override {
+		return bytes_;
+	}
+
+	static const char* find_record_end(const char* begin, const char* end) {
+		static const char* delimiter = "\n>";
+		return std::search(begin + 1, end, delimiter, delimiter + 2);
+	}
+
+	const ValueTraits& value_traits_;
+	string data_;
+	size_t bytes_;
+};
+
+}
+
+RawChunk* FastaFile::raw_chunk(size_t bytes, Flags flags) {
+	if (format_ != SeqFileFormat::FASTA)
+		throw OperationNotSupported();
+	FastaRawChunk* chunk = new FastaRawChunk(value_traits_);
+	chunk->no = raw_chunk_no_++;
+	if (bytes == 0)
+		return chunk;
+	chunk->bytes_ = file_ptr_->read_raw(chunk->data_, bytes);
+	if (chunk->data_.empty())
+		return chunk;
+	bool complete = chunk->bytes_ < bytes;
+	if (!complete && chunk->data_.back() == '\n') {
+		const string next = file_ptr_->peek(1);
+		complete = next.empty() || next.front() == '>';
+	}
+	if (!complete) {
+		const pair<bool, size_t> r = file_ptr_->read_to_fasta_record_end(chunk->data_);
+		chunk->bytes_ += r.second;
+	}
+	(void)flags;
+	return chunk;
 }
 
 void FastaFile::create_partition_balanced(int64_t max_letters) {
@@ -266,7 +378,7 @@ Loc FastaFile::seq_length(size_t oid)
 {
 	if (oid < seq_length_.size())
 		return seq_length_[oid];
-	throw OperationNotSupported();
+	throw runtime_error("Missing FASTA index");
 }
 
 void FastaFile::end_random_access(bool dictionary)
@@ -291,44 +403,65 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 		seq_length_.push_back(seq.length());
 }
 
-pair<int64_t, int64_t> FastaFile::init_read(const std::string& index_file) {
-	vector<Letter> seq;
-	string id;
+pair<int64_t, int64_t> FastaFile::init_read() {
 	int64_t seqs = 0, letters = 0;
-	if (index_file.empty()) {
-		while (read_seq(seq, id)) {
-			if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
-				add_seqid_mapping(id, seqs);
-			if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
-				seq_length_.push_back((Loc)seq.size());
-			++seqs;
-			letters += seq.size();
+	const bool count_only = !flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING | Flags::NEED_LENGTH_LOOKUP);
+	if (index_file_.empty() || !exists(index_file_)) {
+		const uint64_t limit = std::min<uint64_t>(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), SequenceFile::DEFAULT_LOAD_SIZE);
+		uint64_t bytes = 0, ms = 0;
+		OId oid = 0;
+		const SequenceFile::Flags flags = flags_;
+		flags_ |= Flags::SEQS;
+		if(flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
+			flags_ |= Flags::TITLES;
+		for (;;) {
+			TaskTimer timer;
+			Block* b = load_seqs(limit);
+			ms += timer.microseconds();
+			bytes += b->raw_bytes();
+			if (b->empty()) {
+				delete b;
+				break;
+			}
+			const BlockId n = b->seqs().size();
+			letters += b->seqs().letters();
+			seqs += n;
+			if (count_only) {
+				delete b;
+				continue;
+			}
+			seq_length_.reserve(seqs);
+			for (BlockId i = 0; i < n; ++i) {
+				if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING))
+					add_seqid_mapping(b->ids()[i], oid);
+				if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP))
+					seq_length_.push_back(b->seqs().length(i));
+				++oid;
+			}
+			delete b;
 		}
+		std::ostringstream ss;
+		ss << "Loaded " << bytes << " bytes from disk at " << ((double)bytes / MEGABYTES / ms * 1e6) << " MB/s" << std::endl;
+		open_stats_ = ss.str();
+		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP) && !index_file_.empty()) {
+			ofstream out(index_file_, std::ios::binary);
+			out.write((const char*)seq_length_.data(), seq_length_.size() * sizeof(Loc));
+			if (!out)
+				throw runtime_error("Error writing file: " + index_file_);
+		}
+		flags_ = flags;
 	}
 	else {
-		ifstream in(index_file);
+		ifstream in(index_file_, std::ios::binary);
 		if (!in)
-			throw runtime_error("Error opening file: " + index_file);
-		uint64_t offset;
-		Loc len;
-		while (in >> offset) {
-			in >> len;
-			index_.push_back(offset);
-			seq_length_.push_back(len);
-			++seqs;
-			letters += len;
-		}
+			throw runtime_error("Error opening file: " + index_file_);
+		in.seekg(0, std::ios::end);
+		seqs = in.tellg() / sizeof(Loc);
+		seq_length_.resize(seqs);
+		in.seekg(0, std::ios::beg);
+		in.read((char*)seq_length_.data(), seqs * sizeof(Loc));
+		for (size_t i = 0; i < seqs; ++i)
+			letters += seq_length_[i];
 	}
 	return { seqs, letters };
-}
-
-void FastaFile::index(const string& path, const string& dst) {
-	ofstream out(dst);
-	auto f = [&](const string& id, const string& seq, std::streampos pos) {
-		out << pos << '\t' << seq.length() << std::endl;
-		};
-	ifstream in(path);
-	if (!in)
-		throw runtime_error("Failed to open file: " + path);
-	read_fasta(in, f);
 }

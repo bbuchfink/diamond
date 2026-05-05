@@ -1,9 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <memory>
@@ -25,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/data_structures/bit_vector.h"
 #include "util/scores/cutoff_table.h"
 #include "util/parallel/simple_thread_pool.h"
+#include "util/data_structures/bit_vector.h"
 #ifdef WITH_DNA
 #include "contrib/dna/build_score.h"
 #endif
@@ -88,7 +87,7 @@ struct Config {
 	using RankingTable = std::vector<Extension::GlobalRanking::Hit>;
 	using RankingBuffer = Deque<Search::Hit, 28, Async>;
 
-	Config();
+	Config(std::unique_ptr<std::vector<BitVector>>& target_seed_hits);
 	void free();
 	~Config();
 
@@ -127,6 +126,8 @@ struct Config {
 	std::unique_ptr<HitBuffer>                 seed_hit_buf;
 	std::unique_ptr<RankingBuffer>             global_ranking_buffer;
 	std::unique_ptr<RankingTable>              ranking_table;
+	std::unique_ptr<std::vector<BitVector>>&   target_seed_hits;
+	
 #ifdef WITH_DNA
 	std::unique_ptr<Stats::Blastn_Score>       score_builder;
     std::unique_ptr<Dna::Index>                dna_ref_index;

@@ -1,19 +1,21 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <memory>
 #include <iostream>
@@ -112,7 +114,7 @@ pair<double, int> block_size(int64_t memory_limit, int64_t db_letters, Sensitivi
 		const double hash_join_factor = 1.0 + (double)thread_count / (seedp_count(Search::seedp_bits(shape_weight, thread_count, c)) / c);
 		const double seed_array_entry_size = 18.0 * hash_join_factor;
 		b = m / (seed_array_entry_size * seeds_per_letter + 2.0);
-	} while ((int64_t)b * 1000000000 < db_letters && b < max_b && c < max_c);
+	} while (std::round(b * 1e9) < db_letters && b < max_b && c < max_c);
 	/*if (b > 4)
 		b = floor(b);
 	else if (b > 0.4)
@@ -217,7 +219,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("verbose", 'v', "verbose console output", verbose)
 		("log", 0, "enable debug log", debug_log)
 		("quiet", 0, "disable console output", quiet)
-		("tmpdir", 't', "directory for temporary files", tmpdir);
+		("tmpdir", 't', "directory for temporary files", tmpdir)
+		("keep-temp-files", 0, "do not delete temporarary files", keep_temp_files);
 
 	auto& general_db = parser.add_group("General/database options", { makedb, blastp, blastx, cluster, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, LINCLUST, CLUSTER_REASSIGN });
 	general_db.add()
@@ -258,7 +261,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("evalue", 'e', "maximum e-value to report alignments (default=0.001)", max_evalue, 0.001)
 		("motif-masking", 0, "softmask abundant motifs (0/1)", motif_masking)
 		("approx-id", 0, "minimum approx. identity% to report an alignment/to cluster sequences", approx_min_id)
-		("ext", 0, "Extension mode (banded-fast/banded-slow/full/global/none)", ext_);
+		("id", 0, "minimum identity% to report an alignment", min_id)
+		("ext", 0, "Extension mode (banded-fast/banded-slow/full/global/none)", ext_)
+		("min-len-ratio", 0, "sequence length ratio cutoff for mutual coverage", min_length_ratio)
+		("hamming-dist-boundary-check", 0, "Clip hamming distance filter against sequence boundaries", hamming_dist_boundary_check);
 
 	auto& aligner_view = parser.add_group("Aligner/view options", { blastp, blastx, view });
 	aligner_view.add()
@@ -292,7 +298,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("range-culling", 0, "restrict hit culling to overlapping query ranges", query_range_culling)
 		("compress", 0, "compression for output files (0=none, 1=gzip, zstd)", compression)
 		("min-score", 0, "minimum bit score to report alignments (overrides e-value setting)", min_bit_score)
-		("id", 0, "minimum identity% to report an alignment", min_id)
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
 		("subject-cover", 0, "minimum subject cover% to report an alignment", subject_cover)
 		("swipe", 0, "exhaustive alignment against all database sequences", swipe_all)
@@ -338,9 +343,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	auto& format = parser.add_group("Output format options", { blastp, blastx, view, CLUSTER_REALIGN });
 	format.add()
-		("outfmt", 'f', format_str.str().c_str(), output_format)
-		("qnum-offset", 0, "offset added to query ordinal id (qnum field)", qnum_offset, INT64_C(0))
-		("snum-offset", 0, "offset added to subject ordinal id (snum field)", snum_offset, INT64_C(0));
+		("outfmt", 'f', format_str.str().c_str(), output_format);
 
 	auto& taxon_format = parser.add_group("Taxon output format options", { blastp, blastx });
 	taxon_format.add()
@@ -641,7 +644,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("no_chaining_merge_hsps", 0, "", no_chaining_merge_hsps)
 		("graph-algo", 0, "", graph_algo, string("gvc"))
 		("tsv-read-size", 0, "", tsv_read_size, int64_t(GIGABYTES))
-		("min-len-ratio", 0, "", min_length_ratio)
 		("max-indirection", 0, "", max_indirection)
 		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
 		
@@ -833,11 +835,11 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		}
 		else {
 			if (gap_open == -1 || gap_extend == -1)
-				throw std::runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
+				throw runtime_error("Custom scoring matrices require setting the --gapopen and --gapextend options.");
 			if (!output_format.empty() && (output_format.front() == "daa" || output_format.front() == "100"))
-				throw std::runtime_error("Custom scoring matrices are not supported for the DAA format.");
+				throw runtime_error("Custom scoring matrices are not supported for the DAA format.");
 			if (comp_based_stats > 1)
-				throw std::runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
+				throw runtime_error("This value for --comp-based-stats is not supported when using a custom scoring matrix.");
 			score_matrix = ScoreMatrix(matrix_file, gap_open, gap_extend, stop_match_score, ScoreMatrix::Custom());
 		}
 		if (argc != 2)
@@ -922,7 +924,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1772912406);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1777995506);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;

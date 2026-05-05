@@ -1,9 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2016-2021 Max Planck Society for the Advancement of Science e.V.
-                        Benjamin Buchfink
-						
-Code developed by Benjamin Buchfink <benjamin.buchfink@tue.mpg.de>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,14 +15,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <memory>
+#include <vector>
 #include "data/sequence_file.h"
 #include "util/io/consumer.h"
 
+void get_seq();
+void random_seqs();
+void greedy_vertex_cover();
+
 namespace Search {
 
-void run(const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<Consumer>& out = nullptr, const std::shared_ptr<DbFilter>& db_filter = nullptr);
+void run(std::unique_ptr<std::vector<BitVector>>& target_seed_hits, const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<Consumer>& out = nullptr, const std::shared_ptr<DbFilter>& db_filter = nullptr);
 
 }

@@ -65,12 +65,15 @@ struct DecodedPackage {
 	SequenceSet seqs;
 	std::vector<OId> oids;
 	std::vector<std::pair<OId, TaxId>> taxids;
+	size_t seq_count = 0;
 	int no;
 };
 
 struct RawChunk;
 
 struct SequenceFile {
+
+	static const uint64_t DEFAULT_LOAD_SIZE = 4 * GIGABYTES;
 
     enum class Type { DMND = 0, BLAST = 1, FASTA = 2, BLOCK = 3 };
 
@@ -96,6 +99,7 @@ struct SequenceFile {
 		QUALITY = 1 << 17,
 		LAZY_MASKING = 1 << 18,
 		DNA_PRESERVATION = 1 << 19,
+		RANK_BY_SEQID = 1 << 20,
 		ALL = SEQS | TITLES
 	};
 
@@ -234,6 +238,10 @@ struct SequenceFile {
 		return n;
 	}
 
+	std::string open_stats() const {
+		return open_stats_;
+	}
+
 protected:
 
 	static const char* const SEQID_HDR;
@@ -261,6 +269,7 @@ protected:
 	std::unordered_map<std::string, OId> acc2oid_;
 	std::unique_ptr<Util::Tsv::File> seqid_file_;
 	std::vector<Loc> seq_length_;
+	std::string open_stats_;
 
 private:
 

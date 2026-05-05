@@ -1,19 +1,21 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
 #include <iostream>
@@ -105,17 +107,25 @@ int SequenceFile::raw_chunk_no() const {
 }
 
 pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, const BitVector* filter, unordered_map<string, bool>* accs, const Chunk& chunk, bool load_taxids) {
+	const Loc SEQ_LEN_EST = 200;
+	const uint64_t ID_EST = 100, MAX_RESERVE = 8 * GIGABYTES;
 	assert(chunk.n_seqs == 0);
 	assert(config.threads_ > 0);
 	const uint64_t letters = config.minichunk;
 	const int t = std::min(config.load_threads, config.threads_), p = t >= 3 ? t - 2 : 1;
 	const int raw_chunk_start = raw_chunk_no();
 	int64_t seqs = 0;
-	Block* block = new Block();
-	Queue<RawChunk*> queue(p * 4, 1, p, nullptr);
-	Queue<DecodedPackage*> output_queue(p * 4, p, 1, nullptr);
 	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS),
 		load_titles = flag_any(flags(), SequenceFile::Flags::TITLES);
+	Block* block = new Block();
+	const BlockId entry_est = (std::min(max_letters, MAX_RESERVE) + SEQ_LEN_EST - 1) / SEQ_LEN_EST;
+	if (load_seqs)
+		block->seqs().reserve(entry_est, std::min(max_letters, MAX_RESERVE));
+	if (load_titles)
+		block->reserve_ids(ID_EST * entry_est, entry_est);
+	Queue<RawChunk*> queue(p * 4, 1, p, nullptr);
+	Queue<DecodedPackage*> output_queue(p * 4, p, 1, nullptr);
+	const bool byte_limited = type() == Type::FASTA, have_oids = type() == Type::BLAST;
 	SimpleThreadPool pool;
 	auto worker = [&](const atomic<bool>& stop) {
 		while (!stop) {
@@ -138,7 +148,7 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 			backlog.emplace(pkg->no, pkg);
 			while (!backlog.empty() && backlog.begin()->first == next) {
 				pkg = backlog.begin()->second;
-				const size_t n_seqs = pkg->seqs.size();
+				const size_t n_seqs = pkg->seq_count;
 				seqs += n_seqs;
 				if (load_seqs) {
 					block->seqs_.append(pkg->seqs);
@@ -149,7 +159,8 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 				if (load_taxids) {
 					add_taxid_mapping(pkg->taxids);
 				}
-				block->block2oid_.insert(block->block2oid_.end(), pkg->oids.begin(), pkg->oids.end());
+				if (have_oids)
+					block->block2oid_.insert(block->block2oid_.end(), pkg->oids.begin(), pkg->oids.end());
 				delete pkg;
 				backlog.erase(backlog.begin());
 				++next;
@@ -171,12 +182,19 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 			delete rc;
 			break;
 		}
-		block_letters += rc->letters();
+		block_letters += byte_limited ? rc->bytes() : rc->letters();
 		bytes += rc->bytes();
 		queue.enqueue(rc);
 	} while (!pool.stop() && block_letters < max_letters);
 	queue.close();
 	pool.join_all();
+	if (type() == Type::FASTA && seqs > 0) {
+		const OId oid_begin = tell_seq();
+		block->block2oid_.reserve((size_t)seqs);
+		for (int64_t i = 0; i < seqs; ++i)
+			block->block2oid_.push_back(oid_begin + (OId)i);
+		static_cast<FastaFile*>(this)->advance_seq_count((OId)seqs);
+	}
 	if (seqs > 0) {
 		if (load_seqs)
 			block->seqs().finish_reserve();
@@ -286,9 +304,11 @@ pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, OId 
 	vector<Letter> seq;
 	string id;
 	vector<char> qual;
-	int64_t letters = 0, seq_count = 0;
+	int64_t letters = 0, seq_count = 0;	
+	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS),
+		load_titles = flag_any(flags(), SequenceFile::Flags::TITLES),
+		preserve_dna = flag_any(flags(), SequenceFile::Flags::DNA_PRESERVATION);
 	Block* block = new Block();
-	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS), load_titles = flag_any(flags(), SequenceFile::Flags::TITLES), preserve_dna = flag_any(flags(), SequenceFile::Flags::DNA_PRESERVATION);
 	vector<char>* q = flag_any(flags(), SequenceFile::Flags::QUALITY) ? &qual : nullptr;
 	OId oid = tell_seq();
 	const bool first_block = oid == 0;
@@ -342,6 +362,9 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, OId max_seqs, const Bi
 	Block* block;
 	int64_t seqs_processed;
 	if (type_ == Type::BLAST) {
+		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
+	}
+	else if (type_ == Type::FASTA && filter == nullptr && static_cast<FastaFile*>(this)->is_fasta() && max_seqs == 0 && chunk.n_seqs == 0 && value_traits_.seq_type == SequenceType::amino_acid && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION) && config.command != Config::regression_test) {
 		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
 	}
 	else if (flag_any(format_flags_, FormatFlags::LENGTH_LOOKUP))
@@ -472,7 +495,7 @@ SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags,
 		//message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
 		return new FastaFile(path, flags, value_traits);
 	}
-	throw std::runtime_error("Sequence file does not have a supported format.");
+	throw runtime_error("Sequence file does not have a supported format.");
 }
 
 void SequenceFile::load_dict_block(InputFile* f, const size_t ref_block)

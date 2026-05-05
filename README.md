@@ -9,7 +9,8 @@ features are:
 
 -   Pairwise alignment of proteins and translated DNA at 100x-10,000x
     speed of BLAST.
--   [Protein clustering of up to tens of billions of proteins](https://github.com/bbuchfink/diamond/wiki/Clustering)
+-   Clustering protein sequences with high sensitivity and scalability
+    including linear-time scaling.
 -   Frameshift alignments for long read analysis.
 -   Low resource requirements and suitable for running on standard
     desktops or laptops.
@@ -38,13 +39,12 @@ DIAMOND is actively supported and developed software. Please use the [issue trac
 About
 =====
 DIAMOND is developed by Dr. Benjamin J. Buchfink, independent scientist, Tübingen, Germany,
-supported by the Max Planck Society for the Advancement of Science, in collaboration with
-the Drost lab at the University of Dundee. From 2019-2024,
-it was developed by Benjamin Buchfink at the Drost lab, Max Planck Institute for Biology
+supported by the Max Planck Society for the Advancement of Science. From 2019-2024,
+it was developed by Benjamin J. Buchfink at the Drost lab, Max Planck Institute for Biology
 Tübingen. From 2018-2019, its development was supported by the German Federal Ministry
 for Economic Affairs and Energy through an EXIST grant. From 2016-2018, it was developed
-by Benjamin Buchfink as an independent researcher. From 2013-2015, the initial version
-was developed by Benjamin Buchfink at the Huson lab, University of Tübingen, Germany.
+by Benjamin J. Buchfink as an independent researcher. From 2013-2015, the initial version
+was developed by Benjamin J. Buchfink at the Huson lab, University of Tübingen, Germany.
 
 \[[:email:Email](mailto:buchfink@gmail.com)\]
 \[[X](https://x.com/bbuchfink)\]
@@ -56,18 +56,18 @@ was developed by Benjamin Buchfink at the Huson lab, University of Tübingen, Ge
 
 **When using the tool in published research, please cite:**
 
--   Buchfink B, Reuter K, Drost HG, \"Sensitive protein alignments at tree-of-life
+-   Buchfink BJ, Reuter K, Drost HG, \"Sensitive protein alignments at tree-of-life
     scale using DIAMOND\", *Nature Methods* **18**, 366–368 (2021).
     [doi:10.1038/s41592-021-01101-x](https://doi.org/10.1038/s41592-021-01101-x)
 
 For sequence clustering:
 
--   Buchfink BJ, Barbé E, Ashkenazy H, Reuter K, Kennedy JA, Drost HG, \"Clustering the protein
-    universe of life using DIAMOND DeepClust\", *Nature Methods* (2026).
+-   Buchfink BJ, Barbé É, Ashkenazy H, Reuter K, Kennedy JA, Drost HG, \"Clustering the protein
+    universe of life using DIAMOND DeepClust\", *Nature Methods* **23**, 724-727 (2026).
     [doi:10.1038/s41592-026-03030-z](https://doi.org/10.1038/s41592-026-03030-z)
 
 Original publication to cite DIAMOND until v0.9.25:
 
--   Buchfink B, Xie C, Huson DH, \"Fast and sensitive protein alignment
+-   Buchfink BJ, Xie C, Huson DH, \"Fast and sensitive protein alignment
     using DIAMOND\", *Nature Methods* **12**, 59-60 (2015).
     [doi:10.1038/nmeth.3176](https://doi.org/10.1038/nmeth.3176)

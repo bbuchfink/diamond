@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <memory>
 #include "util/system/system.h"
-#include "util/parallel/filestack.h"
+#include "radixed_table.h"
 #include "data/sequence_file.h"
 #include "data/fasta/fasta_file.h"
 
@@ -61,30 +61,10 @@ struct Volume {
 		row >> v.path;
 		if (!row)
 			throw std::runtime_error("Format error in VolumedFile");
-		row >> v.record_count;
-		if (!row)
-			throw std::runtime_error("Format error in VolumedFile");
+		row >> v.record_count;		
 		row >> v.oid_begin >> v.oid_end;
 		return str;
 	}
-};
-
-struct Bucket {
-	static constexpr uint64_t NIL = std::numeric_limits<uint64_t>::max();
-	Bucket() = default;
-	Bucket(const std::string& path, uint64_t records) : path(path), records_(records) {}
-	std::string path;
-	std::string containing_directory() const {
-		return ::containing_directory(path);
-	}
-	uint64_t records() const {
-		if (records_ == NIL)
-			throw std::runtime_error("Record count not set for bucket: " + path);
-		return records_;
-	}
-private:
-	uint64_t records_ = NIL;
-	friend struct RadixedTable;
 };
 
 struct VolumedFile : public std::vector<Volume> {
@@ -92,10 +72,11 @@ struct VolumedFile : public std::vector<Volume> {
 		VolumedFile(bucket.path)
 	{
 	}
-	VolumedFile(const std::string& file_name) :
+	VolumedFile(const std::string& file_name, uint64_t letter_count = 0) :
 		list_file_(file_name),
 		records_(0),
-		max_oid_(0)
+		max_oid_(0),
+		letter_count_(letter_count)
 	{
 		std::ifstream volume_file(file_name);
 		if (!volume_file)
@@ -121,7 +102,12 @@ struct VolumedFile : public std::vector<Volume> {
 		return records_;
 	}
 	OId max_oid() const {
+		if (max_oid_ == 0)
+			throw std::runtime_error("max_oid not set");
 		return max_oid_;
+	}
+	void set_max_oid(OId max_oid) {
+		max_oid_ = max_oid;
 	}
 	std::pair<std::vector<Volume>::const_iterator, std::vector<Volume>::const_iterator> find(OId oid_begin, OId oid_end) const {
 		auto it = std::lower_bound(begin(), end(), oid_begin);
@@ -132,15 +118,33 @@ struct VolumedFile : public std::vector<Volume> {
 			++end;
 		return { it,end };
 	}
-	void remove() const {
-		for (const Volume& v : *this)
-			::remove(v.path.c_str());
-		::remove(list_file_.c_str());
-		rmdir(containing_directory(list_file_).c_str());
+	std::vector<Volume>::const_iterator find(OId oid) const {
+		auto it = std::lower_bound(begin(), end(), oid);
+		if (it == end() || oid < it->oid_begin || oid >= it->oid_end)
+			throw std::runtime_error("OID out of bounds");
+		return it;
+	}
+	void remove(bool dir = true, bool files = true) const {
+		if (files)
+			for (const Volume& v : *this)
+				remove_tmp_file(v.path);
+		remove_tmp_file(list_file_);
+		if (dir)
+			rmdir(containing_directory(list_file_).c_str());
+	}
+	void set_letter_count(uint64_t count) {
+		letter_count_ = count;
+	}
+	uint64_t letter_count() const {
+		return letter_count_;
+	}
+	const std::string& list_file() const {
+		return list_file_;
 	}
 private:
 	const std::string list_file_;
 	OId records_, max_oid_;
+	uint64_t letter_count_;
 };
 
 inline Block* load_seqs(const VolumedFile& volumes, OId oid_begin, OId oid_end, const std::string& index_dir, SequenceFile::Flags flags = SequenceFile::Flags::ALL) {
@@ -169,46 +173,3 @@ inline Block* load_seqs(const VolumedFile& volumes, OId oid_begin, OId oid_end, 
 		combined = new Block();
 	return combined;
 }
-
-struct RadixedTable : public std::vector<Bucket> {
-
-	RadixedTable() = default;
-
-	RadixedTable(const std::string& file_name) {
-		std::ifstream file(file_name);
-		std::string path;
-		uint64_t records;
-		for (;;) {
-			if (!(file >> path))
-				return;
-			file >> records;
-			if (!file)
-				throw std::runtime_error("Format error in RadixedTable");
-			emplace_back(path, records);
-		}
-	}
-
-	uint64_t max_buckets(uint64_t mem_limit, size_t record_size) const {
-		std::vector<uint64_t> counts;
-		counts.reserve(size());
-		for (const Bucket& b : *this)
-			counts.push_back(b.records());
-		std::sort(counts.begin(), counts.end(), std::greater<uint64_t>());
-		uint64_t sum = 0;
-		for (uint64_t i = 0; i < counts.size(); ++i) {
-			sum += counts[i] * record_size;
-			if (sum >= mem_limit)
-				return i > 0 ? i : 1;
-		}
-		return counts.size();
-	}
-
-	void append(FileStack& out) const {
-		std::ostringstream ss;
-		for (const Bucket& b : *this) {
-			ss << b.path << '\t' << b.records_ << std::endl;
-		}
-		out.push(ss.str());
-	}
-
-};

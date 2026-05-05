@@ -1,8 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2022-2023 Max Planck Society for the Advancement of Science e.V.
-
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,13 +15,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "cascaded.h"
 #include "basic/config.h"
 #include "data/fasta/fasta_file.h"
 #include "run/workflow.h"
 #include "basic/statistics.h"
 #include "util/log_stream.h"
+#include "util/data_structures/flat_array.h"
 
 using std::unique_ptr;
 using std::endl;
@@ -98,7 +97,8 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	config.lin_stage1_query = false;
 	config.lin_stage1_target = false;
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(unal_members.size());
-	Search::run(centroid_db, unaligned, mapback);
+	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
+	Search::run(target_seed_hits, centroid_db, unaligned, mapback);
 
 	timer.go("Updating clustering");
 	vector<OId> out = clustering;

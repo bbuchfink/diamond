@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-namespace External {
-
 const int RADIX_BITS = 8;
 const uint64_t RADIX_COUNT = UINT64_C(1) << RADIX_BITS;
 const uint64_t MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024;
@@ -85,11 +83,11 @@ struct FileArray {
 		return bucket_files_[i]->file_name();
 	}
 
-	RadixedTable buckets() const {
-		RadixedTable buckets;
+	RadixedTable buckets(int shift) const {
+		RadixedTable buckets(shift);
 		buckets.reserve(size_);
 		for (uint64_t i = 0; i < size_; ++i)
-			buckets.emplace_back(bucket(i), exclusive_ ? records_total_[i] : Bucket::NIL);
+			buckets.emplace_back(bucket(i), exclusive_ ? records_total_[i] : Bucket::NIL, i << shift, (i + 1) << shift);
 		return buckets;
 	}
 
@@ -147,7 +145,7 @@ struct BufferArray {
 
 	template<typename T>
 	//bool write(int radix, const T* ptr, size_t n, int64_t record_count) {
-	void write(uint64_t radix, const T * ptr, size_t n, int64_t record_count) {
+	void write(uint64_t radix, const T* ptr, size_t n, int64_t record_count) {
 		for (size_t i = 0; i < n; ++i)
 			serialize(ptr[i], data_[radix]);
 		records_[radix] += record_count;
@@ -186,7 +184,7 @@ struct BufferArray {
 	void write_msb(const T& x) {
 		const uint64_t key = x.key();
 		const uint64_t radix = key >> (64 - RADIX_BITS);
-		write(radix , &x, 1, 1);
+		write(radix, &x, 1, 1);
 	}
 
 	~BufferArray() {
@@ -203,5 +201,3 @@ private:
 	FileArray& file_array_;
 
 };
-
-}

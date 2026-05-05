@@ -50,6 +50,9 @@ struct Block {
 			throw std::runtime_error("Block::ids()");
 		return ids_;
 	}
+	void reserve_ids(uint64_t letters, BlockId entries) {
+		ids_.reserve(entries, letters);
+	}
 	const SequenceSet& source_seqs() const {
 		return source_seqs_;
 	}
@@ -99,13 +102,15 @@ struct Block {
 	uint64_t raw_bytes() const noexcept {
 		return raw_bytes_;
 	}
+	template<typename T>
+	void load_stats(T& stream, double microseconds) const {
+		if (raw_bytes() > 0)
+			stream << "Loaded " << raw_bytes() << " bytes from disk at " << ((double)raw_bytes() / MEGABYTES / microseconds * 1e6) << " MB/s" << std::endl;
+	}
 	BlockId oid_count() const {
 		return (BlockId)block2oid_.size();
 	}
-	void offset_oids(OId offset) {
-		for (auto& oid : block2oid_)
-			oid += offset;
-	}
+	void offset_oids(OId offset);
 
 private:
 

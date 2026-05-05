@@ -30,10 +30,12 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include <stdint.h>
+#include <atomic>
 #include <vector>
 #include "../basic/packed_loc.h"
 #include "../masking/def.h"
 #include "basic/sequence.h"
+#include "util/data_structures/bit_vector.h"
 
 enum class SeedEncoding { SPACED_FACTOR, HASHED, CONTIGUOUS };
 
@@ -85,6 +87,7 @@ struct EnumCfg {
 	const Loc minimizer_window;
 	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
 	const Loc sketch_size;
+	const std::vector<BitVector>* const skip_seed_positions;
 };
 
 struct SeqInfo {

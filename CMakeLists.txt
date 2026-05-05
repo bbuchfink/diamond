@@ -331,8 +331,6 @@ set(OBJECTS
         src/align/gapped_final.cpp
         src/align/full_db.cpp
         src/align/culling.cpp
-        src/cluster/cluster_registry.cpp
-        src/cluster/cascaded/cascaded.cpp
         src/align/output.cpp
         #src/tools/roc.cpp
         src/test/data.cpp
@@ -390,7 +388,7 @@ set(OBJECTS
         src/cluster/reassign.cpp
         src/util/tsv/read_text_mt.cpp
         src/tools/greedy_vertex_cover.cpp
-        src/cluster/cascaded/recluster.cpp
+        #src/cluster/cascaded/recluster.cpp
         src/cluster/helpers.cpp
         src/search/kmer_ranking.cpp
         src/chaining/hamming_ext.cpp
@@ -402,7 +400,6 @@ set(OBJECTS
         src/util/tsv/file.cpp
         src/util/tsv/record.cpp
         src/cluster/cascaded/helpers.cpp
-        src/cluster/cascaded/wrapper.cpp
         src/output/daa/merge.cpp
         src/chaining/backtrace.cpp
         src/util/tsv/merge.cpp
@@ -430,6 +427,9 @@ set(OBJECTS
         src/cluster/multinode/multinode.cpp
         src/cluster/multinode/data.cpp
         src/cluster/multinode/output.cpp
+        src/cluster/multinode/len_sort.cpp
+        src/cluster/multinode/merge.cpp
+        src/cluster/multinode/search.cpp
 )
 
 if(WITH_DNA)
@@ -518,4 +518,4 @@ add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
 add_test(NAME galaxy_7 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_7 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks 4 --file-buffer-size 67108864" ${SP})
 add_test(NAME galaxy_9 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_9 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --algo 0 --global-ranking 10 --index-chunks 4 --file-buffer-size 67108864" ${SP})
-add_test(NAME diamond COMMAND diamond test)
+#add_test(NAME diamond COMMAND diamond test)

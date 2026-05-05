@@ -190,8 +190,10 @@ DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const B
             seq_ptr += lseq;
         }
 
-        if (f)
+        if (f) {
             pkg->oids.push_back(oid);
+            ++pkg->seq_count;
+        }
     }
     return pkg;
 }

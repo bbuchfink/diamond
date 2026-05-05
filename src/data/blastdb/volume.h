@@ -102,7 +102,7 @@ public:
     std::vector<Letter> sequence(uint32_t oid);
     std::vector<char> raw_sequence(uint32_t count);
     std::vector<char> raw_deflines(uint32_t count);
-	Loc length(uint32_t oid) const noexcept;
+	Loc length(uint32_t oid);
     size_t id_len(uint32_t oid) const noexcept;
     RawChunk* raw_chunk(size_t letters, SequenceFile::Flags flags);
 	uint32_t seq_ptr() const noexcept { return seq_ptr_; }

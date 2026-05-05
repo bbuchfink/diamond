@@ -1,28 +1,21 @@
 /****
-Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
-OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <sstream>
 #include "cluster.h"
@@ -30,6 +23,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util/string/tokenizer.h"
 #include "basic/config.h"
 #include "util/log_stream.h"
+#include "util/system/system.h"
 
 const char* const HEADER_LINE = "centroid\tmember";
 
@@ -217,12 +211,14 @@ void init_thresholds() {
 		throw runtime_error("--member-cover and --mutual-cover are mutually exclusive.");
 	if (!config.mutual_cover.present())
 		config.member_cover.set_if_blank(DEFAULT_MEMBER_COVER);
-	if (!config.approx_min_id.present())
+	if (!config.approx_min_id.present() && config.min_id == 0.0)
 		config.approx_min_id = config.command == ::Config::DEEPCLUST ? 0.0 : (config.command == ::Config::LINCLUST ? 90.0 : 50.0);
 	if (config.soft_masking.empty())
 		config.soft_masking = "tantan";
 	if (!config.masking_.present())
 		config.masking_ = "0";
+	// TODO
+	return;
 	if (config.approx_min_id < 90.0 || config.mutual_cover.present())
 		return;
 	config.diag_filter_id.set_if_blank(config.approx_min_id - (config.command == ::Config::CLUSTER_REASSIGN ? 10.0 : 10.0));
@@ -284,5 +280,38 @@ double round_value(const vector<string>& par, const string& name, int round, int
 	v.insert(v.begin(), round_count - 1 - v.size(), v.front());
 	return v[round];
 }
+
+string gvc_input_rep_list(int round, const string& tmp_dir, Job* job, OId max_oid) {
+	const string acc_path = round == 0 ? tmp_dir + PATH_SEPARATOR + "oids.txt" : tmp_dir + "round" + std::to_string(round - 1) + PATH_SEPARATOR + "rep_ids";
+	if (round == 0) {
+		ofstream oid_out(acc_path);
+		if(job)
+			job->log("Writing oid file");
+		for (OId i = 0; i <= max_oid; ++i)
+			oid_out << i << endl;
+	}
+	return acc_path;
+}
+
+static int64_t seq_mem_use(Loc len, Loc id_len, int c, int min, int sketch_size) {
+	assert(min > 1 || sketch_size > 0);
+	int extend_stage = (min > 1 ? (len / (min / 2)) : sketch_size) * (15  // trace point buffer
+		+ 16)        // SeedHitList
+		+ 12         // SeedHitList
+		+ 2 * len;   // SequenceSet
+	extend_stage /= 2;
+	return std::max(
+		len + 8  // SequenceSet
+		+ id_len + 8 // Seqtitle
+		+ (min > 1 ? len / (min / 2) : sketch_size) * 9 / c // SeedArray
+		+ 8 // super_block_id_to_oid
+		+ 8 // BestCentroid / clustering
+		+ 4 // unaligned 
+		, extend_stage);
+}
+
+//const int minimizer_window = Search::sensitivity_traits.at(Sensitivity::FASTER).minimizer_window,
+//sketch_size = Search::sensitivity_traits.at(Sensitivity::FASTER).sketch_size;
+//auto seq_size = function<int64_t(Loc)>(bind(seq_mem_use, std::placeholders::_1, 0, 1, minimizer_window, sketch_size));
 
 }

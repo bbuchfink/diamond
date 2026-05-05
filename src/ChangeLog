@@ -1,6 +1,18 @@
-[2.2.0]
+[2.1.25]
+- Improved the performance of the `cluster`, `deepclust` and `linclust` workflows.
+- Fixed an issue that could cause an out-of-memory error in the clustering workflows during
+  output generation.
 - Added the option `--ext none` to skip seed extension and output seed hits instead.
-- Fixed an error when using the taxonomic output format with single-block database processing.
+- Added the option `--min-len-ratio` to set length ratio filter in mutual coverage searches.
+- Improved performance of loading FASTA files, including when used as database.
+- Added the option `--hamming-dist-boundary-check` to clip the hamming distance filter against
+  sequence boundaries.
+- Fixed a bug that could cause undefined behaviour in linear-mode searches with mutual coverage
+  thresholds.
+- Added the option `--keep-temp-files` to prevent deletion of temporary files.
+- Added support for clustering BLAST databases.
+- Temporarily removed the `recluster` workflow.
+- Removed the `--qnum-offset` and `--snum-offset` options.
 
 [2.1.24]
 - Fixed a crash in the `greedy-vertex-cover` workflow.

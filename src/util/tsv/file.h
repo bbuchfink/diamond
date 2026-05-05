@@ -62,6 +62,9 @@ struct File {
 	Table read(int64_t max_size, int threads);
 	Table read(int threads);
 	Table read_record();
+	size_t read_raw(std::string& dst, size_t count);
+	std::pair<bool, size_t> read_to_fasta_record_end(std::string& dst);
+	std::string peek(int64_t n);
 	void read(int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 
 	template<typename... Targs, typename Out> void read(Out out);

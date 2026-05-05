@@ -20,7 +20,6 @@ limitations under the License.
 #include <string>
 #include <mutex>
 #include "util/system/system.h"
-#include "util/tsv/file.h"
 #include "util/parallel/filestack.h"
 #include "util/parallel/atomic.h"
 #include "util/io/compressed_buffer.h"
