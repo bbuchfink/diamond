@@ -93,8 +93,8 @@ RadixedTable radix_sort(Job& job, const RadixedTable& buckets, int bits_unsorted
 	const std::string base_path = ::External::base_path(buckets.front().path),
 		queue_path = base_path + PATH_SEPARATOR + "radix_sort_queue",
 		result_path = base_path + PATH_SEPARATOR + "radix_sort_out";
-	Atomic queue(queue_path);
-	FileStack out(result_path);
+	Atomic queue(queue_path, job);
+	FileStack out(result_path, job);
 	int64_t i, buckets_processed = 0;
 	while (i = queue.fetch_add(), i < (int64_t)buckets.size()) {
 		VolumedFile bucket(buckets[i]);
@@ -113,7 +113,7 @@ RadixedTable radix_sort(Job& job, const RadixedTable& buckets, int bits_unsorted
 			bucket.remove();
 		++buckets_processed;
 	}
-	Atomic finished(base_path + PATH_SEPARATOR + "radix_sort_finished");
+	Atomic finished(base_path + PATH_SEPARATOR + "radix_sort_finished", job);
 	finished.fetch_add(buckets_processed);
 	finished.await(buckets.size());
 	return RadixedTable(result_path);

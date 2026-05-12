@@ -17,11 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include <string>
 #include <iostream>
 #include <memory>
@@ -645,8 +640,12 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			std::cerr << "Query file parameter (--query/-q) is missing. Input will be read from stdin." << endl;
 			config.query_file.push_back("");
 		}
-		if (!options.query_file)
+		if (!options.query_file) {
 			options.query_file.reset(new FastaFile(config.query_file, qflags, input_value_traits));
+			timer.finish();
+			if (!options.query_file->open_stats().empty())
+				log_stream << options.query_file->open_stats();
+		}
 	}
 
 	options.current_query_block = 0;
@@ -842,7 +841,12 @@ void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<Seque
 	}
 	else {
 		timer.go("Opening the database");
-		cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, value_traits));
+		try {
+			cfg.db.reset(SequenceFile::auto_create({ config.database }, flags, value_traits));
+		}
+		catch (FormatDetectionError& e) {
+			throw runtime_error("Error opening database file: " + string(e.what()));
+		}
 		timer.finish();
 		if (!cfg.db->open_stats().empty())
 			message_stream << cfg.db->open_stats();

@@ -103,7 +103,7 @@ int digits(Int x, int base) {
 }
 
 inline uint64_t gb_to_bytes(double gb) {
-	long double bytes = static_cast<long double>(gb) * 1'000'000'000.0L;
+	long double bytes = static_cast<long double>(gb) * 1000000000.0L;
 	if (!std::isfinite(gb) ||
 		bytes < 0 ||
 		bytes > static_cast<long double>(std::numeric_limits<uint64_t>::max())) {

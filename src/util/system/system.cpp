@@ -88,13 +88,13 @@ size_t file_size(const char* name)
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE)
-		return -1; // error condition, could call GetLastError to find out more
+		throw runtime_error(string("Error getting size on file: ") + name + ": " + std::system_category().message(GetLastError()));
 
 	LARGE_INTEGER size;
 	if (!GetFileSizeEx(hFile, &size))
 	{
 		CloseHandle(hFile);
-		return -1; // error condition, could call GetLastError to find out more
+		throw runtime_error(string("Error getting size on file: ") + name + ": " + std::system_category().message(GetLastError()));
 	}
 
 	CloseHandle(hFile);
@@ -102,7 +102,9 @@ size_t file_size(const char* name)
 #else
 	struct stat stat_buf;
 	int rc = stat(name, &stat_buf);
-	return rc == 0 ? stat_buf.st_size : -1;
+	if (rc != 0)
+		throw runtime_error(string("Error getting size on file: ") + name + ": " + std::strerror(errno));
+	return stat_buf.st_size;
 #endif
 }
 

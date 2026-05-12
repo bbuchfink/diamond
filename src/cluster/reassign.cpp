@@ -31,6 +31,8 @@ using std::vector;
 using std::tie;
 using std::make_shared;
 using std::unique_ptr;
+using std::runtime_error;
+using std::string;
 
 namespace Cluster {
 
@@ -41,7 +43,13 @@ void reassign() {
 	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
 
 	TaskTimer timer("Opening the database");
-	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING));
+	shared_ptr<SequenceFile> db;
+	try {
+		db.reset(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING));
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error("Error opening the database: " + string(e.what()));
+	}
 	config.db_size = db->letters();
 	timer.finish();
 	message_stream << "#Database sequences: " << db->sequence_count() << ", #Letters: " << db->letters() << endl;

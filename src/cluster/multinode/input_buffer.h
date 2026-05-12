@@ -51,7 +51,7 @@ struct InputBuffer {
 		pool.join_all();
 	}
 
-	InputBuffer(const VolumedFile& f, std::pmr::monotonic_buffer_resource& mem_pool, int parts = config.threads_) :
+	InputBuffer(const VolumedFile& f, std::pmr::memory_resource& mem_pool, int parts = config.threads_) :
 		size_(f.sparse_records()),
 		data_(&mem_pool),
 		part_(size_, parts)

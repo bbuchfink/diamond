@@ -26,34 +26,60 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/shape_config.h"
 #include "flags.h"
 
+template<bool SKIP_SEED_POSITIONS>
+struct SkipSeedPositionImpl;
+
+template<>
+struct SkipSeedPositionImpl<true>
+{
+	static inline bool apply(const EnumCfg& cfg, int shape, const uint64_t pos)
+	{
+		return (*cfg.skip_seed_positions)[shape].atomic_load(pos);
+	}
+};
+
+template<>
+struct SkipSeedPositionImpl<false>
+{
+	static inline bool apply(const EnumCfg&, int, const uint64_t)
+	{
+		return false;
+	}
+};
+
+template<bool SKIP_SEED_POSITIONS>
 static inline bool skip_seed_position(const EnumCfg& cfg, int shape, const uint64_t pos)
 {
-	return cfg.skip_seed_positions && (*cfg.skip_seed_positions)[shape].atomic_load(pos);
+	return SkipSeedPositionImpl<SKIP_SEED_POSITIONS>::apply(cfg, shape, pos);
 }
 
-template<typename F, typename Filter>
-Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
+template<typename F, typename Filter, bool SKIP_SEED_POSITIONS>
+Search::SeedStats FLATTEN enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
-	std::pmr::monotonic_buffer_resource pool;
+	//std::pmr::monotonic_buffer_resource pool;
 	uint64_t key;
 	Search::SeedStats stats;
+	std::vector<Letter> buf;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
 		if(config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
 		const Sequence seq = (*seqs)[i];
-		std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
+		//std::pmr::vector<Letter> buf = Reduction::reduce_seq(seq, pool);
+		Reduction::reduce_seq(seq, buf);
 		for (int shape_id = cfg.shape_begin; shape_id < cfg.shape_end; ++shape_id) {
 			const Shape& sh = shapes[shape_id];
 			if (seq.length() < sh.length_) continue;
-			SeedIterator<typename std::pmr::vector<Letter>::const_iterator> it(buf.cbegin(), buf.cend(), sh);
+			//SeedIterator<typename std::pmr::vector<Letter>::const_iterator> it(buf.cbegin(), buf.cend(), sh);
+			//SeedIterator<typename std::vector<Letter>::const_iterator> it(buf.cbegin(), buf.cend(), sh);
+			SeedIterator<const Letter*> it(buf.data(), buf.data() + buf.size(), sh);
 			Letter* ptr = seqs->ptr(i);
 			Loc j = 0;
 			while (it.good()) {
 				if (it.get(key, sh)) {
 					const uint64_t pos = seqs->position(i, j);
-					if (!skip_seed_position(cfg, shape_id, pos) && filter->contains(key, shape_id))
+					if (!skip_seed_position<SKIP_SEED_POSITIONS>(cfg, shape_id, pos) && filter->contains(key, shape_id))
 						(*f)(key, pos, i, shape_id);
 				}
 				++j;
@@ -64,7 +90,7 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 	return stats;
 }
 
-template<typename F, typename Filter, typename It>
+template<typename F, typename Filter, typename It, bool SKIP_SEED_POSITIONS>
 Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg, Loc it_param)
 {
 	Search::SeedStats stats;
@@ -86,7 +112,7 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 			while (it.good()) {
 				const uint64_t key = *it;
 				const uint64_t pos = seqs->position(i, it.pos());
-				if (!skip_seed_position(cfg, shape_id, pos) && filter->contains(key, shape_id))
+				if (!skip_seed_position<SKIP_SEED_POSITIONS>(cfg, shape_id, pos) && filter->contains(key, shape_id))
 					(*f)(key, pos, i, shape_id);
 				++it;
 			}
@@ -96,7 +122,7 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 	return stats;
 }
 
-template<typename F, uint64_t BITS, typename Filter>
+template<typename F, uint64_t BITS, typename Filter, bool SKIP_SEED_POSITIONS>
 void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
 	for (unsigned i = begin; i < end; ++i) {
@@ -113,7 +139,7 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 			while (it.good()) {
 				const uint64_t key = *it;
 				const uint64_t pos = seqs->position(i, Loc(it.seq_ptr(sh) - seq.data()));
-				if (!skip_seed_position(cfg, shape_id, pos) && filter->contains(key, shape_id)) {
+				if (!skip_seed_position<SKIP_SEED_POSITIONS>(cfg, shape_id, pos) && filter->contains(key, shape_id)) {
 					if (!cfg.filter_low_complexity_seeds || Search::seed_is_complex(it.seq_ptr(sh), sh, cfg.seed_cut))
 						(*f)(key, pos, i, shape_id);
 					else if (cfg.mask_low_complexity_seeds)
@@ -126,7 +152,7 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 	f->finish();
 }
 
-template<typename F, typename It, typename Filter>
+template<typename F, typename It, typename Filter, bool SKIP_SEED_POSITIONS>
 void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end, const Filter* filter, const EnumCfg& cfg)
 {
 	uint64_t key;
@@ -142,7 +168,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 		while (it.good()) {
 			if (it.get(key)) {
 				const uint64_t pos = seqs->position(i, j);
-				if (!skip_seed_position(cfg, 0, pos) && filter->contains(key, 0))
+				if (!skip_seed_position<SKIP_SEED_POSITIONS>(cfg, 0, pos) && filter->contains(key, 0))
 					if ((*f)(key, pos, i, 0) == false)
 						return;
 			}
@@ -152,7 +178,7 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 	f->finish();
 }
 
-template<typename F, typename Filter, typename IteratorFilter>
+template<typename F, typename Filter, typename IteratorFilter, bool SKIP_SEED_POSITIONS>
 static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, const unsigned end, const Filter* filter, Search::SeedStats* stats, const EnumCfg* cfg)
 {
 	using It = std::pmr::vector<Letter>::const_iterator;
@@ -163,7 +189,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		case 7:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<F, ContiguousSeedIterator<7, 4, IteratorFilter>, Filter>(seqs, f, begin, end, filter, *cfg);
+				enum_seeds_contiguous<F, ContiguousSeedIterator<7, 4, IteratorFilter>, Filter, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -172,7 +198,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		case 6:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<F, ContiguousSeedIterator<6, 4, IteratorFilter>, Filter>(seqs, f, begin, end, filter, *cfg);
+				enum_seeds_contiguous<F, ContiguousSeedIterator<6, 4, IteratorFilter>, Filter, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -181,7 +207,7 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		case 5:
 			switch (b) {
 			case 4:
-				enum_seeds_contiguous<F, ContiguousSeedIterator<5, 4, IteratorFilter>, Filter>(seqs, f, begin, end, filter, *cfg);
+				enum_seeds_contiguous<F, ContiguousSeedIterator<5, 4, IteratorFilter>, Filter, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg);
 				break;
 			default:
 				throw std::runtime_error(errmsg);
@@ -195,33 +221,31 @@ static void enum_seeds_worker(F* f, SequenceSet* seqs, const unsigned begin, con
 		const uint64_t b = Reduction::get_reduction().bit_size();
 		switch (b) {
 		case 4:
-			enum_seeds_hashed<F, 4, Filter>(seqs, f, begin, end, filter, *cfg);
+			enum_seeds_hashed<F, 4, Filter, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg);
 			break;
 		default:
 			throw std::runtime_error("Unsupported reduction.");
 		}
 	}
 	else if(cfg->minimizer_window > 0)
-		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator<It>>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
+		*stats = enum_seeds_minimizer<F, Filter, MinimizerIterator<It>, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg, cfg->minimizer_window);
 	else if(cfg->sketch_size > 0)
-		*stats = enum_seeds_minimizer<F, Filter, SketchIterator>(seqs, f, begin, end, filter, *cfg, cfg->sketch_size);
+		*stats = enum_seeds_minimizer<F, Filter, SketchIterator, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg, cfg->sketch_size);
 	else
-		*stats = enum_seeds<F, Filter>(seqs, f, begin, end, filter, *cfg);
+		*stats = enum_seeds<F, Filter, SKIP_SEED_POSITIONS>(seqs, f, begin, end, filter, *cfg);
 }
 
-template <typename F, typename Filter>
-Search::SeedStats enum_seeds(Block& seqs, PtrVector<F>& f, const Filter* filter, const EnumCfg& cfg)
+template <typename F, typename Filter, bool SKIP_SEED_POSITIONS>
+static Search::SeedStats enum_seeds_impl(Block& seqs, PtrVector<F>& f, const Filter* filter, const EnumCfg& cfg)
 {
-	if (cfg.soft_masking != MaskingAlgo::NONE)
-		seqs.soft_mask(cfg.soft_masking);
 	std::vector<std::thread> threads;
 	std::vector<Search::SeedStats> stats(f.size());
 	for (unsigned i = 0; i < f.size(); ++i) {
 		const unsigned begin = (unsigned)((*cfg.partition)[i]), end = (unsigned)((*cfg.partition)[i + 1]);
 		if (cfg.filter_masked_seeds)
-			threads.emplace_back(enum_seeds_worker<F, Filter, FilterMaskedSeeds>, &f[i], &seqs.seqs(), begin, end, filter, &stats[i], &cfg);
+			threads.emplace_back(enum_seeds_worker<F, Filter, FilterMaskedSeeds, SKIP_SEED_POSITIONS>, &f[i], &seqs.seqs(), begin, end, filter, &stats[i], &cfg);
 		else
-			threads.emplace_back(enum_seeds_worker<F, Filter, void>, &f[i], &seqs.seqs(), begin, end, filter, &stats[i], &cfg);
+			threads.emplace_back(enum_seeds_worker<F, Filter, void, SKIP_SEED_POSITIONS>, &f[i], &seqs.seqs(), begin, end, filter, &stats[i], &cfg);
 	}
 	for (auto& t : threads)
 		t.join();
@@ -236,4 +260,14 @@ Search::SeedStats enum_seeds(Block& seqs, PtrVector<F>& f, const Filter* filter,
 		seqs.remove_soft_masking((int)l, cfg.mask_seeds);
 	}
 	return stats[0];
+}
+
+template <typename F, typename Filter>
+Search::SeedStats enum_seeds(Block& seqs, PtrVector<F>& f, const Filter* filter, const EnumCfg& cfg)
+{
+	if (cfg.soft_masking != MaskingAlgo::NONE)
+		seqs.soft_mask(cfg.soft_masking);
+	if (cfg.skip_seed_positions)
+		return enum_seeds_impl<F, Filter, true>(seqs, f, filter, cfg);
+	return enum_seeds_impl<F, Filter, false>(seqs, f, filter, cfg);
 }

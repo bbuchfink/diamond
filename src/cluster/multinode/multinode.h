@@ -44,22 +44,28 @@ struct ClusterStats {
 struct Job {
 
 	Job() :
-		max_oid_(0),
 		mem_limit(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT))),
+		max_oid_(0),		
 		base_dir_(config.tmpdir),
 		round_(0),
 		start_(std::chrono::system_clock::now())
 	{
-		mkdir(base_dir_);
-		mkdir(base_dir());
-		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log"));
-		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id");
+		register_temp_dir(base_dir_);
+		make_temp_dir(base_dir());
+		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log", *this));
+		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id", *this);
 		worker_id_ = worker_id.fetch_add();
 	}
 
 	void finish() {
-		remove_tmp_file(base_dir_ + PATH_SEPARATOR + "worker_id");
-		log_file_->remove();
+		//log("Cleaning up");
+		log_file_.reset();
+		for (const auto& file : sync_files_) {
+			remove_tmp_file(file);
+		}
+		for (auto it = temp_dirs_.rbegin(); it != temp_dirs_.rend(); ++it) {
+			rmdir(*it);
+		}
 		//rmdir(base_dir_);
 	}
 
@@ -80,7 +86,7 @@ struct Job {
 
 	void next_round() {
 		++round_;
-		mkdir(base_dir());
+		make_temp_dir(base_dir());
 	}
 
 	int round() const {
@@ -134,6 +140,23 @@ struct Job {
 		max_oid_ = max_oid;
 	}
 
+	void register_sync_file(const std::string& file_name) {
+		/*if (!ends_with(file_name, "diamond_job.log"))
+			log("Temp file: %s", file_name.c_str());
+		else
+			return;*/
+		sync_files_.push_back(file_name);
+	}
+
+	void register_temp_dir(const std::string& dir_name) {
+		temp_dirs_.push_back(dir_name);
+	}
+
+	void make_temp_dir(const std::string& dir_name) {
+		mkdir(dir_name);
+		register_temp_dir(dir_name);
+	}
+
 	const uint64_t mem_limit;
 
 private:
@@ -147,12 +170,14 @@ private:
 	std::chrono::system_clock::time_point start_;
 	std::vector<uint64_t> input_count_;
 	ClusterStats stats_;
+	std::vector<std::string> sync_files_;
+	std::vector<std::string> temp_dirs_;
 
 };
 
 std::pair<std::string, uint64_t> get_reps(Job& job, const VolumedFile& volumes);
 void merge(Job& job, const VolumedFile& volumes);
-void extend(Job& job, std::vector<std::pair<OId, OId>>& out, const VolumedFile& volumes);
+//void extend(Job& job, std::vector<std::pair<OId, OId>>& out, const VolumedFile& volumes);
 std::string len_sort(Job& job, VolumedFile& volumes);
 std::vector<OId> build_merged(Job& job);
 void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, std::string base_dir, std::unique_ptr<std::vector<BitVector>>& seed_hit_table);

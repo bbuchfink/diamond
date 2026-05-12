@@ -41,16 +41,16 @@ public:
         consumer_count_(consumer_count),
         poison_pill_(std::move(poison_pill)),
 #if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606L
-        buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t), std::align_val_t{ alignof(cell_t) }))),
+        buffer_(static_cast<Cell*>(::operator new[](capacity_ * sizeof(Cell), std::align_val_t{ alignof(Cell) }))),
 #else
-        buffer_(static_cast<cell_t*>(::operator new[](capacity_ * sizeof(cell_t)))),        
+        buffer_(static_cast<Cell*>(::operator new[](capacity_ * sizeof(Cell)))),        
 #endif
         enqueue_pos_(0),
         dequeue_pos_(0),
         pills_received_(0) {
         assert(producer_count == 1 || consumer_count == 1);
         for (size_t i = 0; i < capacity_; ++i) {
-            new (&buffer_[i]) cell_t();
+            new (&buffer_[i]) Cell();
             buffer_[i].seq.store(i, std::memory_order_relaxed);
         }
     }
@@ -60,10 +60,10 @@ public:
         while (try_dequeue(tmp)) {}
 
         for (size_t i = 0; i < capacity_; ++i) {
-            buffer_[i].~cell_t();
+            buffer_[i].~Cell();
         }
 #if defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606L
-        ::operator delete[](buffer_, std::align_val_t{ alignof(cell_t) });
+        ::operator delete[](buffer_, std::align_val_t{ alignof(Cell) });
 #else
         ::operator delete[](buffer_);
 #endif
@@ -122,14 +122,14 @@ public:
 
 private:
 
-    struct cell_t {
+    struct Cell {
         struct Storage {
             alignas(T) unsigned char storage[sizeof(T)];
         };
         std::atomic<size_t> seq;
         Storage storage;
         char pad[(64 - ((sizeof(std::atomic<size_t>) + sizeof(Storage)) % 64)) % 64];
-        cell_t() : seq(0) {}
+        Cell() : seq(0) {}
     };
 
     static constexpr bool is_power_of_two(size_t x) {
@@ -144,7 +144,7 @@ private:
         return x + 1;
     }
 
-    static T* cell_value_ptr(cell_t* c) noexcept {
+    static T* cell_value_ptr(Cell* c) noexcept {
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606L
         return std::launder(reinterpret_cast<T*>(c->storage.storage));
 #else
@@ -160,7 +160,7 @@ private:
         spaces_.acquire();
         size_t pos = enqueue_pos_.load(std::memory_order_relaxed);
         for (;;) {
-            cell_t* cell = &buffer_[index(pos)];
+            Cell* cell = &buffer_[index(pos)];
             size_t seq = cell->seq.load(std::memory_order_acquire);
             intptr_t dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos);
 
@@ -182,7 +182,7 @@ private:
     bool try_dequeue(T& out) {
         size_t pos = dequeue_pos_.load(std::memory_order_relaxed);
         for (;;) {
-            cell_t* cell = &buffer_[index(pos)];
+            Cell* cell = &buffer_[index(pos)];
             size_t seq = cell->seq.load(std::memory_order_acquire);
             intptr_t dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos + 1);
             if (dif == 0) {
@@ -212,7 +212,7 @@ private:
     const int producer_count_;
     const int consumer_count_;
     const T poison_pill_;
-    cell_t* const buffer_;
+    Cell* const buffer_;
     alignas(64) std::atomic<size_t> enqueue_pos_;
     char _pad0[(64 - sizeof(enqueue_pos_) % 64) % 64]{};
     alignas(64) std::atomic<size_t> dequeue_pos_;

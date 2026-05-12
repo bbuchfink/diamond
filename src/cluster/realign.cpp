@@ -1,8 +1,6 @@
 /****
-DIAMOND protein aligner
-Copyright (C) 2022-2023 Max Planck Society for the Advancement of Science e.V.
-
-Code developed by Benjamin Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "basic/config.h"
 #include "util/log_stream.h"
@@ -56,7 +55,13 @@ void realign() {
 		dynamic_cast<TabularFormat*>(output_format.get())->output_header(out, true);
 
 	timer.go("Opening the database");
-	unique_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING));
+	unique_ptr<SequenceFile> db;
+	try {
+		db.reset(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING));
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error(string("Error opening database file " + config.database + ": ") + e.what());
+	}
 	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
 	config.max_evalue = DBL_MAX;
 	timer.finish();

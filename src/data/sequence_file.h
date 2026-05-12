@@ -1,19 +1,21 @@
 /****
-Copyright (C) 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
@@ -34,7 +36,7 @@ struct Chunk
 	{}
 	int i;
 	size_t offset;
-	int64_t n_seqs;
+	uint64_t n_seqs;
 };
 
 struct AccessionNotFound : public std::exception {
@@ -70,6 +72,13 @@ struct DecodedPackage {
 };
 
 struct RawChunk;
+
+struct FormatDetectionError : public std::runtime_error {
+	FormatDetectionError(const std::string& message) :
+		std::runtime_error(message)
+	{
+	}
+};
 
 struct SequenceFile {
 
@@ -143,7 +152,7 @@ struct SequenceFile {
 	virtual std::string seqid(OId oid, bool all, bool full_titles);
 	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const final;
 	virtual Loc dict_len(DictId dict_id, const size_t ref_block);
-	virtual std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block);
+	std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block);
 	virtual uint64_t sequence_count() const = 0;
 	virtual uint64_t letters() const = 0;
 	virtual size_t letters_filtered(const DbFilter& v);
@@ -258,6 +267,7 @@ protected:
 	Flags flags_;
     const FormatFlags format_flags_;
     const ValueTraits& value_traits_;
+	uint64_t disk_size_;
 	std::unique_ptr<OutputFile> dict_file_;
 	DictId next_dict_id_;
 	size_t dict_alloc_size_;
@@ -278,8 +288,8 @@ private:
 	void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score);
 	bool load_dict_entry(InputFile& f, const size_t ref_block);
 	void reserve_dict(const size_t ref_blocks);
-    std::pair<Block*, int64_t> load_twopass(const int64_t max_letters, const BitVector* filter, const Chunk& chunk);
-    std::pair<Block*, int64_t> load_onepass(const int64_t max_letters, OId max_seqs, const BitVector* filter);
+    std::pair<Block*, uint64_t> load_twopass(const uint64_t max_letters, const BitVector* filter, const Chunk& chunk);
+    std::pair<Block*, uint64_t> load_onepass(const uint64_t max_letters, OId max_seqs, const BitVector* filter);
 	void load_dict_block(InputFile* f, const size_t ref_block);
 	void set_cached(TaxId taxon_id, bool contained)
 	{
@@ -310,8 +320,8 @@ struct RawChunk {
 	int no;
 };
 
-DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::Flags)
-DEFINE_ENUM_FLAG_OPERATORS(SequenceFile::FormatFlags)
+DEFINE_ENUM_OPERATORS(SequenceFile::Flags)
+DEFINE_ENUM_OPERATORS(SequenceFile::FormatFlags)
 
 template<typename It>
 void print_taxon_names(It begin, It end, const SequenceFile& db, TextBuffer& out, bool json = false) {

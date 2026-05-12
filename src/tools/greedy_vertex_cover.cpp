@@ -111,7 +111,7 @@ void greedy_vertex_cover() {
 		double qcov, tcov, evalue;
 		while (it.good()) {
 			string line = *it;
-			if (line.ends_with('\r'))
+			if (ends_with(line, "\r"))
 				line.pop_back();
 			Util::String::Tokenizer<Util::String::CharDelimiter> tok(line, Util::String::CharDelimiter('\t'));
 			tok >> query >> target;

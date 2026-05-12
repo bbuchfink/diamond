@@ -1,25 +1,22 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include <type_traits>
 #include <inttypes.h>
 #include <cstdarg>
@@ -159,8 +156,8 @@ static pair<RadixedTable, int> build_chunk_table(Job& job, const RadixedTable& p
 	mkdir(base_path);
 	mkdir(chunks_path);
 	unique_ptr<FileArray> output_files(new FileArray(base_path, RADIX_COUNT, job.worker_id(), false));
-	Atomic queue(base_path + PATH_SEPARATOR + "queue");
-	Atomic next_chunk(base_path + PATH_SEPARATOR + "next_chunk");
+	Atomic queue(base_path + PATH_SEPARATOR + "queue", job);
+	Atomic next_chunk(base_path + PATH_SEPARATOR + "next_chunk", job);
 	shared_ptr<ClusterChunk> current_chunk(new ClusterChunk(next_chunk, chunks_path));
 	int64_t total_pairs = 0, total_distinct_pairs = 0;
 	int64_t bucket, buckets_processed = 0;
@@ -245,7 +242,7 @@ static pair<RadixedTable, int> build_chunk_table(Job& job, const RadixedTable& p
 	output_files.reset();
 	current_chunk.reset();
 	timer.go("Waiting for other workers");
-	Atomic finished(base_path + PATH_SEPARATOR + "finished");
+	Atomic finished(base_path + PATH_SEPARATOR + "finished", job);
 	finished.fetch_add(buckets_processed);
 	finished.await(pair_table.size());
 	return { buckets, (int)next_chunk.get() };
@@ -256,7 +253,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const RadixedTable& ch
 	const std::string base_path = job.base_dir() + PATH_SEPARATOR + "chunks" + PATH_SEPARATOR,
 		queue_path = base_path + "queue";
 	unique_ptr<FileArray> output_files(new FileArray(base_path, chunk_count, job.worker_id(), false, 1024 * 1024 * 1024));
-	Atomic queue(queue_path);
+	Atomic queue(queue_path, job);
 	int64_t bucket, buckets_processed = 0;
 	atomic<int64_t> oid_counter(0), distinct_oid_counter(0);
 	while (bucket = queue.fetch_add(), bucket < (int64_t)chunk_table.size()) {
@@ -315,7 +312,7 @@ static void build_chunks(Job& job, const VolumedFile& db, const RadixedTable& ch
 	TaskTimer timer("Closing the output files");
 	output_files.reset();
 	timer.go("Waiting for other workers");
-	Atomic finished(base_path + "finished");
+	Atomic finished(base_path + "finished", job);
 	finished.fetch_add(buckets_processed);
 	finished.await(chunk_table.size());
 	timer.finish();
@@ -394,7 +391,7 @@ void external() {
 		if (i < steps.size() - 1)
 			job.next_round();
 	}
-	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock");
+	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock", job);
 	if(output_lock.fetch_add() == 0)
 		output(job, volumes);
 	log_stream << "Total time = " << (double)total.milliseconds() / 1000 << 's' << endl;

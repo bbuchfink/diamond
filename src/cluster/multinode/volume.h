@@ -61,7 +61,7 @@ struct Volume {
 		row >> v.path;
 		if (!row)
 			throw std::runtime_error("Format error in VolumedFile");
-		row >> v.record_count;		
+		row >> v.record_count;
 		row >> v.oid_begin >> v.oid_end;
 		return str;
 	}
@@ -94,11 +94,14 @@ struct VolumedFile : public std::vector<Volume> {
 			push_back(v);
 			oid += v.record_count;
 			records_ += v.record_count;
-			max_oid_ = std::max(max_oid_, v.oid_end - 1);
+			if (v.oid_end > 0)
+				max_oid_ = std::max(max_oid_, v.oid_end - 1);
 		}
 		std::sort(begin(), end());
 	}
 	OId sparse_records() const {
+		if (records_ == 0)
+			throw std::runtime_error("Record count not set");
 		return records_;
 	}
 	OId max_oid() const {
@@ -136,6 +139,8 @@ struct VolumedFile : public std::vector<Volume> {
 		letter_count_ = count;
 	}
 	uint64_t letter_count() const {
+		if (letter_count_ == 0)
+			throw std::runtime_error("Letter count not set");
 		return letter_count_;
 	}
 	const std::string& list_file() const {
@@ -148,7 +153,8 @@ private:
 };
 
 inline Block* load_seqs(const VolumedFile& volumes, OId oid_begin, OId oid_end, const std::string& index_dir, SequenceFile::Flags flags = SequenceFile::Flags::ALL) {
-	auto [vol_begin, vol_end] = volumes.find(oid_begin, oid_end);
+	std::vector<Volume>::const_iterator vol_begin, vol_end;
+	std::tie(vol_begin, vol_end) = volumes.find(oid_begin, oid_end);
 	Block* combined = nullptr;
 	for (auto v = vol_begin; v != vol_end; ++v) {
 		const OId local_begin = std::max(oid_begin, v->oid_begin) - v->oid_begin;

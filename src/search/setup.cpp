@@ -305,7 +305,7 @@ const map<Sensitivity, vector<string>> shape_codes ={
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
 	return max(max(bit_length(power((int64_t)Reduction::get_reduction().size(), (int64_t)shape_weight) - 1) - (int)sizeof(SeedOffset) * 8,
-		bit_length((int64_t)threads * 4 * index_chunks - 1)), 10);
+		bit_length((int64_t)threads * 4 * index_chunks - 1)), 8);
 }
 
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters)

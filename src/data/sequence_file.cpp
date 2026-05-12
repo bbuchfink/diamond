@@ -108,7 +108,7 @@ int SequenceFile::raw_chunk_no() const {
 
 pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, const BitVector* filter, unordered_map<string, bool>* accs, const Chunk& chunk, bool load_taxids) {
 	const Loc SEQ_LEN_EST = 200;
-	const uint64_t ID_EST = 100, MAX_RESERVE = 8 * GIGABYTES;
+	const uint64_t ID_EST = 100, MAX_RESERVE = 8 * GIGABYTES; // TODO
 	assert(chunk.n_seqs == 0);
 	assert(config.threads_ > 0);
 	const uint64_t letters = config.minichunk;
@@ -118,11 +118,13 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS),
 		load_titles = flag_any(flags(), SequenceFile::Flags::TITLES);
 	Block* block = new Block();
-	const BlockId entry_est = (std::min(max_letters, MAX_RESERVE) + SEQ_LEN_EST - 1) / SEQ_LEN_EST;
+	const uint64_t size_est = std::min(std::min(max_letters, disk_size_), MAX_RESERVE);
+	const BlockId entry_est = (size_est + SEQ_LEN_EST - 1) / SEQ_LEN_EST;
 	if (load_seqs)
-		block->seqs().reserve(entry_est, std::min(max_letters, MAX_RESERVE));
-	if (load_titles)
-		block->reserve_ids(ID_EST * entry_est, entry_est);
+		block->seqs().reserve(entry_est, size_est);
+	if (load_titles) {		
+		block->reserve_ids(std::min(ID_EST * entry_est, size_est), entry_est);
+	}
 	Queue<RawChunk*> queue(p * 4, 1, p, nullptr);
 	Queue<DecodedPackage*> output_queue(p * 4, p, 1, nullptr);
 	const bool byte_limited = type() == Type::FASTA, have_oids = type() == Type::BLAST;
@@ -205,12 +207,12 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 	return { block, seqs };
 }
 
-pair<Block*, int64_t> SequenceFile::load_twopass(const int64_t max_letters, const BitVector* filter, const Chunk& chunk) {
+pair<Block*, uint64_t> SequenceFile::load_twopass(const uint64_t max_letters, const BitVector* filter, const Chunk& chunk) {
 	init_seqinfo_access();
 
 	OId database_id = tell_seq();
-	int64_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
-	vector<int64_t> filtered_pos;
+	uint64_t letters = 0, seqs = 0, id_letters = 0, seqs_processed = 0, filtered_seq_count = 0;
+	vector<uint64_t> filtered_pos;
 	Block* block = new Block();
 
 	SeqInfo r = read_seqinfo();
@@ -299,12 +301,12 @@ static int frame_mask() {
 	throw runtime_error("frame_mask");
 }
 
-pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, OId max_seqs, const BitVector* filter) {
+pair<Block*, uint64_t> SequenceFile::load_onepass(const uint64_t max_letters, OId max_seqs, const BitVector* filter) {
 	static const char* DNA_ERR = "The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.";
 	vector<Letter> seq;
 	string id;
 	vector<char> qual;
-	int64_t letters = 0, seq_count = 0;	
+	uint64_t letters = 0, seq_count = 0;
 	const bool load_seqs = flag_any(flags(), SequenceFile::Flags::SEQS),
 		load_titles = flag_any(flags(), SequenceFile::Flags::TITLES),
 		preserve_dna = flag_any(flags(), SequenceFile::Flags::DNA_PRESERVATION);
@@ -314,7 +316,7 @@ pair<Block*, int64_t> SequenceFile::load_onepass(const int64_t max_letters, OId 
 	const bool first_block = oid == 0;
 	const int frame_mask = ::frame_mask();
 	const int64_t modulo = file_count();
-	int looks_like_dna = 0;
+	unsigned int looks_like_dna = 0;
 	auto goon = [&]() { return max_seqs > 0 ? seq_count < max_seqs : letters < max_letters; };
 	do {
 		if (!read_seq(seq, id, q))
@@ -475,9 +477,9 @@ SequenceFile::~SequenceFile()
 static bool is_blast_db(const string& path) {
 	if (exists(path + ".pin") || exists(path + ".pal") || ends_with(path, ".pal")) {
 		if (config.multiprocessing)
-			throw std::runtime_error("--multiprocessing is not compatible with BLAST databases.");
+			throw runtime_error("--multiprocessing is not compatible with BLAST databases.");
 		if (config.target_indexed)
-			throw std::runtime_error("--target-indexed is not compatible with BLAST databases.");
+			throw runtime_error("--target-indexed is not compatible with BLAST databases.");
 		return true;
 	}
 	return false;
@@ -495,7 +497,7 @@ SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags,
 		//message_stream << "Database file is not a DIAMOND or BLAST database, treating as FASTA." << std::endl;
 		return new FastaFile(path, flags, value_traits);
 	}
-	throw runtime_error("Sequence file does not have a supported format.");
+	throw FormatDetectionError("Sequence file does not have a supported format.");
 }
 
 void SequenceFile::load_dict_block(InputFile* f, const size_t ref_block)
@@ -663,6 +665,7 @@ SequenceFile::SequenceFile(Type type, Flags flags, FormatFlags format_flags, con
 	flags_(flags),
 	format_flags_(format_flags),
 	value_traits_(value_traits),
+	disk_size_(0),
 	type_(type)
 {
 	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
@@ -917,7 +920,12 @@ void db_info() {
 	using std::cout;
 	if (config.database.empty())
 		throw std::runtime_error("Missing option for database file: --db/-d.");
-	SequenceFile* db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NO_FASTA | SequenceFile::Flags::NO_COMPATIBILITY_CHECK);
+	SequenceFile* db;
+	try {
+		db = SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NO_FASTA | SequenceFile::Flags::NO_COMPATIBILITY_CHECK);
+	} catch (const FormatDetectionError& e) {
+		throw std::runtime_error("Error opening the database: " + std::string(e.what()));
+	}
 	const std::streamsize w = 25;
 	cout << setw(w) << "Database type  " << to_string(db->type()) << endl;
 	cout << setw(w) << "Database format version  " << db->db_version() << endl;

@@ -1,28 +1,21 @@
 /****
-Copyright © 2013-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
-OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-2-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include <vector>
@@ -61,6 +54,12 @@ public:
 
 	static size_t translate(const Sequence& dnaSequence, std::array<std::vector<Letter>, 6>& proteins)
 	{
+		auto resize_frame = [](std::vector<Letter>& frame, size_t size) {
+			if (size == 0)
+				frame.clear();
+			else
+				frame.resize(size);
+		};
 		const size_t length_ = dnaSequence.length();
 		if (length_ < 3) {
 			for (int i = 0; i < 6; ++i)
@@ -68,14 +67,14 @@ public:
 			return 0;
 		}
 		const size_t l1 = length_ / 3;
-		proteins[0].resize(l1);
-		proteins[3].resize(l1);
+		resize_frame(proteins[0], l1);
+		resize_frame(proteins[3], l1);
 		const size_t l2 = (length_ - 1) / 3;
-		proteins[1].resize(l2);
-		proteins[4].resize(l2);
+		resize_frame(proteins[1], l2);
+		resize_frame(proteins[4], l2);
 		const size_t l3 = (length_ - 2) / 3;
-		proteins[2].resize(l3);
-		proteins[5].resize(l3);
+		resize_frame(proteins[2], l3);
+		resize_frame(proteins[5], l3);
 
 		size_t r = length_ - 2;
 		unsigned pos = 0;

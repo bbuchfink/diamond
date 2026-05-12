@@ -111,6 +111,15 @@ void HitBuffer::write_worker(const std::atomic<bool>& stop, int bin) {
 }
 
 void HitBuffer::finish_writing() {
+	auto cleanup = [&]() {
+		for (auto& q : membuf_out_queue_)
+			delete q;
+		for (auto& q : out_queue_)
+			delete q;
+		writer_.clear();
+		membuf_out_queue_.clear();
+		out_queue_.clear();
+		};
 	if (config.trace_pt_membuf) {
 		for (int i = 0; i < membuf_out_queue_[0]->producer_count(); ++i)
 			for (int j = 0; j < bins(); ++j)
@@ -118,16 +127,17 @@ void HitBuffer::finish_writing() {
 	}
 	else
 		for (int i = 0; i < out_queue_[0]->producer_count(); ++i)
-			for (int j = 0; j < bins(); ++j)
+			for (int j = 0; j < bins(); ++j) {
 				out_queue_[j]->close();
-	search_pool_.join(writer_.begin(), writer_.end());
-	for(auto& q : membuf_out_queue_)
-		delete q;
-	for (auto& q : out_queue_)
-		delete q;
-	writer_.clear();
-	membuf_out_queue_.clear();
-	out_queue_.clear();
+			}
+	try {
+		search_pool_.join(writer_.begin(), writer_.end());
+	}
+	catch (...) {
+		cleanup();
+		throw;
+	}
+	cleanup();
 }
 
 HitBuffer::~HitBuffer() noexcept(false) {

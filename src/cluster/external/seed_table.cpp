@@ -1,25 +1,22 @@
 /****
-Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include "util/memory/memory_resource.h"
 #include "search/search.h"
 #include "external.h"
@@ -66,7 +63,7 @@ RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
 	mkdir(base_dir);
 	unique_ptr<FileArray> output_files(new FileArray(base_dir, RADIX_COUNT, job.worker_id(), false));
 
-	Atomic q(qpath);
+	Atomic q(qpath, job);
 	atomic<int> volumes_processed(0);
 	SimpleThreadPool pool;
 	ClusterStats stats_all;
@@ -128,7 +125,7 @@ RadixedTable build_seed_table(Job& job, const VolumedFile& volumes, int shape) {
 	const RadixedTable buckets = output_files->buckets();
 	TaskTimer timer("Closing the output files");
 	output_files.reset();
-	Atomic finished(base_dir + "finished");
+	Atomic finished(base_dir + "finished", job);
 	finished.fetch_add(volumes_processed);
 	finished.await(volumes.size());
 	job.log(stats_all);

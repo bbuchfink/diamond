@@ -17,11 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include <inttypes.h>
 #include <cstdarg>
 #include "basic/config.h"
@@ -81,34 +76,30 @@ void Job::log(const ClusterStats& stats) {
 
 static void run_block_combos(Job& job, const VolumedFile& volumes, const string& base_dir, const string& aln_path) {
 	int64_t r;
-	atomic<uint64_t> blocks_processed(0);
-	Atomic q(base_dir + "queue");
+	Atomic q(base_dir + "queue", job);
+	Atomic finished(base_dir + "finished", job);
 	const int64_t n = (int64_t)volumes.size();
 	while (r = q.fetch_add(), r < n) {
 		unique_ptr<vector<BitVector>> seed_hit_table(new vector<BitVector>());
 		for (int i = 0; i <= r; ++i) {
 			job.log("Searching blocks. Blocks=%lli,%lli", r + 1, i + 1);
-			if (!seed_hit_table->empty()) {
+			/*if (!seed_hit_table->empty()) {
 				for (size_t i = 0; i < seed_hit_table->size(); ++i)
 					job.log("Seed hit table paired positions shape %zu: %zu/%zu", i, seed_hit_table->operator[](i).one_count(), seed_hit_table->operator[](i).size());
-			}
+			}*/
 			run_search(job, volumes, r, i, base_dir, seed_hit_table);
 		}
-		blocks_processed.fetch_add(1, std::memory_order_relaxed);
+		finished.fetch_add();
 	}
-	q.remove();
-	Atomic finished(base_dir + "finished");
-	finished.fetch_add(blocks_processed);
 	finished.await(n);
-	finished.remove();
 
-	Atomic concat_lock(base_dir + "concat_lock");
-	Atomic concat_done(base_dir + "concat_done");
+	Atomic concat_lock(base_dir + "concat_lock", job);
+	Atomic concat_done(base_dir + "concat_done", job);
 	if (concat_lock.fetch_add() == 0) {
 		job.log("Concatenating alignment files");
 		ofstream out(aln_path);
-		for (int64_t r = 0; r < volumes.size(); ++r) {
-			for (int64_t i = 0; i <= r; ++i) {
+		for (uint64_t r = 0; r < volumes.size(); ++r) {
+			for (uint64_t i = 0; i <= r; ++i) {
 				const string src = base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv";
 				std::ifstream in(src, std::ios::binary);
 				if (!in.good())
@@ -126,8 +117,6 @@ static void run_block_combos(Job& job, const VolumedFile& volumes, const string&
 	}
 	else
 		concat_done.await(1);
-	concat_lock.remove();
-	concat_done.remove();
 }
 
 static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
@@ -143,7 +132,7 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "alignments" + PATH_SEPARATOR;
 	const string aln_path = job.base_dir() + "alignments.tsv";
 	const bool mutual_cover = config.mutual_cover.present();
-	mkdir(base_dir);
+	job.make_temp_dir(base_dir);
 	if(linear)
 		run_block_combos(job, volumes, base_dir, aln_path);
 	else {
@@ -155,8 +144,8 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 			remove_tmp_file(config.fasta_index_file);
 		volumes.remove(job.round() > 0);
 	}
-	Atomic gvc_lock(base_dir + "gvc_lock");
-	Atomic gvc_done(base_dir + "gvc_done");
+	Atomic gvc_lock(base_dir + "gvc_lock", job);
+	Atomic gvc_done(base_dir + "gvc_done", job);
 	if (gvc_lock.fetch_add() == 0) {		
 		job.log("Running greedy vertex cover");		
 		const string acc_path = Cluster::gvc_input_rep_list(job.round(), job.root_dir(), &job, volumes.max_oid());
@@ -191,8 +180,6 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 	}
 	else
 		gvc_done.await(1);
-	gvc_lock.remove();
-	gvc_done.remove();
 	rmdir(base_dir.c_str());
 	return get_reps(job, volumes);
 }
@@ -202,19 +189,19 @@ void multinode() {
 		throw runtime_error("Option not supported for this workflow: --id");
 	config.database.require();
 	Cluster::init_thresholds();
-	if (!config.parallel_tmpdir.empty()) {
-		if (config.command == ::Config::LINCLUST)
-			External::external();
-		else
-			throw runtime_error("Option is not permitted for this workflow: --parallel-tmpdir");
-		return;
-	}	
+	const bool parallel = !config.parallel_tmpdir.empty();
 	if (config.output_file.empty())
 		throw runtime_error("Option missing: output file (--out/-o)");
 	const string output_file = config.output_file;
 	config.file_buffer_size = 64 * 1024;
 	const bool linclust = config.command == ::Config::LINCLUST;
 	const vector<string> steps = Cluster::cluster_steps(config.approx_min_id.present() ? config.approx_min_id : config.min_id, linclust); // TODO
+	if (parallel) {
+		for (const string& step : steps) {
+			if (!ends_with(step, "_lin"))
+				throw runtime_error("Parallel workflow only supports linclust workflows, support for all-vs-all rounds will be added in a future version.");
+		}
+	}
 	const double evalue_cutoff = config.max_evalue,
 		target_approx_id = config.approx_min_id.present() ? config.approx_min_id.get_present() : 0.0;
 	const bool anchored_swipe = config.anchored_swipe, is_linclust = Cluster::is_linclust(steps);
@@ -224,15 +211,26 @@ void multinode() {
 	config.hamming_ext = config.approx_min_id >= 50.0;
 	//config.freq_masking = true;
 	
-	config.tmpdir = create_temp_directory(config.tmpdir, "diamond-tmp-");
-	const string input_vols = config.tmpdir + PATH_SEPARATOR + "input_vols.tsv";
-	ofstream input_vols_file(input_vols);
-	input_vols_file << config.database.get_present() << endl;
-	input_vols_file.close();
+	if (parallel) {
+		config.tmpdir = config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-2.2.0" + PATH_SEPARATOR;
+		mkdir(config.tmpdir);
+	}
+	else
+		config.tmpdir = create_temp_directory(config.tmpdir, "diamond-tmp-") + PATH_SEPARATOR;	
+	Job job;
+	const string input_vols = config.tmpdir + "input_vols.tsv";
+	Atomic lock(config.tmpdir + "startup_lock", job), done(config.tmpdir + "startup_done", job);
+	if (lock.fetch_add() == 0) {
+		ofstream input_vols_file(input_vols);
+		input_vols_file << config.database.get_present() << endl;
+		input_vols_file.close();
+		done.fetch_add();
+	}
+	else
+		done.await(1);	
 	config.database = input_vols;
 	
 	VolumedFile volumes(config.database.get_present());
-	Job job;
 	if (job.worker_id() == 0) {
 		if (config.mutual_cover.present())
 			job.log("Bi-directional coverage = %f", config.mutual_cover.get_present());
@@ -274,14 +272,16 @@ void multinode() {
 		if (i < steps.size() - 1)
 			job.next_round();
 	}
-	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock");
+	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock", job);
 	config.output_file = output_file;
 	if (output_lock.fetch_add() == 0) {
 		merge(job, input_volumes);
-		output_lock.remove();
+		job.log(job.stats());
+		output_lock.close();
+		lock.close();
+		done.close();
+		job.finish();
+		remove_tmp_file(input_vols);
+		rmdir(config.tmpdir);
 	}
-	job.log(job.stats());
-	job.finish();
-	remove_tmp_file(input_vols);
-	rmdir(config.tmpdir);
 }

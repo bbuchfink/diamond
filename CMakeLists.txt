@@ -1,17 +1,19 @@
-# Copyright © 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# SPDX-License-Identifier: Apache-2.0
+# DIAMOND protein sequence aligner
+# Copyright (C) 2012-2026 Benjamin J. Buchfink
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required (VERSION 2.6...3.5)
 project (DIAMOND)
@@ -513,9 +515,32 @@ install(TARGETS diamond DESTINATION bin)
 enable_testing()
 SET(TD ${CMAKE_SOURCE_DIR}/src/test)
 SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test.cmake)
+function(add_diamond_test NAME ARGS)
+  add_test(NAME ${NAME} COMMAND ${CMAKE_COMMAND} -DNAME=${NAME} "-DARGS=${ARGS}" ${SP})
+endfunction()
+
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-DARGS=blastp -q ${TD}/3.faa -d ${TD}/4.faa --mid-sensitive -p1" ${SP})
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
 add_test(NAME galaxy_7 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_7 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks 4 --file-buffer-size 67108864" ${SP})
 add_test(NAME galaxy_9 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_9 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --algo 0 --global-ranking 10 --index-chunks 4 --file-buffer-size 67108864" ${SP})
-#add_test(NAME diamond COMMAND diamond test)
+add_diamond_test(diamond-test-blastp-default "blastp -q ${TD}/data.faa -d ${TD}/data.faa -p1")
+add_diamond_test(diamond-test-blastp-multithreaded "blastp -q ${TD}/data.faa -d ${TD}/data.faa -p4")
+add_diamond_test(diamond-test-blastp-blocked "blastp -q ${TD}/data.faa -d ${TD}/data.faa -c1 -b0.00002 -p4")
+add_diamond_test(diamond-test-blastp-more-sensitive "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4")
+add_diamond_test(diamond-test-blastp-very-sensitive "blastp -q ${TD}/data.faa -d ${TD}/data.faa --very-sensitive -c1 -p4")
+add_diamond_test(diamond-test-blastp-ultra-sensitive "blastp -q ${TD}/data.faa -d ${TD}/data.faa --ultra-sensitive -c1 -p4")
+add_diamond_test(diamond-test-blastp-max-hsps "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --max-hsps 0")
+add_diamond_test(diamond-test-blastp-target-parallel "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --query-parallel-limit 1")
+add_diamond_test(diamond-test-blastp-query-indexed "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --algo 1")
+add_diamond_test(diamond-test-blastp-comp-based-stats-0 "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --comp-based-stats 0")
+add_diamond_test(diamond-test-blastp-comp-based-stats-2 "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --comp-based-stats 2")
+add_diamond_test(diamond-test-blastp-comp-based-stats-3 "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --comp-based-stats 3")
+add_diamond_test(diamond-test-blastp-comp-based-stats-4 "blastp -q ${TD}/data.faa -d ${TD}/data.faa --more-sensitive -c1 -p4 --comp-based-stats 4")
+add_diamond_test(diamond-test-blastp-target-seqs "blastp -q ${TD}/data.faa -d ${TD}/data.faa -k3 -c1 -p4")
+add_diamond_test(diamond-test-blastp-top "blastp -q ${TD}/data.faa -d ${TD}/data.faa --top 10 -p4")
+add_diamond_test(diamond-test-blastp-evalue "blastp -q ${TD}/data.faa -d ${TD}/data.faa -e10000 --more-sensitive -c1 -p4")
+add_diamond_test(diamond-test-blastp-blosum50 "blastp -q ${TD}/data.faa -d ${TD}/data.faa --matrix blosum50 -p4")
+add_diamond_test(diamond-test-blastp-pairwise-format "blastp -q ${TD}/data.faa -d ${TD}/data.faa -c1 -f0 -p4")
+# add_diamond_test(diamond-test-blastp-xml-format "blastp -q ${TD}/data.faa -d ${TD}/data.faa -c1 -f xml -p4")
+add_diamond_test(diamond-test-blastp-paf-format "blastp -q ${TD}/data.faa -d ${TD}/data.faa -c1 -f paf -p1")

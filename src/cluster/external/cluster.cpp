@@ -17,11 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include <numeric>
 #include <inttypes.h>
 #include <sstream>
@@ -49,11 +44,11 @@ using std::ostringstream;
 namespace External {
 
 static void compute_closure(Job& job, const VolumedFile& volumes, vector<uint64_t>& rep) {
-	Partition<int64_t> parts(volumes.max_oid() + 1, config.threads_);
+	Partition<uint64_t> parts(volumes.max_oid() + 1, config.threads_);
 	auto closure_worker = [&](int thread_id) {
-		int64_t clusters = 0;
-		for (int64_t i = parts.begin(thread_id); i < parts.end(thread_id); ++i) {
-			int64_t r = rep[i];
+		uint64_t clusters = 0;
+		for (uint64_t i = parts.begin(thread_id); i < parts.end(thread_id); ++i) {
+			uint64_t r = rep[i];
 			if (r == i)
 				++clusters;
 			while (rep[r] != r)
@@ -115,7 +110,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	mkdir(base_dir);
 	unique_ptr<FileStack> reps_list(new FileStack(base_dir + "reps.tsv"));
 	
-	Atomic q(qpath);
+	Atomic q(qpath, job);
 	atomic<int> volumes_processed(0);
 	atomic<OId> cluster_count(0);
 	vector<thread> workers;
@@ -175,7 +170,7 @@ static string get_reps(Job& job, const VolumedFile& volumes) {
 	pool.join_all();
 	job.log("Representatives written: %" PRIu64, cluster_count.load());
 	TaskTimer timer("Closing the output files");
-	Atomic finished(base_dir + "finished");
+	Atomic finished(base_dir + "finished", job);
 	finished.fetch_add(volumes_processed);
 	finished.await((int)volumes.size());
 	const string out = reps_list->file_name();
@@ -189,7 +184,7 @@ string cluster(Job& job, const RadixedTable& edges, const VolumedFile& volumes) 
 		clustering_path = job.base_dir() + PATH_SEPARATOR + "clustering";
 	mkdir(clustering_path);
 	unique_ptr<FileArray> output_file(new FileArray(clustering_path, 1, job.worker_id(), false));
-	Atomic queue(queue_path);
+	Atomic queue(queue_path, job);
 	int64_t bucket, buckets_processed = 0;
 	while (bucket = queue.fetch_add(), bucket < (int64_t)edges.size()) {
 		VolumedFile file(edges[bucket]);
@@ -216,9 +211,9 @@ string cluster(Job& job, const RadixedTable& edges, const VolumedFile& volumes) 
 	TaskTimer timer("Closing the output files");
 	const string assignment_file = output_file->bucket(0);
 	output_file.reset();
-	Atomic finished(clustering_path + PATH_SEPARATOR + "finished");
+	Atomic finished(clustering_path + PATH_SEPARATOR + "finished", job);
 	const int64_t f = finished.fetch_add(buckets_processed);
-	Atomic closure_finished(clustering_path + PATH_SEPARATOR + "closure_finished");
+	Atomic closure_finished(clustering_path + PATH_SEPARATOR + "closure_finished", job);
 	if (f + buckets_processed < (int)edges.size())
 		closure_finished.await(1);
 	else {
@@ -229,8 +224,8 @@ string cluster(Job& job, const RadixedTable& edges, const VolumedFile& volumes) 
 }
 
 string cluster_bidirectional(Job& job, const RadixedTable& edges, const VolumedFile& volumes) {
-	Atomic lock(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_lock");
-	Atomic finished(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_finished");
+	Atomic lock(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_lock", job);
+	Atomic finished(job.base_dir() + PATH_SEPARATOR + "cluster_bidirectional_finished", job);
 	if (lock.fetch_add() == 0) {
 		job.log("Computing clustering (bi-directional coverage)");
 		vector<uint32_t> degree(volumes.max_oid() + 1, 0);

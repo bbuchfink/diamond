@@ -46,7 +46,13 @@ using std::string;
 void get_seq()
 {
 	config.database.require();
-	SequenceFile* db_file = SequenceFile::auto_create({ config.database });
+	SequenceFile* db_file;
+	try {
+		db_file = SequenceFile::auto_create({ config.database });
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error(string("Error opening database: ") + e.what());
+	}
 	db_file->get_seq();
 	delete db_file;
 }

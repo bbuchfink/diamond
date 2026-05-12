@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <inttypes.h>
 #include "basic/statistics.h"
 #include "multinode.h"
 #include "../cluster.h"
@@ -73,7 +74,13 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 	config.output_file = base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv";
 	log_rss();
 	TaskTimer timer("Opening the database");
-	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ volumes[r].path }, SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::RANK_BY_SEQID, amino_acid_traits));
+	shared_ptr<SequenceFile> db;
+	try {
+		db.reset(SequenceFile::auto_create({ volumes[r].path }, SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::RANK_BY_SEQID, amino_acid_traits));
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error(string("Error opening database chunk file " + volumes[r].path + ": ") + e.what());
+	}
 	timer.finish();
 	if (!db->open_stats().empty())
 		message_stream << db->open_stats();
@@ -98,6 +105,7 @@ void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, stri
 	config.output_format = mutual_cover ? vector<string> { "tab", "qseqid", "sseqid", "corrected_bitscore" } : vector<string>{ "tab", "qseqid", "sseqid", "qcovhsp", "scovhsp", "corrected_bitscore" };
 	statistics.reset();
 	config.db_size = volumes.letter_count();
+	job.log("Database letter count: %" PRIu64, config.db_size);
 	config.max_target_seqs_ = 0;
 	config.toppercent.unset();
 	config.iterate = vector<string>();

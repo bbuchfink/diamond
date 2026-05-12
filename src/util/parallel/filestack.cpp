@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <string>
+#include <algorithm>
 #include <string.h>
 #include <iostream>
 #include <chrono>
@@ -56,17 +57,25 @@ FileStack::FileStack() : FileStack::FileStack(default_file_name) {
 }
 
 void FileStack::remove() {
-#ifdef _WIN32
-    CloseHandle(hFile);
-	hFile = INVALID_HANDLE_VALUE;
-#else
-    close(fd);
-	fd = -1;
-#endif
+    close();
 	remove_tmp_file(file_name_);
 }
 
 FileStack::FileStack(const string & file_name) : FileStack::FileStack(file_name, default_max_line_length) {
+}
+
+void FileStack::close() {
+#ifdef _WIN32
+    if (hFile != INVALID_HANDLE_VALUE) {
+        CloseHandle(hFile);
+        hFile = INVALID_HANDLE_VALUE;
+    }
+#else
+    if (fd >= 0) {
+        ::close(fd);
+        fd = -1;
+    }
+#endif
 }
 
 FileStack::FileStack(const string & file_name, int maximum_line_length):
@@ -87,14 +96,7 @@ FileStack::FileStack(const string & file_name, int maximum_line_length):
 }
 
 FileStack::~FileStack() {
-    DBG("");
-#ifdef _WIN32
-    if (hFile != INVALID_HANDLE_VALUE)
-        CloseHandle(hFile);
-#else
-    if (fd >= 0)
-        close(fd);
-#endif
+    close();
 }
 
 int FileStack::lock() {

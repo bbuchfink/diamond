@@ -55,21 +55,21 @@ struct AccMapping {
 	static constexpr OId NIL = std::numeric_limits<OId>::max();
 	OId rep = NIL, member = NIL;
 	std::pmr::string rep_acc, member_acc;
-	AccMapping(OId rep, OId member, std::pmr::string&& member_acc, std::pmr::monotonic_buffer_resource& pool) :
+	AccMapping(OId rep, OId member, std::pmr::string&& member_acc, std::pmr::memory_resource& pool) :
 		rep(rep),
 		member(member),
 		rep_acc(&pool),
 		member_acc(std::move(member_acc))
 	{
 	}
-	AccMapping(OId rep, OId member, const std::pmr::string& member_acc, std::pmr::monotonic_buffer_resource& pool) :
+	AccMapping(OId rep, OId member, const std::pmr::string& member_acc, std::pmr::memory_resource& pool) :
 		rep(rep),
 		member(member),
 		rep_acc(&pool),
 		member_acc(member_acc, &pool)
 	{
 	}
-	AccMapping(std::pmr::monotonic_buffer_resource& pool) :
+	AccMapping(std::pmr::memory_resource& pool) :
 		rep(NIL),
 		member(NIL),
 		rep_acc(&pool),
@@ -96,7 +96,7 @@ struct AccMapping {
 	}
 };
 
-static std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& job, const Volume& vol, size_t v, std::pmr::monotonic_buffer_resource& pool, bool remove) {
+static std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& job, const Volume& vol, size_t v, std::pmr::memory_resource& pool, bool remove) {
 	std::pmr::unordered_map<OId, std::pmr::string> oid2acc(&pool);
 	oid2acc.reserve(vol.record_count);
 	const string path = job.root_dir() + "input" + std::to_string(v) + ".tsv";
@@ -109,7 +109,8 @@ static std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& jo
 		in >> acc;
 		if (!in)
 			throw runtime_error("Format error in accessions file: " + path);
-		oid2acc[oid] = acc;
+		if (oid2acc.emplace(oid, acc).second == false)
+			throw runtime_error("Duplicate OID in accessions file: " + path);
 	}
 	in.close();
 	if (oid2acc.size() != vol.record_count)
@@ -120,9 +121,9 @@ static std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& jo
 }
 
 static RadixedTable output_round1(Job& job, const vector<OId>& merged, const VolumedFile& volumes) {
-	std::pmr::monotonic_buffer_resource pool;
+	std::pmr::unsynchronized_pool_resource pool;
 	const string base_dir = job.root_dir() + "output" + PATH_SEPARATOR;
-	mkdir(base_dir);
+	job.make_temp_dir(base_dir);
 	unique_ptr<FileArray> output_files(new FileArray(base_dir, RADIX_COUNT, job.worker_id(), false));
 	const int shift = std::max(bit_length(job.max_oid()) - RADIX_BITS, 0);
 	BufferArray buffers(*output_files, RADIX_COUNT);
@@ -136,12 +137,13 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 			AccMapping m(merged[oid], oid, acc, pool);
 			buffers.write(m.rep >> shift, m);
 		}
+		log_rss();
 	}
 	return output_files->buckets(shift);
 }
 
 static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile& volumes, const RadixedTable& round1) {
-	std::pmr::monotonic_buffer_resource pool;
+	std::pmr::unsynchronized_pool_resource pool;
 	ofstream out(config.output_file);
 	if (!out.good())
 		throw runtime_error("Error opening output file: " + config.output_file);
@@ -151,6 +153,7 @@ static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile&
 		job.log("Building output table (round 2) volume %zu/%zu oid %" PRId64 " - %" PRId64, v + 1, volumes.size(), vol.oid_begin, vol.oid_end);
 		const std::pmr::unordered_map<OId, std::pmr::string> oid2acc = read_mapping_table(job, vol, v, pool, true);
 		for (const Bucket& b : round1) {
+			log_rss();
 			if (b.key_end() <= vol.oid_begin || b.key_begin() >= vol.oid_end)
 				continue;
 			VolumedFile f(b);

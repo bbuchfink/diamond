@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <unordered_map>
-#include "multinode.h"
 #include <inttypes.h>
+#include "multinode.h"
 #include "volume.h"
 #include "data/sequence_file.h"
 #include "util/parallel/simple_thread_pool.h"
@@ -38,29 +38,6 @@ using std::unordered_set;
 using std::endl;
 using std::pair;
 using std::tuple;
-
-template<typename T>
-void exchange_if_smaller(std::atomic<T>& value, T replacement) {
-	T current = value.load(std::memory_order_relaxed);
-	while (current > replacement &&
-		!value.compare_exchange_weak(
-			current,
-			replacement,
-			std::memory_order_relaxed,
-			std::memory_order_relaxed)) {}
-}
-
-template<typename T>
-void exchange_if_larger(std::atomic<T>& value, T replacement) {
-	T current = value.load(std::memory_order_relaxed);
-	while (current < replacement &&
-		!value.compare_exchange_weak(
-			current,
-			replacement,
-			std::memory_order_relaxed,
-			std::memory_order_relaxed)) {
-	}
-}
 
 struct RepChunk {
 	static constexpr size_t POISON = std::numeric_limits<size_t>::max();
@@ -84,7 +61,7 @@ static void flush_buffer(TextBuffer& buffer, vector<size_t>& record_offsets, siz
 	record_offsets.clear();
 }
 
-static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& volumes, ptrdiff_t idx, const string& out_dir, bool single_out_file, FileStack& reps_list,
+static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& volumes, size_t idx, const string& out_dir, bool single_out_file, FileStack& reps_list,
 	atomic<OId>& count_all, atomic<OId>& min_all, atomic<OId>& max_all) {
 	job.log("Writing representatives. Volume=%lli/%lli Records=%s", idx + 1, volumes.size(), Util::String::format(volumes[idx].record_count).c_str());
 	string id_file = job.base_dir() + "rep_ids" + std::to_string(idx);
@@ -108,7 +85,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		throw runtime_error("Error opening file " + out_file);
 	unique_ptr<ofstream> offsets;
 	if (single_out_file) {
-		offsets = std::make_unique<ofstream>(offset_file, std::ios::out | std::ios::app | std::ios::binary);
+		offsets.reset(new ofstream(offset_file, std::ios::out | std::ios::app | std::ios::binary));
 		if (!offsets || !*offsets)
 			throw runtime_error("Error opening file " + offset_file);
 	}
@@ -127,7 +104,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	unique_ptr<Queue<RepChunk>> queue;
 	SimpleThreadPool pool;
 	std::thread::id writer_thread;
-	queue = std::make_unique<Queue<RepChunk>>(std::max<size_t>(16, formatter_count * 4), formatter_count, 1, RepChunk());
+	queue.reset(new Queue<RepChunk>(std::max<size_t>(16, formatter_count * 4), formatter_count, 1, RepChunk()));
 	auto writer = [&](const atomic<bool>& stop) {
 		RepChunk chunk;
 		while (!stop.load(std::memory_order_relaxed) && queue->wait_and_dequeue(chunk)) {
@@ -214,7 +191,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		ss << out_file << '\t' << count_all.load() << '\t' << min_all.load() << '\t' << max_all.load() + 1 << endl;
 		reps_list.push(ss.str());
 	}
-	return { count_this_volume, letters_all, bytes_all.load(std::memory_order_relaxed)};
+	return std::make_tuple<OId, uint64_t, uint64_t>(count_this_volume, letters_all, bytes_all.load(std::memory_order_relaxed));
 }
 
 pair<string, uint64_t> get_reps(Job& job, const VolumedFile& volumes) {
@@ -222,13 +199,14 @@ pair<string, uint64_t> get_reps(Job& job, const VolumedFile& volumes) {
 		return { string(),0 };
 	}
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "reps" + PATH_SEPARATOR, qpath = base_dir + "queue";
-	mkdir(base_dir);
+	job.make_temp_dir(base_dir);
 	unique_ptr<FileStack> reps_list(new FileStack(base_dir + "reps.tsv"));
 
-	Atomic q(qpath);
-	atomic<int> volumes_processed(0);
+	Atomic q(qpath, job);
+	Atomic finished(base_dir + "finished", job);
+	Atomic letter_count(base_dir + "letter_count", job);
 	OId cluster_count(0);
-	uint64_t bytes = 0, letters = 0;
+	uint64_t bytes = 0;
 	int64_t v = 0;
 	TaskTimer timer;
 	const bool single_out_file = !job.last_round() && !ends_with(job.steps().at(job.round() + 1), "_lin");
@@ -236,23 +214,22 @@ pair<string, uint64_t> get_reps(Job& job, const VolumedFile& volumes) {
 	atomic<OId> min_all(std::numeric_limits<OId>::max());
 	atomic<OId> max_all(0);
 	while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
-		volumes_processed.fetch_add(1, std::memory_order_relaxed);
-		auto [count, seq_letters, bytes_written] = write_reps(job, volumes, v, base_dir, single_out_file, *reps_list, count_all, min_all, max_all);
+		OId count;
+		uint64_t seq_letters, bytes_written;
+		std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, base_dir, single_out_file, *reps_list, count_all, min_all, max_all);
 		cluster_count += count;
-		letters += seq_letters;
 		bytes += bytes_written;
+		letter_count.fetch_add(seq_letters);
+		finished.fetch_add();
 	}
-	q.remove();
+	finished.await((int)volumes.size());
+	const uint64_t letters = letter_count.get();
 	if (!config.fasta_index_file.empty())
 		remove_tmp_file(config.fasta_index_file);
 	volumes.remove(job.round() > 0, false);	
 	job.log("Representatives written: %" PRIu64 " letters: %" PRIu64, cluster_count, letters);
 	const int64_t t = timer.microseconds();
-	job.log("Wrote %zu bytes to disk at %.2f MB/s", bytes, (double)bytes / MEGABYTES / (t / 1e6));
-	Atomic finished(base_dir + "finished");
-	finished.fetch_add(volumes_processed);
-	finished.await((int)volumes.size());
-	finished.remove();
+	job.log("Wrote %zu bytes to disk at %.2f MB/s", bytes, (double)bytes / MEGABYTES / (t / 1e6));	
 	const string out = reps_list->file_name();
 	reps_list.reset();
 	return { out, letters };

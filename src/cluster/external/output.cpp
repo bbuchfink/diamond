@@ -17,11 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #include <inttypes.h>
 #include <sstream>
 #include "external.h"
@@ -71,11 +66,11 @@ static OId output_oids(const vector<OId>& merged) {
 	FILE* out = fopen(config.output_file.c_str(), "wt");
 	if (!out)
 		throw runtime_error("Error opening file: " + config.output_file);
-	int64_t n = 0;
-	for (int64_t i = 0; i < (int64_t)merged.size(); ++i) {
+	uint64_t n = 0;
+	for (uint64_t i = 0; i < merged.size(); ++i) {
 		if (merged[i] == i)
 			++n;
-		fprintf(out, "%" PRId64 "\t%" PRId64 "\n", merged[i], i);
+		fprintf(out, "%" PRIu64 "\t%" PRIu64 "\n", merged[i], i);
 	}
 	fclose(out);
 	return n;
@@ -124,7 +119,7 @@ static RadixedTable output_accs_round1(Job& job, const vector<OId>& merged, cons
 	const string base_dir = job.root_dir() + "output" + PATH_SEPARATOR, qpath = base_dir + "queue_round1";
 	mkdir(base_dir);
 	unique_ptr<FileArray> output_files(new FileArray(base_dir, RADIX_COUNT, job.worker_id(), false));
-	Atomic q(qpath);
+	Atomic q(qpath, job);
 	SimpleThreadPool pool;
 
 	auto worker = [&](const atomic<bool>& stop) {
@@ -158,7 +153,7 @@ static OId output_accs(Job& job, const vector<OId>& merged, const VolumedFile& d
 	
 	const int digits = ::digits(job.max_oid, 10);
 	const std::string base_path = job.root_dir() + "output" + PATH_SEPARATOR, queue_path = base_path + "queue_round2";
-	Atomic queue(queue_path);
+	Atomic queue(queue_path, job);
 	int64_t bucket;
 	atomic<OId> cluster_count(0);
 	while (bucket = queue.fetch_add(), bucket < (int64_t)round1_sorted.size()) {

@@ -187,7 +187,12 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		vector<thread::id> search_workers;
 		for (int i = 0; i < config.threads_; ++i)
 			search_workers.push_back(cfg.search_pool.spawn(search_worker<SeedLoc>, &seedp, range.size(), sid, i, query_seed_hits.data(), ref_seed_hits.data(), context, &cfg));
-		cfg.search_pool.join(search_workers.begin(), search_workers.end());
+		try {
+			cfg.search_pool.join(search_workers.begin(), search_workers.end());
+		} catch(...) {
+			cfg.seed_hit_buf->finish_writing();			
+			throw;
+		}		
 		statistics.inc(Statistics::TIME_SEARCH, timer.microseconds());
 		timer.finish();
 		log_rss();

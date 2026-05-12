@@ -43,6 +43,13 @@ class FileStack {
         FileStack(const std::string & file_name);
         FileStack(const std::string & file_name, int maximum_line_length);
         ~FileStack();
+        void close();
+        template<typename Job>
+        FileStack(const std::string& file_name, Job& job):
+            FileStack(file_name)
+        {
+            job.register_sync_file(file_name);
+		}
 
         size_t size();
 

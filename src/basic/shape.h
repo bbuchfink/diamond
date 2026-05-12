@@ -113,6 +113,7 @@ struct Shape
 	inline bool set_seed_reduced(PackedSeed &s, It seq) const
 	{
 		s = 0;
+		const PackedSeed size = Reduction::get_reduction().size();
 		for (int i = 0; i < weight_; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
@@ -120,7 +121,7 @@ struct Shape
 #endif
 			if (l == MASK_LETTER)
 				return false;
-			s *= Reduction::get_reduction().size();
+			s *= size;
 			s += uint64_t(l);
 		}
 		return true;

@@ -214,13 +214,16 @@ struct Job {
 	{
 		mkdir(base_dir_);
 		mkdir(base_dir());
-		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log"));
-		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id");
+		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log", *this));
+		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id", *this);
 		worker_id_ = worker_id.fetch_add();
 	}
 
 	int64_t worker_id() const {
 		return worker_id_;
+	}
+
+	void register_sync_file(const std::string& file_name) {
 	}
 
 	std::string root_dir() const {

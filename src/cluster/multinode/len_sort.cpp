@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define _REENTRANT
 #include "lib/ips4o/ips4o.hpp"
 
+using std::ifstream;
 using std::unique_ptr;
 using std::runtime_error;
 using std::ofstream;
@@ -48,7 +49,7 @@ struct OutputChunk {
 	}
 };
 
-static void flush_buffer(TextBuffer& buffer, TextBuffer& acc_buffer, size_t output, vector<std::unique_ptr<Queue<OutputChunk>>>& queues, size_t writer_count) {
+static void flush_buffer(TextBuffer& buffer, TextBuffer& acc_buffer, size_t output, vector<unique_ptr<Queue<OutputChunk>>>& queues, size_t writer_count) {
 	if (buffer.size() == 0)
 		return;
 	OutputChunk chunk;
@@ -60,14 +61,14 @@ static void flush_buffer(TextBuffer& buffer, TextBuffer& acc_buffer, size_t outp
 	acc_buffer.clear();
 }
 
-static void write_blocks(Job& job, VolumedFile& volumes, vector<ofstream>& out, vector<ofstream>& acc_out, const vector<pair<int, OId>>& block_mapping) {
+static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstream>>& out, vector<unique_ptr<ofstream>>& acc_out, const vector<pair<int, OId>>& block_mapping) {
 	job.log("Writing length sorted blocks");
 	OId oid = 0;
 	uint64_t bytes_written = 0;
 	const size_t writer_count = std::max<size_t>(1, std::min<size_t>(out.size(), std::max(1, config.threads_)));
 	const int formatter_count = std::max(1, config.threads_);
 	const size_t flush_size = 64 * 1024;
-	vector<std::unique_ptr<Queue<OutputChunk>>> queues;
+	vector<unique_ptr<Queue<OutputChunk>>> queues;
 	SimpleThreadPool pool;
 	vector<std::thread::id> writer_threads;
 	queues.reserve(writer_count);
@@ -76,8 +77,8 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<ofstream>& out, 
 	auto writer = [&](const atomic<bool>& stop, size_t writer_id) {
 		OutputChunk chunk;
 		while (!stop.load(std::memory_order_relaxed) && queues[writer_id]->wait_and_dequeue(chunk)) {
-			out[chunk.output].write(chunk.data.data(), chunk.data.size());
-			acc_out[chunk.output].write(chunk.accs.data(), chunk.accs.size());
+			out[chunk.output]->write(chunk.data.data(), chunk.data.size());
+			acc_out[chunk.output]->write(chunk.accs.data(), chunk.accs.size());
 			bytes_written += chunk.data.size() + chunk.accs.size();
 		}
 	};
@@ -86,8 +87,12 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<ofstream>& out, 
 
 	auto process_volume = [&](const Volume& volume, ptrdiff_t idx) {
 		const SequenceFile::Flags flags = SequenceFile::Flags::ALL | SequenceFile::Flags::NEED_LETTER_COUNT;
-		//std::unique_ptr<SequenceFile> file(new FastaFile({ volume.path }, flags, amino_acid_traits));
-		unique_ptr<SequenceFile> file(SequenceFile::auto_create({ volume.path }, flags, amino_acid_traits));
+		unique_ptr<SequenceFile> file;
+		try {
+			file.reset(SequenceFile::auto_create({ volume.path }, flags, amino_acid_traits));
+		} catch(FormatDetectionError& e) {
+			throw runtime_error("Error opening file " + volume.path + ": " + e.what());
+		}
 		const uint64_t limit = std::min<uint64_t>(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), SequenceFile::DEFAULT_LOAD_SIZE);
 		uint64_t bytes = 0, ms = 0;
 		for (;;) {
@@ -148,25 +153,29 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<ofstream>& out, 
 		for (auto& q : queues)
 			q->close();
 	pool.join(writer_threads.begin(), writer_threads.end());
-	for (const ofstream& file : out)
-		if (!file)
+	for (const auto& file : out)
+		if (!*file)
 			throw runtime_error("Error writing length sorted block");
-	for (const ofstream& file : acc_out)
-		if (!file)
+	for (const auto& file : acc_out)
+		if (!*file)
 			throw runtime_error("Error writing length sorted block");
 }
 
 string len_sort(Job& job, VolumedFile& volumes) {
-	Atomic lock(job.root_dir() + "startup_lock"), done(job.root_dir() + "startup_done");
-	const string input_parts = job.root_dir() + "input.tsv";
+	Atomic lock(job.root_dir() + "lensort_lock", job), done(job.root_dir() + "lensort_done", job);
+	const string input_parts = job.root_dir() + "input.tsv", input_letters = job.root_dir() + "input_letters.txt";
 	if (lock.fetch_add() == 0) {
 		job.log("Memory limit = %" PRIu64, job.mem_limit);
 		vector<pair<Loc, OId>> lengths;
 		uint64_t letters = 0;
 		for (vector<Volume>::const_iterator i = volumes.begin(); i != volumes.end(); ++i) {
 			job.log("Reading volume %td/%zu", i - volumes.begin() + 1, volumes.size());
-			//FastaFile volume_file({ i->path }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::NEED_LENGTH_LOOKUP, amino_acid_traits);
-			unique_ptr<SequenceFile> volume_file(SequenceFile::auto_create({ i->path }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::NEED_LENGTH_LOOKUP, amino_acid_traits));
+			unique_ptr<SequenceFile> volume_file;
+			try {
+				volume_file.reset(SequenceFile::auto_create({ i->path }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::NEED_LENGTH_LOOKUP, amino_acid_traits));
+			} catch(FormatDetectionError& e) {
+				throw runtime_error("Error opening file " + i->path + ": " + e.what());
+			}
 			string msg = volume_file->open_stats();
 			if (volume_file->type() == SequenceFile::Type::DMND)
 				job.log("Warning: using legacy loader on .dmnd files");
@@ -179,15 +188,19 @@ string len_sort(Job& job, VolumedFile& volumes) {
 			for (OId i = 0; i < n; ++i)
 				lengths.emplace_back(volume_file->seq_length(i), lengths.size());
 		}
-
+		ofstream letters_out(input_letters);
+		letters_out << letters << endl;
+		letters_out << lengths.size() << endl;
+		if (!letters_out)
+			throw runtime_error("Error writing file " + input_letters);
+		letters_out.close();
 		job.log("Computing blocks");
 		std::ostringstream ss;
-		volumes.set_max_oid(lengths.size() - 1);
-		job.set_max_oid(lengths.size() - 1);
-		ss << "Sequences in database = " << volumes.max_oid() + 1 << endl;
+		//volumes.set_max_oid(lengths.size() - 1);
+		ss << "Sequences in database = " << lengths.size() << endl;
 		ss << "Letters in database = " << letters << endl;
 		ss << "Database blocks:" << endl;
-		volumes.set_letter_count(letters);
+		
 		double block_gb;
 		int index_chunks;
 		const bool first_round_linear = job.is_linear_round();
@@ -195,14 +208,13 @@ string len_sort(Job& job, VolumedFile& volumes) {
 			block_gb = 1e6;
 			index_chunks = 1;
 		} else
-			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, volumes.letter_count(), Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
+			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
 		const uint64_t block_size = gb_to_bytes(block_gb);
-		config.lowmem_ = index_chunks;
 		job.log("Block size = %" PRIu64 ", index chunks = %d", block_size, index_chunks);
-		ips4o::parallel::sort(lengths.begin(), lengths.end(), std::greater<>(), config.threads_);
+		ips4o::parallel::sort(lengths.begin(), lengths.end(), std::greater<pair<Loc, OId>>(), config.threads_);
 		ofstream idx(input_parts);
-		vector<ofstream> out;
-		vector<ofstream> acc_out;
+		vector<unique_ptr<ofstream>> out;
+		vector<unique_ptr<ofstream>> acc_out;
 		vector<pair<int, OId>> block_mapping(lengths.size());
 		int block = 0;
 		OId new_oid = 0;
@@ -217,8 +229,8 @@ string len_sort(Job& job, VolumedFile& volumes) {
 			ss << seqs << '\t' << block_letters << endl;
 			const string block_idx = first_round_linear ? std::to_string(block) : "";
 			const string name = job.root_dir() + "input" + block_idx + ".faa";
-			out.emplace_back(name);
-			acc_out.emplace_back(job.root_dir() + "input" + block_idx + ".tsv");
+			out.emplace_back(new ofstream(name));
+			acc_out.emplace_back(new ofstream(job.root_dir() + "input" + block_idx + ".tsv"));
 			idx << name << '\t' << seqs << endl;
 			++block;
 		}
@@ -228,7 +240,17 @@ string len_sort(Job& job, VolumedFile& volumes) {
 	}
 	else
 		done.await(1);
-	lock.remove();
-	done.remove();
+	uint64_t letters, seq_count;
+	ifstream input_letters_file(input_letters);
+	input_letters_file >> letters >> seq_count;
+	if(!input_letters_file)
+		throw runtime_error("Error opening file " + input_letters);
+	volumes.set_letter_count(letters);
+	job.register_sync_file(input_letters);
+	double block_gb;
+	int index_chunks;
+	tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
+	config.lowmem_ = index_chunks;
+	job.set_max_oid(seq_count - 1);
 	return input_parts;
 }

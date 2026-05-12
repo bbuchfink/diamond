@@ -30,6 +30,7 @@ using std::tie;
 using std::ifstream;
 using std::ofstream;
 using std::next;
+using std::endl;
 using std::unordered_map;
 using namespace Util::Tsv;
 using Util::String::TokenizerBase;
@@ -40,14 +41,14 @@ static const Schema FASTA_SCHEMA { Type::STRING, Type::STRING };
 static const Schema FASTQ_SCHEMA{ Type::STRING, Type::STRING, Type::STRING };
 //const char* FASTA_SEP = "\n>", * FASTQ_SEP = "\n@";
 
-SeqFileFormat guess_format(TextInputFile& file) {
+static SeqFileFormat guess_format(TextInputFile& file) {
 	string r = file.peek(1);
 	if (r.empty())
-		throw std::runtime_error("Error detecting input file format. Input file seems to be empty.");
+		throw FormatDetectionError("Error detecting input file format. Input file seems to be empty.");
 	switch (r.front()) {
 	case '>': return SeqFileFormat::FASTA;
 	case '@': return SeqFileFormat::FASTQ;
-	default: throw std::runtime_error("Error detecting input file format. First line must begin with '>' (FASTA) or '@' (FASTQ).");
+	default: throw FormatDetectionError("Error detecting input file format (when treating as text file). First line must begin with '>' (FASTA) or '@' (FASTQ).");
 	}
 }
 
@@ -78,6 +79,17 @@ FastaFile::FastaFile(const vector<string>& file_name, Flags flags, const ValueTr
 		while (in >> pos)
 			index_.push_back(pos);
 	}
+	size_t size = 0;
+	for (auto& file : file_) {
+		const string name = file.file_name();
+		if (name.empty() || name == "-")
+			continue;
+		size += ::file_size(name.c_str());
+	}
+	disk_size_ = size;
+	std::ostringstream ss;
+	ss << "FASTA file size: " << disk_size_ << " bytes" << endl;
+	open_stats_ += ss.str();
 	if (!flag_any(flags, Flags::NEED_LETTER_COUNT))
 		return;
 	tie(seqs_, letters_) = init_read();
@@ -403,8 +415,8 @@ void FastaFile::write_seq(const Sequence& seq, const std::string& id) {
 		seq_length_.push_back(seq.length());
 }
 
-pair<int64_t, int64_t> FastaFile::init_read() {
-	int64_t seqs = 0, letters = 0;
+pair<uint64_t, uint64_t> FastaFile::init_read() {
+	uint64_t seqs = 0, letters = 0;
 	const bool count_only = !flag_any(flags_, Flags::ACC_TO_OID_MAPPING | Flags::OID_TO_ACC_MAPPING | Flags::NEED_LENGTH_LOOKUP);
 	if (index_file_.empty() || !exists(index_file_)) {
 		const uint64_t limit = std::min<uint64_t>(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)), SequenceFile::DEFAULT_LOAD_SIZE);
@@ -442,7 +454,7 @@ pair<int64_t, int64_t> FastaFile::init_read() {
 		}
 		std::ostringstream ss;
 		ss << "Loaded " << bytes << " bytes from disk at " << ((double)bytes / MEGABYTES / ms * 1e6) << " MB/s" << std::endl;
-		open_stats_ = ss.str();
+		open_stats_ += ss.str();
 		if (flag_any(flags_, Flags::NEED_LENGTH_LOOKUP) && !index_file_.empty()) {
 			ofstream out(index_file_, std::ios::binary);
 			out.write((const char*)seq_length_.data(), seq_length_.size() * sizeof(Loc));

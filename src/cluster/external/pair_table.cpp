@@ -1,25 +1,22 @@
 /****
-Copyright � 2012-2026 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-	http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifdef _WIN32
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
 #define _REENTRANT
 #include "lib/ips4o/ips4o.hpp"
 #include "build_pair_table.h"
@@ -37,7 +34,7 @@ RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shap
 	const string seed_table_base = job.base_dir() + PATH_SEPARATOR + "seed_table_" + std::to_string(shape);
 	const string queue_path = seed_table_base + PATH_SEPARATOR + "build_pair_table_queue";
 	const bool unid = !config.mutual_cover.present();
-	Atomic queue(queue_path);
+	Atomic queue(queue_path, job);
 	atomic<size_t> buckets_processed(0);
 	SimpleThreadPool pool;
 	const int concurrent_buckets = std::min((int)seed_table.max_buckets(job.mem_limit, sizeof(SeedEntry)), config.threads_);
@@ -78,7 +75,7 @@ RadixedTable build_pair_table(Job& job, const RadixedTable& seed_table, int shap
 		threads.push_back(pool.spawn(worker));
 	pool.join(threads.begin(), threads.end());
 	const RadixedTable buckets = output_files.buckets();
-	Atomic finished(seed_table_base + PATH_SEPARATOR + "pair_table_finished");
+	Atomic finished(seed_table_base + PATH_SEPARATOR + "pair_table_finished", job);
 	finished.fetch_add(buckets_processed);
 	finished.await(seed_table.size());
 	return buckets;

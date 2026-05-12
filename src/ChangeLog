@@ -1,3 +1,17 @@
+[2.2.0]
+- Fixed a potential issue of increased memory use.
+- Fixed compiler errors for GCC 4.8.5.
+- Fixed an issue that could cause hanging instead of correct termination in case of an error.
+- Fixed a potential error when using an output format not containing alignment coordinates.
+- Fixed an error when using the `full_sseq` output field with BLAST databases.
+- Fixed a potential unclear error message when using a database file with unsupported format.
+- Improved the performance of clustering workflows when running in parallel across multiple nodes
+  using the `--parallel-tmpdir` option, and changed the input format to single database instead
+  of volumed TSV file.
+- Fixed a potential issue of high memory use in the clustering workflows during output generation.
+- The `test` workflow is deprecated and has been removed. Unit testing is now available via
+  CTest.
+
 [2.1.25]
 - Improved the performance of the `cluster`, `deepclust` and `linclust` workflows.
 - Fixed an issue that could cause an out-of-memory error in the clustering workflows during

@@ -18,13 +18,39 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <atomic>
 #include <thread>
 #include "filestack.h"
 
+template<typename T>
+void exchange_if_smaller(std::atomic<T>& value, T replacement) {
+	T current = value.load(std::memory_order_relaxed);
+	while (current > replacement &&
+		!value.compare_exchange_weak(
+			current,
+			replacement,
+			std::memory_order_relaxed,
+			std::memory_order_relaxed)) {
+	}
+}
+
+template<typename T>
+void exchange_if_larger(std::atomic<T>& value, T replacement) {
+	T current = value.load(std::memory_order_relaxed);
+	while (current < replacement &&
+		!value.compare_exchange_weak(
+			current,
+			replacement,
+			std::memory_order_relaxed,
+			std::memory_order_relaxed)) {
+	}
+}
+
 struct Atomic {
 
-	Atomic(const std::string& file_name):
-		stack_(file_name)
+	template<typename Job>
+	Atomic(const std::string& file_name, Job& job):
+		stack_(file_name, job)
 	{
 	}
 
@@ -46,6 +72,10 @@ struct Atomic {
 				return;
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
+	}
+
+	void close() {
+		stack_.close();
 	}
 
 	void remove() {

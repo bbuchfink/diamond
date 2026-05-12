@@ -51,9 +51,16 @@ using std::string;
 using Util::Tsv::Schema;
 using Util::Tsv::Type;
 using Util::String::TokenIterator;
+using std::runtime_error;
 
 void split() {
-	unique_ptr<SequenceFile> in(SequenceFile::auto_create({ config.single_query_file() }));
+	unique_ptr<SequenceFile> in;
+	try {
+		in.reset(SequenceFile::auto_create({ config.single_query_file() }));
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error("Error opening input file: " + std::string(e.what()));
+	}
 	string id;
 	vector<Letter> seq;
 	size_t n = 0, f = 0, b = (size_t)(config.chunk_size * 1e9), seqs = 0;

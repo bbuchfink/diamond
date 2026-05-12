@@ -86,6 +86,7 @@ struct Reduction
 		get_reduction() = r;
 	}
 
+	// TODO
 	static std::pmr::vector<Letter> reduce_seq(const Sequence &seq, std::pmr::monotonic_buffer_resource& pool)
 	{
 		std::pmr::vector<Letter> dst(&pool);
@@ -95,6 +96,16 @@ struct Reduction
 			dst.push_back(reduction_instance(seq[i]));
 		return dst;
 	}
+
+	static void reduce_seq(const Sequence& seq, std::vector<Letter>& dst)
+	{
+		dst.clear();
+		dst.resize(seq.length());
+		const Reduction& reduction_instance = get_reduction();
+		for (Loc i = 0; i < seq.length(); ++i)
+			dst[i] = reduction_instance(seq[i]);
+	}
+
 
 	double freq(unsigned bucket) const {
 		return freq_[bucket];

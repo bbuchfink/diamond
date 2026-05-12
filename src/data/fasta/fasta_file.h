@@ -80,7 +80,7 @@ struct FastaFile : public SequenceFile
 
 private:
 
-	std::pair<int64_t, int64_t> init_read();
+	std::pair<uint64_t, uint64_t> init_read();
 
 	const std::string index_file_;
 	std::list<Util::Tsv::File> file_;
@@ -90,6 +90,6 @@ private:
 	SeqFileFormat format_;
 	OId oid_;
 	int raw_chunk_no_;
-	int64_t seqs_, letters_;
+	uint64_t seqs_, letters_;
 	
 };
