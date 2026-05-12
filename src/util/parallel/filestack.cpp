@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <string.h>
 #include <iostream>
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <stdexcept>
