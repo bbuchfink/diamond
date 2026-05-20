@@ -1,4 +1,6 @@
 [2.2.1]
+- Added support for clustering by traceback sequence identity (`--id`) instead of approximate
+  sequence identity (`--approx-id`).
 - Fixed an issue (present since v2.1.25) that could cause clustering workflows not to correctly
   use the `--comp-based-stats` command line option.
 

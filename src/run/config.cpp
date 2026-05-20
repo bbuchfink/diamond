@@ -164,6 +164,9 @@ Config::Config(std::unique_ptr<std::vector<BitVector>>& target_seed_hits) :
 	}
 	log_stream << "Min length ratio: " << min_length_ratio << endl;
 	output_format.reset(init_output(max_target_seqs));
+
+	if(config.approx_min_id.present() && config.min_id != 0.0)
+		throw runtime_error("Incompatible options: --approx-id, --id.");
 }
 
 Config::~Config() {

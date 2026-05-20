@@ -185,8 +185,8 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 }
 
 void multinode() {
-	if (config.min_id != 0.0)
-		throw runtime_error("Option not supported for this workflow: --id");
+	//if (config.min_id != 0.0)
+		//throw runtime_error("Option not supported for this workflow: --id");
 	config.database.require();
 	Cluster::init_thresholds();
 	const bool parallel = !config.parallel_tmpdir.empty();
@@ -208,7 +208,7 @@ void multinode() {
 	if(!ends_with(steps.front(), "_lin"))
 		throw runtime_error("First round must be linear, support for first all-vs-all round will be added in a future version.");
 	// TODO
-	config.hamming_ext = config.approx_min_id >= 50.0;
+	config.hamming_ext = config.approx_min_id.present() ? config.approx_min_id.get_present() >= 50.0 : false;
 	//config.freq_masking = true;
 	
 	if (parallel) {
