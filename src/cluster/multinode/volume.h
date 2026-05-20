@@ -110,7 +110,7 @@ struct VolumedFile : public std::vector<Volume> {
 			records_ = 0;
 	}
 	OId sparse_records() const {
-		if (records_ == 0)
+		if (records_ == std::numeric_limits<OId>::max())
 			throw std::runtime_error("Record count not set");
 		return records_;
 	}
