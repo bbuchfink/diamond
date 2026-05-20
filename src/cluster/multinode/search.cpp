@@ -38,7 +38,7 @@ static void run_all_vs_all(Job& job) {
 	config.query_file.clear();
 	config.lin_stage1_query = false;
 	config.ext_.clear();
-	config.comp_based_stats = 1;
+	//config.comp_based_stats = 1;
 	config.database = job.round() == 0 ? job.root_dir() + "input.faa" :
 		job.base_dir(job.round() - 1) + PATH_SEPARATOR + "reps" + PATH_SEPARATOR + "reps_all.faa";
 	config.fasta_index_file = job.round() == 0 ? job.root_dir() + "input.faa.faidx" : job.base_dir(job.round() - 1) + PATH_SEPARATOR + "reps" + PATH_SEPARATOR + "reps_all.faa.faidx";
@@ -70,7 +70,7 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 	config.fasta_index_file.clear();
 	if (config.db_size == 0)
 		throw runtime_error("Database size must be set for cascaded linear search round.");
-	config.comp_based_stats = 1; // TODO
+	//config.comp_based_stats = 1; // TODO
 	config.output_file = base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv";
 	log_rss();
 	TaskTimer timer("Opening the database");

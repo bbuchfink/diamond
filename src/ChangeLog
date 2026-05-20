@@ -1,3 +1,7 @@
+[2.2.1]
+- Fixed an issue (present since v2.1.25) that could cause clustering workflows not to correctly
+  use the `--comp-based-stats` command line option.
+
 [2.2.0]
 - Fixed a potential issue of increased memory use.
 - Fixed compiler errors for GCC 4.8.5.
