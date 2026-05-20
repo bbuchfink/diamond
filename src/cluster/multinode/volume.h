@@ -74,7 +74,7 @@ struct VolumedFile : public std::vector<Volume> {
 	}
 	VolumedFile(const std::string& file_name, uint64_t letter_count = 0) :
 		list_file_(file_name),
-		records_(0),
+		records_(std::numeric_limits<OId>::max()),
 		max_oid_(0),
 		letter_count_(letter_count)
 	{
@@ -93,11 +93,21 @@ struct VolumedFile : public std::vector<Volume> {
 			}
 			push_back(v);
 			oid += v.record_count;
-			records_ += v.record_count;
+			if (v.record_count == std::numeric_limits<OId>::max()) {
+				if (records_ != std::numeric_limits<OId>::max())
+					throw std::runtime_error("Inconsistent record count");
+			}
+			else {
+				if (records_ == std::numeric_limits<OId>::max())
+					records_ = 0;
+				records_ += v.record_count;
+			}
 			if (v.oid_end > 0)
 				max_oid_ = std::max(max_oid_, v.oid_end - 1);
 		}
 		std::sort(begin(), end());
+		if (empty())
+			records_ = 0;
 	}
 	OId sparse_records() const {
 		if (records_ == 0)
