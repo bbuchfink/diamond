@@ -53,6 +53,7 @@ struct Rank {
 		return it == rank_map.end() ? -1 : (int)it->second;
 	}
 	static const char* names[count];
+	static const std::map<char, char> legacy_rank_codes;
 private:
 	char r;
 	static const std::map<std::string, Rank> rank_map;
@@ -67,8 +68,8 @@ struct TaxonomyNodes
 	void save(Serializer &out);
 	unsigned get_parent(TaxId taxid) const
 	{
-		if (safe_cast<size_t>(taxid) >= parent_.size())
-			throw std::runtime_error(std::string("No taxonomy node found for taxon id ") + std::to_string(taxid));
+		if (taxid < 0 || safe_cast<size_t>(taxid) >= parent_.size())
+			return 0;
 		return parent_[taxid];
 	}
 	int rank(TaxId tax_id) const {
@@ -84,6 +85,7 @@ struct TaxonomyNodes
 
 private:
 
+	uint64_t node_count_;
 	std::vector<TaxId> parent_;
 	std::vector<Rank> rank_;
 

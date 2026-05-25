@@ -133,7 +133,11 @@ struct InputBuffer {
 	}
 
 	void sort() {
-		data_.sort();
+		sort(data_);
+	}
+
+	void sort(std::pmr::list<T>& lst) {
+		lst.sort();
 	}
 
 private:

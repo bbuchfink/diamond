@@ -34,13 +34,65 @@ using std::endl;
 using std::to_string;
 using std::runtime_error;
 
-TaxonomyNodes::TaxonomyNodes(const string& file_name)
+const std::map<char, char> Rank::legacy_rank_codes = {
+    {0, Rank::none},
+    {1, Rank::superkingdom},
+    {2, Rank::kingdom},
+    {3, Rank::subkingdom},
+    {4, Rank::superphylum},
+    {5, Rank::phylum},
+    {6, Rank::subphylum},
+    {7, Rank::superclass},
+    {8, Rank::class_rank},
+    {9, Rank::subclass},
+    {10, Rank::infraclass},
+    {11, Rank::cohort},
+    {12, Rank::subcohort},
+    {13, Rank::superorder},
+    {14, Rank::order},
+    {15, Rank::suborder},
+    {16, Rank::infraorder},
+    {17, Rank::parvorder},
+    {18, Rank::superfamily},
+    {19, Rank::family},
+    {20, Rank::subfamily},
+    {21, Rank::tribe},
+    {22, Rank::subtribe},
+    {23, Rank::genus},
+    {24, Rank::subgenus},
+    {25, Rank::section},
+    {26, Rank::subsection},
+    {27, Rank::series},
+    {28, Rank::species_group},
+    {29, Rank::species_subgroup},
+    {30, Rank::species},
+    {31, Rank::subspecies},
+    {32, Rank::varietas},
+    {33, Rank::forma},
+    {34, Rank::strain},
+    {35, Rank::biotype},
+    {36, Rank::clade},
+    {37, Rank::forma_specialis},
+    {38, Rank::genotype},
+    {39, Rank::isolate},
+    {40, Rank::morph},
+    {41, Rank::pathogroup},
+    {42, Rank::serogroup},
+    {43, Rank::serotype},
+    {44, Rank::subvariety}
+};
+
+TaxonomyNodes::TaxonomyNodes(const string& file_name):
+	node_count_(0)
 {
 	auto f = [&](TaxId taxid, TaxId parent, const string& rank) {
-		parent_.resize(taxid + 1, 0);
+		if (safe_cast<size_t>(taxid) >= parent_.size())
+			parent_.resize(taxid + 1, 0);
 		parent_[taxid] = parent;
-		rank_.resize(taxid + 1, Rank::none);
+		if (safe_cast<size_t>(taxid) >= rank_.size())
+			rank_.resize(taxid + 1, Rank::none);
 		rank_[taxid] = Rank(rank.c_str());
+		++node_count_;
 		};
 	read_nodes_dmp(file_name, f);
 }
@@ -51,7 +103,8 @@ void TaxonomyNodes::save(Serializer &out)
 	serialize(out, parent_);
 	out.write(rank_.data(), rank_.size());
 	timer.finish();
-	message_stream << parent_.size() << " taxonomy nodes processed." << endl;
+	message_stream << node_count_ << " taxonomy nodes processed." << endl;
+	message_stream << "Maximum taxon id: " << parent_.size() - 1 << endl;
 	size_t rank_count[Rank::count];
 	std::fill(rank_count, rank_count + Rank::count, 0);
 	for (const Rank r : rank_) {
@@ -65,7 +118,8 @@ void TaxonomyNodes::save(Serializer &out)
 	message_stream << endl;
 }
 
-TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build)
+TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build):
+	node_count_(0)
 {
 	deserialize(in, parent_);
 	if (db_build >= 131) {

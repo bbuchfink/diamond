@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include "util/io/compressed_buffer.h"
+#include "util/algo/degree_partition.h"
 
 const int RADIX_BITS = 8;
 const uint64_t RADIX_COUNT = UINT64_C(1) << RADIX_BITS;
@@ -45,7 +47,9 @@ struct FileArray {
 		}
 	}
 
-	~FileArray() {
+	void close() {
+		if (output_files_.empty())
+			return;
 		for (uint64_t i = 0; i < size_; ++i) {
 			output_files_[i]->close();
 			if (records_[i] > 0)
@@ -54,6 +58,11 @@ struct FileArray {
 				::remove(output_files_[i]->file_name().c_str());
 			delete output_files_[i];
 		}
+		output_files_.clear();
+	}
+
+	~FileArray() {
+		close();
 	}
 
 	bool write(uint64_t i, const char* ptr, size_t count, int64_t records) {
@@ -91,8 +100,28 @@ struct FileArray {
 		return buckets;
 	}
 
+	RadixedTable buckets(const DegreePartition& p) {
+		RadixedTable buckets(0);
+		const auto b = p.buckets();
+		if (b.size() != size_)
+			throw std::runtime_error("FileArray::buckets");
+		buckets.reserve(b.size());
+		for (uint64_t i = 0; i < b.size(); ++i)
+			buckets.emplace_back(bucket(i), exclusive_ ? records_total_[i] : Bucket::NIL, b[i].first_degree, b[i].last_degree + 1);
+		return buckets;
+	}
+
 	std::string file_name(int i) {
 		return output_files_[i]->file_name();
+	}
+
+	uint64_t records_total() const {
+		if (!exclusive_)
+			throw std::runtime_error("Total record count is only available in exclusive mode");
+		uint64_t sum = 0;
+		for (uint64_t i = 0; i < size_; ++i)
+			sum += records_[i];
+		return sum;
 	}
 
 private:
@@ -187,11 +216,16 @@ struct BufferArray {
 		write(radix, &x, 1, 1);
 	}
 
-	~BufferArray() {
+	void finish() {
 		for (uint64_t i = 0; i < data_.size(); ++i) {
 			data_[i].finish();
 			file_array_.write(i, data_[i].data(), data_[i].size(), records_[i]);
 		}
+		data_.clear();
+	}
+
+	~BufferArray() {
+		finish();
 	}
 
 private:

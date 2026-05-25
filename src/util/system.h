@@ -32,6 +32,9 @@ typedef __int64 ssize_t;
 #define FLATTEN
 #define UNLINK _unlink
 #define NO_INLINE
+#define COLD
+#define UNLIKELY(x) x
+#define UNREACHABLE
 
 #else
 
@@ -44,6 +47,9 @@ typedef __int64 ssize_t;
 #define FLATTEN __attribute__((flatten))
 #define UNLINK unlink
 #define NO_INLINE __attribute__ ((noinline))
+#define COLD __attribute__((cold))
+#define UNLIKELY(x) __builtin_expect((long)x, 0)
+#define UNREACHABLE __builtin_unreachable();
 
 #endif
 

@@ -151,6 +151,7 @@ struct DatabaseFile : public SequenceFile, public InputFile
 	virtual void end_random_access(bool dictionary = true) override;
 	virtual void init_write() override;
 	virtual void write_seq(const Sequence& seq, const std::string& id) override;
+	virtual void print_info() const override;
 
 	static const char* FILE_EXTENSION;
 

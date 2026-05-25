@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <atomic>
 #include "search.h"
-#include "data/seed_array.h"
+#include "search/seed_array/seed_array.h"
 #include "data/frequent_seeds.h"
 #include "util/data_structures/double_array.h"
 #include "util/system/system.h"
@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/algo/hash_join.h"
 #include "util/log_stream.h"
 #include "util/parallel/simple_thread_pool.h"
+#include "util/simd/dispatch.h"
 
 using std::vector;
 using std::atomic;
@@ -46,7 +47,12 @@ using Search::Hit;
 using std::thread;
 using std::runtime_error;
 
-namespace Search {
+namespace Search { namespace DISPATCH_ARCH {
+
+using ::DISPATCH_ARCH::SeedArray;
+
+void run_stage1(JoinIterator<PackedLoc>& it, Search::WorkSet* work_set, const Search::Config* cfg);
+void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const Search::Config* cfg);
 
 template<typename SeedLoc>
 static void seed_join_worker(
@@ -85,7 +91,7 @@ static void search_worker(const std::atomic<bool>& stop, atomic<SeedPartition> *
 	SeedPartition p;
 	while (!stop && (p = seedp->fetch_add(1, std::memory_order_relaxed)) < partition_count) {
 		auto it = JoinIterator<SeedLoc>(query_seed_hits[p].begin(), ref_seed_hits[p].begin());
-		run_stage1(it, work_set.get(), cfg);
+		DISPATCH_ARCH::run_stage1(it, work_set.get(), cfg);
 	}
 	writer.reset();
 	statistics += work_set->stats;
@@ -166,7 +172,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 
 		log_rss();
 		unique_ptr<KmerRanking> kmer_ranking;
-		if (keep_target_id(cfg) && config.lin_stage1_query) {
+		if (Search::keep_target_id(cfg) && config.lin_stage1_query) {
 			timer.go("Building kmer ranking");
 			kmer_ranking.reset(config.kmer_ranking ? new KmerRanking(cfg.query->seqs(), range.size(), query_seed_hits.data(), ref_seed_hits.data())
 				: new KmerRanking(cfg.query->seqs()));
@@ -209,10 +215,14 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 }
 
 void search_shape(unsigned sid, int query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Search::Config& cfg, const HashedSeedSet* target_seeds) {
-	if (keep_target_id(cfg))
+	if (Search::keep_target_id(cfg))
 		search_shape<PackedLocId>(sid, query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds);
 	else
 		search_shape<PackedLoc>(sid, query_block, query_iteration, query_buffer, ref_buffer, cfg, target_seeds);
 }
+
+}
+
+DISPATCH_7V(search_shape, unsigned, sid, int, query_block, unsigned, query_iteration, char*, query_buffer, char*, ref_buffer, Search::Config&, cfg, const HashedSeedSet*, target_seeds)
 
 }

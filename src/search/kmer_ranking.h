@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "util/data_structures/double_array.h"
-#include "data/flags.h"
+#include "search/seed_array/flags.h"
 #include "data/sequence_set.h"
 #include "basic/seed.h"
 #include "data/block/block.h"

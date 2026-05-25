@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 void get_seq();
 void random_seqs();
-void greedy_vertex_cover();
 
 namespace Search {
 

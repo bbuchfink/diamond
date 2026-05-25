@@ -92,6 +92,7 @@ map<FieldId, OutputField> TabularFormat::field_def = {
 { FieldId::QSeqTranslated, { FieldId::QSeqTranslated, "qseq_translated", "", "Aligned part of query sequence (translated)", HspValues::TRANSCRIPT, Flags::IS_STRING | Flags::NO_REALIGN } },
 { FieldId::HspNum, { FieldId::HspNum, "hspnum", "", "Number of HSP within the subject", HspValues::NONE, Flags::NONE } },
 { FieldId::NormalizedBitscore, { FieldId::NormalizedBitscore, "normalized_bitscore", "", "Bitscore normalized by maximum self alignment score", HspValues::NONE, Flags::SELF_ALN_SCORES | Flags::NO_REALIGN } },
+{ FieldId::NormalizedBitscoreQuery, { FieldId::NormalizedBitscoreQuery, "normalized_bitscore_query", "", "Bitscore normalized by maximum self alignment score of query", HspValues::NONE, Flags::SELF_ALN_SCORES | Flags::NO_REALIGN } },
 { FieldId::NORMALIZED_NIDENT, { FieldId::NORMALIZED_NIDENT, "normalized_nident", "normalized_nident", "Number of identical matches normalized by maximum length", HspValues::IDENT | HspValues::LENGTH, Flags::NONE } },
 { FieldId::ApproxPIdent, { FieldId::ApproxPIdent, "approx_pident", "approx_pident", "Approximate percentage of identical matches", HspValues::COORDS, Flags::NONE } },
 { FieldId::CorrectedBitScore, { FieldId::CorrectedBitScore, "corrected_bitscore", "corrected_bitscore", "Bit score corrected for edge effects", HspValues::NONE, Flags::NONE } },
@@ -601,6 +602,10 @@ map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
 
     callbacks[FieldId::NormalizedBitscore].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
         info.out.print_d(r.bit_score() / std::max(r.query_self_aln_score, r.target_self_aln_score));
+        };
+
+    callbacks[FieldId::NormalizedBitscoreQuery].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
+        info.out.print_d(r.bit_score() / r.query_self_aln_score);
         };
 
     callbacks[FieldId::NORMALIZED_NIDENT].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {

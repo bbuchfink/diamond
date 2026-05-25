@@ -30,6 +30,7 @@ namespace Util { namespace Algo {
 
 template<typename Int>
 struct Edge {
+	static constexpr bool POD = true;
 	Edge()
 	{}
 	using Key = Int;

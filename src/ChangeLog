@@ -1,8 +1,25 @@
 [2.2.1]
+- Improved the performance of the search and clustering workflows.
+- Fixed an issue of increased memory use in greedy vertex cover computation.
+- Fixed a potential `Record count not set` error message during clustering output.
+- Removed the `--linclust-chunk-size` and `--connected-component-depth` options.
+- Fixed an issue of increased memory use in the clustering workflows.
+- Fixed an issue that could cause incorrect parsing of taxonomic nodes and namse data when
+  using a custom-made `nodes.dmp` or `names.dmp` file with non-monotonic taxonomic ids.
+- Missing taxonomy node information for a taxid will no longer cause an error but be
+  accordingly indicated in the output file.
+- Added compatibility support of taxonomic rank information for databases built with v2.1.11
+  or earlier.
 - Added support for clustering by traceback sequence identity (`--id`) instead of approximate
   sequence identity (`--approx-id`).
 - Fixed an issue (present since v2.1.25) that could cause clustering workflows not to correctly
-  use the `--comp-based-stats` command line option.
+  apply the `--comp-based-stats` command line option.
+- Added support for clustering with the first clustering round being all-vs-all alignment.
+- Temporarily removed the `reassign` workflow.
+- Fixed an issue of missing sequence identifiers in the output for BLAST databases built without
+  using `-parse_seqids`.
+- Fixed a bug (present since v2.1.17) that caused BLAST alias databases filtered by sequence
+  id not to function correctly.
 
 [2.2.0]
 - Fixed a potential issue of increased memory use.

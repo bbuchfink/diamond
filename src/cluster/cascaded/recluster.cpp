@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/statistics.h"
 #include "util/log_stream.h"
 #include "util/data_structures/flat_array.h"
+#include "../cluster.h"
+#include "util/system/system.h"
 
 using std::unique_ptr;
 using std::endl;
@@ -36,9 +38,11 @@ using std::string;
 using std::tie;
 using std::pair;
 
+void multinode();
+
 namespace Cluster {
 
-static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& clustering, int iteration) {
+static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& clustering, int iteration, const string& tmp_dir) {
 	TaskTimer timer(("*** Initializing recluster iteration " + to_string(iteration + 1)).c_str());
 
 	FlatArray<OId> clusters;
@@ -115,7 +119,7 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 
 	shared_ptr<SequenceFile> unmapped;
 	timer.go("Creating database of unmapped sequences");
-	unmapped.reset(unaligned->sub_db(unmapped_members.cbegin(), unmapped_members.cend()));
+	unmapped.reset(unaligned->sub_db(unmapped_members.cbegin(), unmapped_members.cend(), tmp_dir + "unmapped" + std::to_string(iteration) + ".faa"));
 	mapback.reset();
 	timer.finish();
 
@@ -123,9 +127,13 @@ static vector<OId> recluster(shared_ptr<SequenceFile>& db, const vector<OId>& cl
 	clusters.clear();
 	clusters.shrink_to_fit();
 	unaligned.reset();
+	unmapped.reset();
 	timer.finish();
 
-	const vector<OId> reclust = recluster(unmapped, convert_mapping(cascaded(unmapped, false), OId()), iteration + 1);
+	config.database = unmapped->file_name();
+	multinode();
+	vector<OId> reclust;
+	//const vector<OId> reclust = recluster(unmapped, convert_mapping(cascaded(unmapped, false), OId()), iteration + 1);
 
 	timer.go("Deallocating memory");
 	unmapped.reset();	
@@ -143,6 +151,7 @@ void recluster() {
 	init_thresholds();
 	//config.strict_gvc = true;
 	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
+	const string tmpdir = create_temp_directory(config.tmpdir, "diamond-tmp-") + PATH_SEPARATOR;
 
 	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db(SequenceFile::auto_create({ config.database }, SequenceFile::Flags::NEED_LETTER_COUNT | SequenceFile::Flags::ACC_TO_OID_MAPPING | SequenceFile::Flags::OID_TO_ACC_MAPPING));
@@ -155,7 +164,7 @@ void recluster() {
 	const vector<OId> clustering = read<OId>(config.clustering, *db);
 	timer.finish();
 
-	const vector<OId> member2centroid = recluster(db, clustering, 0);
+	const vector<OId> member2centroid = recluster(db, clustering, 0, tmpdir);
 
 	timer.go("Generating output");
 	if (flag_any(db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))

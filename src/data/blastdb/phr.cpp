@@ -154,6 +154,7 @@ static SeqId decode_seqid(const Node& node) {
 
 static BlastDefLine decode_defline(const Node& node, bool full_titles, bool taxids) {
     BlastDefLine defline;
+    SeqId seqid;
     for (const Node& n1 : node.children) {
         switch (n1.tag.tagNumber) {
         case 0:
@@ -166,7 +167,9 @@ static BlastDefLine decode_defline(const Node& node, bool full_titles, bool taxi
             }
             break;
         case 1:
-            defline.seqids.push_back(decode_seqid(n1));
+            seqid = decode_seqid(n1);
+            if (!seqid.value.empty())
+                defline.seqids.push_back(seqid);
             break;
         case 2:
             if (taxids) {
@@ -181,10 +184,20 @@ static BlastDefLine decode_defline(const Node& node, bool full_titles, bool taxi
             ;
         }
     }
+    if (defline.seqids.empty()) {
+        for (const Node& n1 : node.children) {
+            if(n1.tag.tagNumber == 0)
+                for (const Node& n2 : n1.children) {
+                    if (n2.tag.tagNumber == 26) {
+                        defline.title.assign(n2.value.begin(), n2.value.end());
+                    }
+                }
+        }
+    }
     return defline;
 }
 
-//#include <iostream>
+#include <iostream>
 
 vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool all, bool full_titles, bool taxids) {
     vector<BlastDefLine> out;
@@ -251,10 +264,11 @@ string build_title(const vector<BlastDefLine>& deflines, const char* delimiter, 
                 break;
             h += delimiter;
         }
-        h += format_seqid(i->seqids.front());
-        h += ' ';
+        if (!i->seqids.empty()) {
+            h += format_seqid(i->seqids.front());
+            h += ' ';
+        }
         h += i->title;
-        
     }
     if (h.empty())
         h = "N/A";

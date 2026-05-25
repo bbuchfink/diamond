@@ -57,6 +57,10 @@ struct list : public std::list<T> {
 
 template<typename T>
 struct vector : public std::vector<T> {
+    vector(size_t n, memory_resource*) :
+        std::vector<T>(n)
+    {
+    }
     vector(memory_resource*) :
         std::vector<T>()
     {
@@ -68,6 +72,9 @@ struct vector : public std::vector<T> {
 };
 
 struct string : public std::string {
+    string():
+        std::string()
+    { }
     string(memory_resource*) :
         std::string()
     {
@@ -91,6 +98,10 @@ struct string : public std::string {
     string(const std::pmr::string& s, monotonic_buffer_resource*) :
         std::string(s)
     {
+    }
+    string& operator=(const std::string& s) {
+        std::string::operator=(s);
+        return *this;
     }
 };
 

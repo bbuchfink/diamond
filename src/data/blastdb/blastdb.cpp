@@ -46,7 +46,6 @@ BlastDB::BlastDB(const string& file_name, Flags flags, const ValueTraits& value_
 	taxon_db_(nullptr),
 	oid_(0),
 	long_seqids_(false),
-	flags_(flags),
 	volume_(pal_.volumes[0], 0, pal_.oid_index[0], pal_.oid_index[1], true),
 	raw_chunk_no_(0)
 {
@@ -86,6 +85,7 @@ BlastDB::BlastDB(const string& file_name, Flags flags, const ValueTraits& value_
 			const uint32_t volume_oid = uint32_t(i - volume_.begin);
 			seq_length_.push_back(volume_.length(volume_oid));
 		}
+		set_seqinfo_ptr(0);
 	}
 	string dbdir, dbfile;
 	tie(dbdir, dbfile) = absolute_path(file_name);
@@ -378,8 +378,9 @@ DbFilter* BlastDB::filter_by_accession(const string& file_name)
 			v->oid_filter.set(oid);
 			v->letter_count += seq_length(oid);
 		}
+		const bool end = b.first->raw_bytes() == 0;
 		delete b.first;
-		if (b.second == 0)
+		if (end)
 			break;
 	}
 

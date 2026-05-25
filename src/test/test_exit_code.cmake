@@ -1,0 +1,6 @@
+SET(CMD "./diamond ${ARGS}")
+separate_arguments (SEP NATIVE_COMMAND ${CMD})
+execute_process(COMMAND ${SEP} RESULT_VARIABLE CMD_RESULT)
+if(NOT ${CMD_RESULT} EQUAL 0)
+  message(FATAL_ERROR "${NAME} failed.")
+endif()

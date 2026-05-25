@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/sequence/sequence.h"
 #include "util/escape_sequences.h"
 #include "basic/config.h"
-#include "data/flags.h"
+#include "search/seed_array/flags.h"
 
 struct SequenceFile;
 
@@ -100,7 +100,8 @@ enum class FieldId : unsigned {
 	Reserved1 = 74,
 	Reserved2 = 75,
 	SLineages = 76,
-	COUNT = 77
+	NormalizedBitscoreQuery = 77,
+	COUNT = 78
 };
 
 struct OutputFormat

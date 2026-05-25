@@ -124,8 +124,10 @@ static bool acc_filter(const vector<BlastDefLine>& deflines, unordered_map<std::
     for (const auto& d : deflines) {
         for (const auto& s : d.seqids) {
             auto it = accs.find(s.value);
-            if (it == accs.end() && (s.version || s.chain))
-                it = accs.find(format_seqid(s));
+            if (it == accs.end() && (s.version || s.chain)) {
+                const string seqid = format_seqid(s);                
+                it = accs.find(seqid);
+            }
             if (it != accs.end()) {
                 it->second = true;
                 return true;

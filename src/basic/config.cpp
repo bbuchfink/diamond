@@ -366,7 +366,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	cluster_reassign_opt.add()
 		("member-cover", 0, "Minimum coverage% of the cluster member sequence (default=80.0)", member_cover)
 		("mutual-cover", 0, "Minimum mutual coverage% of the cluster member and representative sequence", mutual_cover)
-		("connected-component-depth", 0, "Depth to cluster connected components", connected_component_depth)
 		("no-reassign", 0, "Do not reassign to closest representative", no_gvc_reassign);
 
 	auto& gvc_opt = parser.add_group("GVC options", { GREEDY_VERTEX_COVER });
@@ -408,7 +407,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
 		("linclust-banded-ext", 0, "Use banded instead of full matrix DP for linear searches", linclust_banded_ext)
-		("linclust-chunk-size", 0, "Chunk size for linclust in parallel mode (default=10G)", linclust_chunk_size, string("10G"))
 		("hit-membuf", 0, "Buffer intermediate hits in memory", hit_membuf);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
@@ -620,7 +618,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("hamming-ext", 0, "", hamming_ext)
 		("diag-filter-id", 0, "", diag_filter_id)
 		("diag-filter-cov", 0, "", diag_filter_cov)
-		("strict-gvc", 0, "", strict_gvc)
 		("dbtype", 0, "type of sequences in database file (nucl/prot)", dbstring, string("prot"))
 		("cluster-similarity", 0, "Clustering similarity measure (default=\"normalized_bitscore_global\")", cluster_similarity)
 		("cluster-threshold", 0, "Threshold for the similarity measure (default=50%)", cluster_threshold)
@@ -924,7 +921,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1778570040);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1779708904);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;

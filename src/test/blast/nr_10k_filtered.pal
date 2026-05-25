@@ -1,0 +1,8 @@
+#
+# Alias file created 05/24/2026 16:58:16
+#
+TITLE nr_10k_filtered
+DBLIST ".\nr_10k" 
+SEQIDLIST .\seqidlist.txt
+NSEQ 13
+LENGTH 10331

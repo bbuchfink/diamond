@@ -183,6 +183,9 @@ endif()
 set(DISPATCH_OBJECTS
         "src/dp/swipe/banded_3frame_swipe.cpp"
         "src/search/hamming/stage1_2.cpp"
+        "src/search/stage0.cpp"
+        "src/search/seed_array/seed_array.cpp"
+        "src/search/seed_array/seed_array_extra.cpp"
         "src/tools/benchmark.cpp"
         "src/dp/swipe/swipe_wrapper.cpp"
         "src/masking/tantan.cpp"
@@ -198,8 +201,24 @@ endif()
 
 add_library(arch_generic OBJECT ${DISPATCH_OBJECTS})
 target_compile_options(arch_generic PUBLIC -DDISPATCH_ARCH=ARCH_GENERIC -DARCH_ID=0)
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(arch_generic PUBLIC /Zc:__cplusplus)
+else()
+    include(CheckCXXCompilerFlag)
+
+    set(ARCH_GENERIC_CXX_FLAGS
+        -mtune=generic
+        -fno-stack-protector
+    )
+
+    check_cxx_compiler_flag("-fcf-protection=none"
+                            HAVE_CXX_FLAG_FCF_PROTECTION_NONE)
+
+    if(HAVE_CXX_FLAG_FCF_PROTECTION_NONE)
+        list(APPEND ARCH_GENERIC_CXX_FLAGS -fcf-protection=none)
+    endif()
+
+    target_compile_options(arch_generic PUBLIC ${ARCH_GENERIC_CXX_FLAGS})
 endif()
 
 if(X86)
@@ -272,7 +291,7 @@ set(OBJECTS
         src/basic/config.cpp
         src/stats/score_matrix.cpp
         src/data/queries.cpp
-        src/data/seed_histogram.cpp
+        src/search/seed_array/seed_histogram.cpp
         src/output/daa/daa_record.cpp
         src/util/command_line_parser.cpp
         src/util/util.cpp
@@ -316,8 +335,6 @@ set(OBJECTS
         src/data/taxon_list.cpp
         src/data/taxonomy_nodes.cpp
         src/lib/murmurhash/MurmurHash3.cpp
-        src/search/stage0.cpp
-        src/data/seed_array.cpp
         src/output/paf_format.cpp
         src/util/system/system.cpp
         src/util/algo/greedy_vertex_cover.cpp
@@ -334,9 +351,7 @@ set(OBJECTS
         src/align/full_db.cpp
         src/align/culling.cpp
         src/align/output.cpp
-        #src/tools/roc.cpp
-        src/test/data.cpp
-        src/test/test_cases.cpp
+        #src/tools/roc.cpp        
         src/chaining/smith_waterman.cpp
         src/output/xml_format.cpp
         src/align/gapped_filter.cpp
@@ -408,12 +423,6 @@ set(OBJECTS
         src/util/tsv/join.cpp
         src/dp/scalar/smith_waterman.cpp
         src/tools/tsv.cpp
-        src/cluster/external/external.cpp
-        src/cluster/external/seed_table.cpp
-        src/cluster/external/pair_table.cpp
-        src/cluster/external/align.cpp
-        src/cluster/external/cluster.cpp
-        src/cluster/external/output.cpp
         #src/util/algo/mcl.cpp
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
@@ -515,11 +524,20 @@ install(TARGETS diamond DESTINATION bin)
 enable_testing()
 SET(TD ${CMAKE_SOURCE_DIR}/src/test)
 SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test.cmake)
+SET(SP_EC -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test_exit_code.cmake)
 function(add_diamond_test NAME ARGS)
   add_test(NAME ${NAME} COMMAND ${CMAKE_COMMAND} -DNAME=${NAME} "-DARGS=${ARGS}" ${SP})
 endfunction()
+function(add_diamond_test_exit_code NAME ARGS)
+  add_test(NAME ${NAME} COMMAND ${CMAKE_COMMAND} -DNAME=${NAME} "-DARGS=${ARGS}" ${SP_EC})
+endfunction()
+
+add_diamond_test_exit_code(makedb-nr_10k "makedb --in ${TD}/nr_10k.faa -d nr_10k --taxonmap ${TD}/nr_10k.taxids.tsv --taxonnames ${TD}/mini_names.dmp --taxonnodes ${TD}/mini_nodes.dmp")
 
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
+add_test(NAME blastp_nr10k COMMAND ${CMAKE_COMMAND} -DNAME=blastp_nr10k "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -p4 -f 6 qseqid sseqid evalue staxids skingdoms sphylums" ${SP})
+add_test(NAME blastp_blastdb COMMAND ${CMAKE_COMMAND} -DNAME=blastp_blastdb "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/blast/nr_10k -p4 -c1 -k0" ${SP})
+add_test(NAME blastp_blastaliasdb-seqidlist COMMAND ${CMAKE_COMMAND} -DNAME=blastp_blastaliasdb_seqidlist "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/blast/nr_10k_filtered -p4 -c1 -k0" ${SP})
 add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-DARGS=blastp -q ${TD}/3.faa -d ${TD}/4.faa --mid-sensitive -p1" ${SP})
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
 add_test(NAME galaxy_7 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_7 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks 4 --file-buffer-size 67108864" ${SP})

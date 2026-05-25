@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/command_line_parser.h"
 #include "util/log_stream.h"
 #include "util/system/system.h"
+#include "tools/tools.h"
 
 using std::cout;
 using std::cerr;
@@ -51,7 +52,6 @@ void makeindex();
 void find_shapes();
 void hash_seqs();
 void list_seeds();
-void greedy_vertex_cover();
 void merge_daa();
 void multinode();
 #ifdef EXTRA
@@ -185,10 +185,13 @@ int main(int ac, const char* av[])
 			Cluster::realign();
 			break;
 		case Config::GREEDY_VERTEX_COVER:
-			greedy_vertex_cover();
+			GVC::greedy_vertex_cover();
 			break;
 		case Config::CLUSTER_REASSIGN:
-			Cluster::reassign();
+			set_color(Color::YELLOW, true);
+			cerr << "Reassign has been temporarily removed for v2.2.1. No action was taken." << endl;
+			reset_color(true);
+			//Cluster::reassign();
 			break;
 		case Config::RECLUSTER:
 			set_color(Color::YELLOW, true);

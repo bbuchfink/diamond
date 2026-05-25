@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include "value.h"
 #include "sequence.h"
-#include "util/memory/memory_resource.h"
+#include "util/data_structures/growable_buffer.h"
 
 struct Reduction
 {
@@ -44,12 +44,12 @@ struct Reduction
 		return bit_size_exact_;
 	}
 
-	unsigned operator()(Letter a) const
+	uint_fast32_t operator()(Letter a) const
 	{
 		return map_[(long)a];
 	}
 
-	unsigned operator()(size_t a) const
+	uint_fast32_t operator()(size_t a) const
 	{
 		return map_[a];
 	}
@@ -86,17 +86,6 @@ struct Reduction
 		get_reduction() = r;
 	}
 
-	// TODO
-	static std::pmr::vector<Letter> reduce_seq(const Sequence &seq, std::pmr::monotonic_buffer_resource& pool)
-	{
-		std::pmr::vector<Letter> dst(&pool);
-		dst.reserve(seq.length());
-		const Reduction& reduction_instance = get_reduction();
-		for (Loc i = 0; i < seq.length(); ++i)
-			dst.push_back(reduction_instance(seq[i]));
-		return dst;
-	}
-
 	static void reduce_seq(const Sequence& seq, std::vector<Letter>& dst)
 	{
 		dst.clear();
@@ -104,6 +93,15 @@ struct Reduction
 		const Reduction& reduction_instance = get_reduction();
 		for (Loc i = 0; i < seq.length(); ++i)
 			dst[i] = reduction_instance(seq[i]);
+	}
+
+	static void reduce_seq(const Sequence& seq, GrowableBuffer<Letter>& dst)
+	{
+		dst.ensure_capacity(seq.length());
+		const Reduction& reduction_instance = get_reduction();
+		Letter* ptr = dst.data();
+		for (Loc i = 0; i < seq.length(); ++i)
+			ptr[i] = reduction_instance(seq[i]);
 	}
 
 
@@ -115,7 +113,7 @@ struct Reduction
 
 private:
 
-	unsigned map_[256];
+	uint_fast32_t map_[256];
 	alignas(16) Letter map8_[256], map8b_[256];
 	unsigned size_;
 	int bit_size_;

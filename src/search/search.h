@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "run/config.h"
 #include "hit_buffer.h"
 #include "hit.h"
-#include "data/flags.h"
+#include "search/seed_array/flags.h"
 #include "kmer_ranking.h"
 #include "util/algo/join_result.h"
 #include "basic/reduction.h"
@@ -113,7 +113,14 @@ struct WorkSet {
 
 void run_stage1(JoinIterator<PackedLoc>& it, WorkSet* work_set, const Search::Config* cfg);
 void run_stage1(JoinIterator<PackedLocId>& it, WorkSet* work_set, const Search::Config* cfg);
-bool keep_target_id(const Search::Config& cfg);
+
+inline bool keep_target_id(const Search::Config& cfg) {
+#ifdef HIT_KEEP_TARGET_ID
+	return true;
+#else
+	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets || (config.self && cfg.current_ref_block == 0) || config.lin_stage1_combo;
+#endif
+}
 
 }
 

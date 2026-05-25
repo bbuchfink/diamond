@@ -69,20 +69,12 @@ void run_stage1(JoinIterator<PackedLocId>& it, Search::WorkSet* work_set, const 
 	}
 }
 
-bool keep_target_id(const Search::Config& cfg) {
-#ifdef HIT_KEEP_TARGET_ID
-	return true;
-#else
-	return cfg.min_length_ratio != 0.0 || config.global_ranking_targets || (config.self && cfg.current_ref_block == 0) || config.lin_stage1_combo;
-#endif
-}
-
 }}
 
-namespace Search {
+/*namespace Search {
 	
 DISPATCH_3V(run_stage1, JoinIterator<PackedLoc>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
 DISPATCH_3V(run_stage1, JoinIterator<PackedLocId>&, it, Search::WorkSet*, work_set, const Search::Config*, cfg)
 DISPATCH_1(bool, keep_target_id, const Search::Config&, cfg)
 
-}
+}*/

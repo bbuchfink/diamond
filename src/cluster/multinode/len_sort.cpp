@@ -163,6 +163,7 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 
 string len_sort(Job& job, VolumedFile& volumes) {
 	Atomic lock(job.root_dir() + "lensort_lock", job), done(job.root_dir() + "lensort_done", job);
+	const bool first_round_linear = job.is_linear_round();
 	const string input_parts = job.root_dir() + "input.tsv", input_letters = job.root_dir() + "input_letters.txt";
 	if (lock.fetch_add() == 0) {
 		job.log("Memory limit = %" PRIu64, job.mem_limit);
@@ -203,12 +204,11 @@ string len_sort(Job& job, VolumedFile& volumes) {
 		
 		double block_gb;
 		int index_chunks;
-		const bool first_round_linear = job.is_linear_round();
 		if (!first_round_linear) {
 			block_gb = 1e6;
 			index_chunks = 1;
 		} else
-			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
+			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FAST, true, config.threads_); // TODO take cluster steps into account here
 		const uint64_t block_size = gb_to_bytes(block_gb);
 		job.log("Block size = %" PRIu64 ", index chunks = %d", block_size, index_chunks);
 		ips4o::parallel::sort(lengths.begin(), lengths.end(), std::greater<pair<Loc, OId>>(), config.threads_);
@@ -227,7 +227,7 @@ string len_sort(Job& job, VolumedFile& volumes) {
 				++seqs;
 			}
 			ss << seqs << '\t' << block_letters << endl;
-			const string block_idx = first_round_linear ? std::to_string(block) : "";
+			const string block_idx = std::to_string(block);
 			const string name = job.root_dir() + "input" + block_idx + ".faa";
 			out.emplace_back(new ofstream(name));
 			acc_out.emplace_back(new ofstream(job.root_dir() + "input" + block_idx + ".tsv"));
@@ -247,10 +247,12 @@ string len_sort(Job& job, VolumedFile& volumes) {
 		throw runtime_error("Error opening file " + input_letters);
 	volumes.set_letter_count(letters);
 	job.register_sync_file(input_letters);
-	double block_gb;
-	int index_chunks;
-	tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
-	config.lowmem_ = index_chunks;
+	if (first_round_linear) {
+		double block_gb;
+		int index_chunks;
+		tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FAST, true, config.threads_); // TODO take cluster steps into account here
+		config.lowmem_ = index_chunks;
+	}
 	job.set_max_oid(seq_count - 1);
 	return input_parts;
 }

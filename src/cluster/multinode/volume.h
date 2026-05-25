@@ -32,7 +32,7 @@ struct Volume {
 		path(),
 		oid_begin(0),
 		oid_end(0),
-		record_count(0)
+		record_count(std::numeric_limits<OId>::max())
 	{
 	}
 	Volume(const std::string& path, OId oid_begin, OId oid_end, OId record_count) :

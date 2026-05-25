@@ -39,7 +39,7 @@ static void run_all_vs_all(Job& job) {
 	config.lin_stage1_query = false;
 	config.ext_.clear();
 	//config.comp_based_stats = 1;
-	config.database = job.round() == 0 ? job.root_dir() + "input.faa" :
+	config.database = job.round() == 0 ? job.root_dir() + "input0.faa" :
 		job.base_dir(job.round() - 1) + PATH_SEPARATOR + "reps" + PATH_SEPARATOR + "reps_all.faa";
 	config.fasta_index_file = job.round() == 0 ? job.root_dir() + "input.faa.faidx" : job.base_dir(job.round() - 1) + PATH_SEPARATOR + "reps" + PATH_SEPARATOR + "reps_all.faa.faidx";
 	if (config.db_size == 0)

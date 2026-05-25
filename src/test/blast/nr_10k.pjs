@@ -1,0 +1,24 @@
+{
+  "version": "1.2",
+  "dbname": "nr_10k",
+  "dbtype": "Protein",
+  "db-version": 5,
+  "description": "nr_10k",
+  "number-of-letters": 3972572,
+  "number-of-sequences": 10000,
+  "last-updated": "2026-05-24T16:44:00",
+  "number-of-volumes": 1,
+  "bytes-total": 7261941,
+  "bytes-to-cache": 4062665,
+  "files": [
+    "nr_10k.pdb",
+    "nr_10k.phr",
+    "nr_10k.pin",
+    "nr_10k.pog",
+    "nr_10k.pos",
+    "nr_10k.pot",
+    "nr_10k.psq",
+    "nr_10k.ptf",
+    "nr_10k.pto"
+  ]
+}

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sse_dist.h"
 #include "util/sequence/sequence.h"
 #include "basic/shape_config.h"
-#include "data/seed_histogram.h"
+#include "search/seed_array/seed_histogram.h"
 #include "hamming/finger_print.h"
 
 namespace Search { namespace DISPATCH_ARCH {

@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <mutex>
 #include "../sequence_set.h"
-#include "../seed_histogram.h"
+#include "search/seed_array/seed_histogram.h"
 #include "masking/masking.h"
 #include "output/output_format.h"
 

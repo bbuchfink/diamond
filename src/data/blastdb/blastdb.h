@@ -97,7 +97,6 @@ private:
 	std::unordered_map<TaxId, int> rank_mapping_;
 	OId oid_;
 	const bool long_seqids_;
-	Flags flags_;
 	BitVector oid_filter_;
 	std::vector<TaxId> parent_cache_;
 	std::unordered_map<TaxId, std::string> extra_names_;

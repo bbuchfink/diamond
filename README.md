@@ -10,7 +10,8 @@ features are:
 -   Pairwise alignment of proteins and translated DNA at 100x-10,000x
     speed of BLAST.
 -   Clustering protein sequences with high sensitivity and scalability
-    including linear-time scaling.
+    including linear-time scaling and parallelization across many
+    compute nodes.
 -   Frameshift alignments for long read analysis.
 -   Low resource requirements and suitable for running on standard
     desktops or laptops.

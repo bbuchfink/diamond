@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "murmurhash/MurmurHash3.h"
 #include "data/sequence_file.h"
 #include "search/search.h"
-#include "data/enum_seeds.h"
+#include "search/seed_array/enum_seeds.h"
 #define _REENTRANT
 #include "ips4o/ips4o.hpp"
 #include "masking/masking.h"

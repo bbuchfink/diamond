@@ -24,15 +24,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "multinode.h"
 #include "data/sequence_file.h"
 #include "cluster/cluster.h"
-
-namespace External {
-	void external();
-}
+#include "tools/tools.h"
 
 const char* const DEFAULT_MEMORY_LIMIT = "16G";
 const double CASCADED_ROUND_MAX_EVALUE = 0.001;
-
-void greedy_vertex_cover();
 
 using std::runtime_error;
 using std::vector;
@@ -154,7 +149,9 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 		config.edge_format = mutual_cover ? "triplet" : "";
 		config.symmetric = mutual_cover;
 		config.output_file = job.base_dir() + PATH_SEPARATOR + "clusters.tsv";
-		greedy_vertex_cover();
+		GVC::Cfg cfg;
+		cfg.tmp_dir = job.base_dir();
+		GVC::greedy_vertex_cover(cfg);
 		remove_tmp_file(acc_path);
 		remove_tmp_file(aln_path);
 		if (!job.last_round()) {
@@ -205,8 +202,6 @@ void multinode() {
 	const double evalue_cutoff = config.max_evalue,
 		target_approx_id = config.approx_min_id.present() ? config.approx_min_id.get_present() : 0.0;
 	const bool anchored_swipe = config.anchored_swipe, is_linclust = Cluster::is_linclust(steps);
-	if(!ends_with(steps.front(), "_lin"))
-		throw runtime_error("First round must be linear, support for first all-vs-all round will be added in a future version.");
 	// TODO
 	config.hamming_ext = config.approx_min_id.present() ? config.approx_min_id.get_present() >= 50.0 : false;
 	//config.freq_masking = true;
@@ -259,8 +254,10 @@ void multinode() {
 		const bool linear_round = ends_with(steps[i], "_lin");
 		config.sensitivity = from_string<Sensitivity>(rstrip(steps[i], "_lin"));
 		const vector<string> round_approx_id = config.round_approx_id.empty() ? Cluster::default_round_approx_id(job.round_count()) : config.round_approx_id;
-		if (config.min_id == 0.0)
+		if (config.min_id == 0.0) {
 			config.approx_min_id = std::max(target_approx_id, Cluster::round_value(round_approx_id, "--round-approx-id", i, (int)steps.size()));
+			job.log("Approximate sequence id cutoff (round) = %f", config.approx_min_id.get_present());
+		}
 		config.max_evalue = i == steps.size() - 1 ? evalue_cutoff : std::min(evalue_cutoff, CASCADED_ROUND_MAX_EVALUE);
 		config.anchored_swipe = anchored_swipe && (linclust || !config.lin_stage1_query);
 		if (anchored_swipe)

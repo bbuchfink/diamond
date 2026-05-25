@@ -58,7 +58,8 @@ Taxonomy taxonomy;
 size_t Taxonomy::load_names() {
 	size_t n = 0;
 	auto f = [&](int64_t id, const string& name) {
-		name_.resize(id + 1);
+		if (safe_cast<size_t>(id) >= name_.size())
+			name_.resize(id + 1);
 		name_[id] = name;
 		++n;
 		};

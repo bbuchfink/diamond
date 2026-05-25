@@ -388,6 +388,7 @@ bool Hsp::is_identity(const Sequence& query, const Sequence& target) const {
 
 double Hsp::approx_id_percent(const Sequence& query, const Sequence& target) const {
 	return is_identity(query, target) ? 100.0 : Stats::approx_id(score, query_range.length(), subject_range.length());
+	//return is_identity(query, target) ? 100.0 : Stats::approx_id(score, query_range, subject_range, query, target);
 }
 
 double HspContext::qcovhsp() const {

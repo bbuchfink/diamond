@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "seed.h"
 #include "reduction.h"
 #include "util/math/integer.h"
+#include "util/system.h"
 
 struct Shape
 {
@@ -108,23 +109,65 @@ struct Shape
 		}
 		return true;
 	}
-
-	template<typename It>
-	inline bool set_seed_reduced(PackedSeed &s, It seq) const
+	
+	template<int W, typename It>
+	inline bool set_seed_reduced(PackedSeed& s, It seq) const
 	{
-		s = 0;
+		static_assert(W >= 2, "W must be >= 2");
 		const PackedSeed size = Reduction::get_reduction().size();
-		for (int i = 0; i < weight_; ++i) {
+
+		Letter letters[W];
+		unsigned bad = 0;
+#pragma GCC unroll 16
+		for (int i = 0; i < W; ++i) {
 			Letter l = seq[positions_[i]];
 #ifdef SEQ_MASK
 			l &= LETTER_MASK;
 #endif
-			if (l == MASK_LETTER)
-				return false;
-			s *= size;
-			s += uint64_t(l);
+			bad |= unsigned(l == MASK_LETTER);
+			letters[i] = l;
+		}
+		if (UNLIKELY(bad))
+			return false;
+
+		const PackedSeed s2 = size * size;
+		PackedSeed E = letters[0];
+		PackedSeed O = letters[1];
+
+#pragma GCC unroll 16
+		for (int i = 2; i + 1 < W; i += 2) {
+			E = E * s2 + letters[i];
+			O = O * s2 + letters[i + 1];
+		}
+
+		if (W % 2 == 0) {
+			s = E * size + O;
+		}
+		else {
+			E = E * s2 + letters[W - 1];
+			s = E + O * size;
 		}
 		return true;
+	}
+	
+	template<typename It>
+	inline bool set_seed_reduced(PackedSeed& s, It seq) const
+	{
+		switch (weight_) {
+		case 7:
+			return set_seed_reduced<7>(s, seq);
+		case 8:
+			return set_seed_reduced<8>(s, seq);
+		case 9:
+			return set_seed_reduced<9>(s, seq);
+		case 10:
+			return set_seed_reduced<10>(s, seq);
+		case 11:
+			return set_seed_reduced<11>(s, seq);
+		case 12:
+			return set_seed_reduced<12>(s, seq);
+		}
+		UNREACHABLE;
 	}
 
 	inline bool set_seed(Seed &s, const Letter *seq) const

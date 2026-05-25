@@ -308,7 +308,6 @@ struct Config
 	bool hamming_ext;
 	Option<double> diag_filter_id;
 	Option<double> diag_filter_cov;
-	bool strict_gvc;
 	string edge_format;
 	bool no_block_size_limit;
 	string edges;
@@ -357,7 +356,6 @@ struct Config
 	bool mode_shapes6x10;	
 	bool include_lineage;
 	bool mode_linclust_20;
-	std::string linclust_chunk_size;
 	double promiscuous_seed_ratio;
 	bool oid_output;
 	bool trace_pt_membuf;

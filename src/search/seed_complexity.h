@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/shape.h"
 #include "util/data_structures/double_array.h"
 #include "run/config.h"
-#include "data/seed_histogram.h"
+#include "search/seed_array/seed_histogram.h"
 
 namespace Search {
 

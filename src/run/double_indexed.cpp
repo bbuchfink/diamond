@@ -38,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align/align.h"
 #include "search/hit_buffer.h"
 #include "config.h"
-#include "data/seed_array.h"
+#include "search/seed_array/seed_array.h"
 #include "data/fasta/fasta_file.h"
 #include "data/dmnd/dmnd.h"
 #include "data/blastdb/blastdb.h"
@@ -93,11 +93,11 @@ static string get_ref_block_tmpfile_name(size_t query, size_t block) {
 
 static pair<char*, char*> alloc_buffers(Config& cfg) {
 	if (Search::keep_target_id(cfg))
-		return { SeedArray<PackedLocId>::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
-		config.target_indexed ? nullptr : SeedArray<PackedLocId>::alloc_buffer(cfg.query->hst(), cfg.index_chunks) };
+		return { ARCH_GENERIC::SeedArray<PackedLocId>::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
+		config.target_indexed ? nullptr : ARCH_GENERIC::SeedArray<PackedLocId>::alloc_buffer(cfg.query->hst(), cfg.index_chunks) };
 	else
-		return { SeedArray<PackedLoc>::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
-		config.target_indexed ? nullptr : SeedArray<PackedLoc>::alloc_buffer(cfg.query->hst(), cfg.index_chunks) };
+		return { ARCH_GENERIC::SeedArray<PackedLoc>::alloc_buffer(cfg.target->hst(), cfg.index_chunks),
+		config.target_indexed ? nullptr : ARCH_GENERIC::SeedArray<PackedLoc>::alloc_buffer(cfg.query->hst(), cfg.index_chunks) };
 }
 
 static void run_ref_chunk(SequenceFile &db_file,
