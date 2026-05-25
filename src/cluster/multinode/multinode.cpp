@@ -207,7 +207,7 @@ void multinode() {
 	//config.freq_masking = true;
 	
 	if (parallel) {
-		config.tmpdir = config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-2.2.0" + PATH_SEPARATOR;
+		config.tmpdir = config.parallel_tmpdir + PATH_SEPARATOR + "diamond-tmp-" + Const::version_string + PATH_SEPARATOR;
 		mkdir(config.tmpdir);
 	}
 	else
