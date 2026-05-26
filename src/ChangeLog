@@ -4,7 +4,7 @@
 - Fixed a potential `Record count not set` error message during clustering output.
 - Removed the `--linclust-chunk-size` and `--connected-component-depth` options.
 - Fixed an issue of increased memory use in the clustering workflows.
-- Fixed an issue that could cause incorrect parsing of taxonomic nodes and namse data when
+- Fixed an issue that could cause incorrect parsing of taxonomic nodes and names data when
   using a custom-made `nodes.dmp` or `names.dmp` file with non-monotonic taxonomic ids.
 - Missing taxonomy node information for a taxid will no longer cause an error but be
   accordingly indicated in the output file.
