@@ -68,6 +68,8 @@ using Edge = Util::Algo::Edge<Int>;
 
 namespace GVC {
 
+static const bool merge_recursive = true;
+
 struct PotentialRep {
 	OId oid, degree;
 	vector<pair<OId, double>> members;
@@ -110,7 +112,9 @@ static void greedy_vertex_cover(vector<OId>& clustering, vector<double>& weights
 		}
 		clustering[r.oid] = r.oid;
 		for (const auto& m : r.members) {
-			if (clustering[m.first] == numeric_limits<OId>::max() || (weights[m.first] < m.second && !config.no_gvc_reassign && clustering[m.first] != m.first)) {
+			if (clustering[m.first] == numeric_limits<OId>::max()
+				|| (weights[m.first] < m.second && !config.no_gvc_reassign && clustering[m.first] != m.first)
+				|| (merge_recursive && clustering[m.first] == m.first)) {
 				clustering[m.first] = r.oid;
 				weights[m.first] = m.second;
 			}
@@ -306,6 +310,16 @@ void greedy_vertex_cover(Cfg& cfg) {
 	RadixedTable degree_sorted = edge_pass_three(rep_sorted, p, cfg);
 	vector<OId> clustering = edge_pass_four(degree_sorted, acc2oid.size(), cfg);
 	rmdir(cfg.tmp_dir);
+
+	if (merge_recursive) {
+		timer.go("Computing transitive closure");
+		for (OId i = 0; i < clustering.size();) {
+			if (clustering[i] != numeric_limits<OId>::max() && clustering[clustering[i]] != clustering[i])
+				clustering[i] = clustering[clustering[i]];
+			else
+				++i;
+		}
+	}
 
 	timer.go("Building reverse mapping");
 	std::pmr::monotonic_buffer_resource pool;
