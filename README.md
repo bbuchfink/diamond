@@ -37,6 +37,10 @@ Support
 =======
 DIAMOND is actively supported and developed software. Please use the [issue tracker](https://github.com/bbuchfink/diamond/issues) for malfunctions and the [GitHub discussions](https://github.com/bbuchfink/diamond/discussions) for questions, comments, feature requests, etc. I also provide live support on [Discord](https://discord.gg/ptJnz3GSCy). Don't be too shy to ask!
 
+Contributing
+============
+See [Contributing](https://github.com/bbuchfink/diamond/wiki/Contributing).
+
 About
 =====
 DIAMOND is developed by Dr. Benjamin J. Buchfink, independent scientist, Tübingen, Germany,
