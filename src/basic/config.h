@@ -98,8 +98,6 @@ struct Config
 	string	matrix;
 	bool debug_log, quiet;
 	bool		salltitles;
-	int		reward;
-	int		penalty;
 	double	min_id;
 	unsigned	compress_temp;
 	Option<double>	toppercent;
