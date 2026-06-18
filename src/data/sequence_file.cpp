@@ -551,7 +551,7 @@ void SequenceFile::free_dictionary()
 	block_to_dict_id_.clear();
 }
 
-optional<size_t> SequenceFile::total_blocks() const {
+optional<uint64_t> SequenceFile::total_blocks() const {
 	if (!letters())
 		return nullopt;
 	const size_t c = (size_t)(config.chunk_size * 1e9);

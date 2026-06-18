@@ -43,7 +43,7 @@ export CXXFLAGS="-arch x86_64 -mmacosx-version-min=10.15"
 cmake -DCMAKE_BUILD_TYPE=Release \
 	-DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
 	-DSQLite3_LIBRARY="../sqlite3/libsqlite3.a" \
-	-DZSTD_INCLUDE_DIR=src/zstd/lib/ \
+	-DZSTD_INCLUDE_DIR="../zstd/lib/" \
 	-DCROSS_COMPILE=ON \
 	-DCMAKE_OSX_ARCHITECTURES=x86_64 \
 	-DWITH_ZSTD=ON -DX86=ON -DARM=OFF -DAARCH64=OFF ../..
@@ -58,7 +58,7 @@ export MACOSX_DEPLOYMENT_TARGET=11.0
 cmake -DCMAKE_BUILD_TYPE=Release \
         -DZSTD_LIBRARY="../zstd/lib/libzstd.a" \
 	-DSQLite3_LIBRARY="../sqlite3/libsqlite3.a" \
-        -DZSTD_INCLUDE_DIR=src/zstd/lib/ \
+        -DZSTD_INCLUDE_DIR="../zstd/lib/" \
         -DCROSS_COMPILE=ON \
         -DCMAKE_OSX_ARCHITECTURES=arm64 \
         -DWITH_ZSTD=ON -DX86=OFF -DARM=ON ../..
