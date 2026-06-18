@@ -86,6 +86,7 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Cluste
 
 	TextBuffer* buf = new TextBuffer;
 	const int replen = centroid_seq.length();
+	hsps.sort(Hsp::OrderBySwipeTarget());
 	for (Hsp& hsp : hsps) {
 		const Loc memberlen = cfg.member_block->seqs().length(hsp.swipe_target);
 		if (Extension::filter_hsp(hsp, replen, nullptr, memberlen, nullptr, centroid_seq, Sequence(), 0, 0, nullptr))

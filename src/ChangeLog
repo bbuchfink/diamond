@@ -1,6 +1,7 @@
 [2.2.2]
 - Fixed a crash in the `view` workflow (present since v2.2.0).
 - Fixed a bug that could cause an error clustering a database with a single sequence.
+- Fixed a potential error of too many open files in the clustering workflows.
 - Using the `--log` option will no longer produce a `diamond.log` file.
 - The `--verbose/-v` option is deprecated and has no effect.
 - Removed a potential inter-system non-determinism caused by toggling query-indexed mode

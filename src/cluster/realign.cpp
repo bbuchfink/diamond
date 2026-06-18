@@ -50,7 +50,7 @@ void realign() {
 	}
 
 	TaskTimer timer("Opening the output file");
-	File out(config.output_file, "wb");
+	File out(config.output_file, "wb", File::Flags::TREAT_BLANK_AS_STDOUT);
 	if (TabularFormat::header_format(Config::cluster) == Header::SIMPLE)
 		dynamic_cast<TabularFormat*>(output_format.get())->output_header(out, true);
 

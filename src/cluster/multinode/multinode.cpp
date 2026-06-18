@@ -240,8 +240,8 @@ void multinode() {
 		job.log("#Volumes = %lli", volumes.size());
 	}
 
-	if (max_open_files_per_process() < 512)
-		raise_open_files_limit(512);
+	if (max_open_files_per_process() < 1024)
+		raise_open_files_limit(1024);
 	
 	string reps;
 	uint64_t letters = 0;

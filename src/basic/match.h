@@ -236,6 +236,12 @@ struct Hsp
 		return query_source_range.contains(d.query_absolute_range(dna_len)) || subject_range.contains(d.subject_range());
 	}
 
+	struct OrderBySwipeTarget {
+		bool operator()(const Hsp& a, const Hsp& b) const {
+			return a.swipe_target < b.swipe_target;
+		}
+	};
+
 	bool is_enveloped_by(const Hsp &hsp, double p) const;
 	bool is_enveloped_by(std::list<Hsp>::const_iterator begin, std::list<Hsp>::const_iterator end, double p) const;
 	bool query_range_enveloped_by(const Hsp& hsp, double p) const;
