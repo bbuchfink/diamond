@@ -79,7 +79,7 @@ struct PassThrough : Decompressor {
 		return std::fread(buffer, size, count, stream);
 	}
 	int fgetc(FILE* stream) override {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__APPLE__)
 		return std::fgetc(stream);
 #else
 		return fgetc_unlocked(stream);
@@ -103,7 +103,7 @@ struct PassThrough : Decompressor {
 
 struct ZlibDecompressor : Decompressor {
 	ZlibDecompressor();
-	size_t fread(void* buffer, size_t size, size_t count, FILE* stream);
+	size_t fread(void* buffer, size_t size, size_t count, FILE* stream) override;
 	int fgetc(FILE* stream) override;
 	ssize_t getdelim(char** buf, size_t* buf_size, char delimiter, FILE* fp) override;
 	virtual CompressionLib lib() const override {
