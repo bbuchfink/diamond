@@ -218,14 +218,14 @@ int main(int ac, const char* av[])
 		cleanup();
 		return 1;
 	} catch(const std::exception& e) {
-		cleanup();
         cerr << "Error: " << e.what() << endl;
 		*log_stream << "Error: " << e.what() << endl;
+		cleanup();
         return 1;
     }
-    catch(...) {
-		cleanup();
+    catch(...) {		
         cerr << "Exception of unknown type!" << endl;
+		cleanup();
         return 1;
     }
 

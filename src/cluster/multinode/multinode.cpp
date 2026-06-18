@@ -239,10 +239,9 @@ void multinode() {
 			job.log("Sequence id cutoff = %f", config.min_id);
 		job.log("#Volumes = %lli", volumes.size());
 	}
-	
-#ifdef WIN32
-	_setmaxstdio(8192);
-#endif
+
+	if (max_open_files_per_process() < 512)
+		raise_open_files_limit(512);
 	
 	string reps;
 	uint64_t letters = 0;

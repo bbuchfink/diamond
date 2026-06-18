@@ -54,6 +54,8 @@ std::pair<std::string, std::string> absolute_path(const std::string& file_path);
 bool is_absolute_path(const std::string& path);
 void remove_tmp_file(const std::string& file_name);
 std::string create_temp_directory(const std::string& parent_dir, const std::string& prefix, unsigned max_attempts = 100);
+long max_open_files_per_process();
+long raise_open_files_limit(long desired = 0);
 
 inline std::string containing_directory(const std::string& file_name) {
 	return file_name.substr(0, file_name.find_last_of(PATH_SEPARATOR));

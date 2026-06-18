@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <system_error>
 #include <random>
+#include <cstdint>
 
 #include "system.h"
 #include "../string/string.h"
@@ -35,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #define NOMINMAX
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
+  #include <cstdio>          // _getmaxstdio
 #else
   #include <unistd.h>
   #include <limits.h>
@@ -42,6 +44,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #include <sys/mman.h>
   #include <fcntl.h>
   #include <unistd.h>
+  #include <sys/resource.h>  // getrlimit, RLIMIT_NOFILE
+  #if defined(__APPLE__)
+     #include <sys/sysctl.h>  // sysctlbyname (kern.maxfilesperproc)
+  #endif
   #ifdef __FreeBSD__
     #include <sys/types.h>
     #include <sys/sysctl.h>
@@ -58,6 +64,53 @@ using std::runtime_error;
 using std::tuple;
 using std::pair;
 using std::make_pair;
+
+long max_open_files_per_process() {
+#if defined(_WIN32)	
+	return static_cast<long>(_getmaxstdio());
+#else
+	struct rlimit rl;
+	if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+		return -1;
+	if (rl.rlim_cur == RLIM_INFINITY)
+		return -1;
+	return static_cast<long>(rl.rlim_cur);
+#endif
+}
+
+long raise_open_files_limit(long desired) {
+#if defined(_WIN32)
+	int target = (desired > 0) ? static_cast<int>(desired) : 8192;
+	if (target > 8192) target = 8192;
+	if (_setmaxstdio(target) == -1)
+		return -1;
+	return static_cast<long>(_getmaxstdio());
+#else
+	struct rlimit rl;
+	if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+		return -1;
+
+	rlim_t target = (desired > 0) ? static_cast<rlim_t>(desired) : rl.rlim_max;	
+	if (rl.rlim_max != RLIM_INFINITY && target > rl.rlim_max)
+		target = rl.rlim_max;
+
+#if defined(__APPLE__)	
+	int maxproc = 0;
+	size_t sz = sizeof(maxproc);
+	if (sysctlbyname("kern.maxfilesperproc", &maxproc, &sz, nullptr, 0) == 0
+		&& maxproc > 0 && target > static_cast<rlim_t>(maxproc))
+		target = static_cast<rlim_t>(maxproc);
+#endif
+
+	rl.rlim_cur = target;
+	if (setrlimit(RLIMIT_NOFILE, &rl) != 0)
+		return -1;
+
+	if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+		return -1;
+	return static_cast<long>(rl.rlim_cur);
+#endif
+}
 
 string executable_path() {
 	char buf[4096];
