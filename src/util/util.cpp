@@ -19,21 +19,37 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <numeric>
 #include <iostream>
-#include <mutex>
 #include "log_stream.h"
 #include "util.h"
 #include "escape_sequences.h"
-#include "profiler.h"
 
 using std::string;
 using std::vector;
 using std::endl;
 
-MessageStream message_stream;
-MessageStream verbose_stream (false);
-MessageStream log_stream (false);
-std::mutex MessageStream::mtx;
-std::map<std::string, uint64_t> Profiler::times;
+class Nullbuf : public std::streambuf {
+protected:
+	int overflow(int c) override {
+		return c;
+	}
+};
+
+class Nullostream : public std::ostream {
+public:
+	Nullostream() : std::ostream(&buf_) {}
+private:
+	Nullbuf buf_;
+};
+
+std::ostream* message_stream = new Nullostream;
+std::ostream* log_stream = new Nullostream;
+
+void cleanup() {
+	if (message_stream != &std::cerr)
+		delete message_stream;
+	if (log_stream != &std::cerr)
+		delete log_stream;
+}
 
 #ifndef _MSC_VER
 const char dir_separator = '/';
@@ -71,38 +87,12 @@ const EscapeSequence EscapeSequences::xml_data[5] = {
 
 const EscapeSequences EscapeSequences::XML(EscapeSequences::xml_data, 5);
 
-MessageStream& MessageStream::operator<<(std::ostream& (*_Pfn)(std::ostream&))
-{
-	if (to_cout_)
-		((*_Pfn)(std::cerr));
-	if (to_file_) {
-		mtx.lock();
-		std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
-		((*_Pfn)(f));
-		f.close();
-		mtx.unlock();
-	}
-	return *this;
-}
-
-MessageStream::MessageStream(bool to_cout, bool to_file) :
-	out_stream_(&std::cerr),
-	to_cout_(to_cout),
-	to_file_(to_file)	
-{}
-
 void print_binary(uint64_t x)
 {
 	for (unsigned i = 0; i < 64; ++i) {
 		std::cout << (x & 1);
 		x >>= 1;
 	}
-}
-
-void exit_with_error(const std::exception& e) {
-	std::cerr << "Error: " << e.what() << endl;
-	log_stream << "Error: " << e.what() << endl;
-	exit(EXIT_FAILURE);
 }
 
 std::string to_upper_case(const std::string& s)

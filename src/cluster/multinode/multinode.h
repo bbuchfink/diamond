@@ -45,7 +45,7 @@ struct Job {
 
 	Job() :
 		mem_limit(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT))),
-		max_oid_(0),		
+		max_oid_(std::numeric_limits<OId>::max()),
 		base_dir_(config.tmpdir),
 		round_(0),
 		start_(std::chrono::system_clock::now())
@@ -131,7 +131,7 @@ struct Job {
 	}
 
 	OId max_oid() const {
-		if (max_oid_ == 0)
+		if (max_oid_ == std::numeric_limits<OId>::max())
 			throw std::runtime_error("max_oid not set");
 		return max_oid_;
 	}
@@ -176,7 +176,7 @@ private:
 };
 
 std::pair<std::string, uint64_t> get_reps(Job& job, const VolumedFile& volumes);
-void merge(Job& job, const VolumedFile& volumes);
+void merge(Job& job, const VolumedFile& volumes, Header hdr_format);
 //void extend(Job& job, std::vector<std::pair<OId, OId>>& out, const VolumedFile& volumes);
 std::string len_sort(Job& job, VolumedFile& volumes);
 std::vector<OId> build_merged(Job& job);

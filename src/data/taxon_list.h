@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "util/io/output_file.h"
+#include "util/io/file.h"
 #include "legacy/dmnd/compact_array.h"
 #include "util/table.h"
 #include "basic/value.h"
@@ -29,6 +30,6 @@ struct ExternalSorter;
 struct TaxonList : public CompactArray
 {
 	typedef std::pair<std::string, OId> T;
-	TaxonList(Deserializer &in, size_t size, size_t data_size);
+	TaxonList(File &in, size_t size, size_t data_size);
 	static void build(OutputFile &db, ExternalSorter<T, std::less<T>>& accessions, OId seqs, Util::Table& stats);
 };

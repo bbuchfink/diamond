@@ -132,7 +132,7 @@ void SamFormat::print_match(const HspContext& r, Output::Info &info)
 	out << '\n';
 }
 
-void SamFormat::print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+void SamFormat::print_header(File &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 {
 	static const char* mode_str[] = { 0, 0, "BlastP", "BlastX", "BlastN" };
 	stringstream h;
@@ -143,5 +143,5 @@ void SamFormat::print_header(Consumer &f, int mode, const char *matrix, int gap_
 	h << "@CO\tReporting AS: bitScore, ZR: rawScore, ZE: expected, ZI: percent identity, ZL: reference length, ZF: frame, ZS: query start DNA coordinate" << endl;
 
 	const string s(h.str());
-	f.consume(s.c_str(), s.length());
+	f.write(s.c_str(), s.length());
 }

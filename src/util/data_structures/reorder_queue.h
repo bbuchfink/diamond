@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <mutex>
+#include <map>
 
 template<typename T, typename F>
 struct ReorderQueue
@@ -97,4 +98,5 @@ private:
 	F& f_;
 	std::map<size_t, T> backlog_;
 	size_t begin_, next_, size_, max_size_;
+
 };

@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include "output.h"
 #include "util/io/temp_file.h"
-#include "output/daa/daa_write.h"
+#include "legacy/daa/daa_write.h"
 #include "output_format.h"
 #include "target_culling.h"
 #include "util/log_stream.h"
 #include "legacy/util/task_queue.h"
 #include "data/taxonomy_nodes.h"
+#include "util/parallel/simple_thread_pool.h"
 
 using std::thread;
 using std::unique_ptr;
@@ -36,12 +37,13 @@ using std::vector;
 
 struct JoinFetcher
 {
-	static void init(const PtrVector<TempFile> &tmp_file)
+	static void init(const vector<File*> &tmp_file)
 	{
-		for (PtrVector<TempFile>::const_iterator i = tmp_file.begin(); i != tmp_file.end(); ++i) {
-			files.push_back(new InputFile(**i));
+		for (vector<File*>::const_iterator i = tmp_file.begin(); i != tmp_file.end(); ++i) {
+			(*i)->rewind();
+			files.push_back(*i);
 			query_ids.push_back(0);
-			files.back().read(&query_ids.back(), 1);
+			files.back()->read(&query_ids.back(), sizeof(uint32_t));
 
 		}
 		query_last = (unsigned)-1;
@@ -50,17 +52,19 @@ struct JoinFetcher
 	static void init(const vector<string> & tmp_file_names)
 	{
 		for (auto file_name : tmp_file_names) {
-			files.push_back(new InputFile(file_name, InputFile::NO_AUTODETECT));
+			files.push_back(new File(file_name, "rb"));
 			query_ids.push_back(0);
-			files.back().read(&query_ids.back(), 1);
+			files.back()->read(&query_ids.back(), sizeof(uint32_t));
 		}
 		query_last = (unsigned)-1;
 	}
 
 	static void finish()
 	{
-		for (PtrVector<InputFile>::iterator i = files.begin(); i != files.end(); ++i)
-			(*i)->close_and_delete();
+		for (vector<File*>::iterator i = files.begin(); i != files.end(); ++i) {
+			(*i)->close();
+			delete* i;
+		}
 		files.clear();
 		query_ids.clear();
 	}
@@ -74,11 +78,11 @@ struct JoinFetcher
 	void fetch(unsigned b)
 	{
 		uint32_t size;
-		files[b].read(&size, 1);
+		files[b]->read(&size, sizeof(uint32_t));
 		buf[b].clear();
 		buf[b].resize(size);
-		files[b].read(buf[b].data(), size);
-		files[b].read(&query_ids[b], 1);
+		files[b]->read(buf[b].data(), size);
+		files[b]->read(&query_ids[b], sizeof(uint32_t));
 	}
 	JoinFetcher(size_t blocks):
 		buf(blocks)
@@ -95,28 +99,28 @@ struct JoinFetcher
 				buf[i].clear();
 		return next() != IntermediateRecord::FINISHED;
 	}
-	static PtrVector<InputFile> files;
+	static vector<File*> files;
 	static vector<uint32_t> query_ids;
 	static unsigned query_last;
 	vector<BinaryBuffer> buf;
 	uint32_t query_id, unaligned_from;
 };
 
-PtrVector<InputFile> JoinFetcher::files;
+vector<File*> JoinFetcher::files;
 vector<unsigned> JoinFetcher::query_ids;
 unsigned JoinFetcher::query_last;
 
 struct JoinWriter
 {
-	JoinWriter(Consumer &f):
+	JoinWriter(File &f):
 		f_(f)
 	{}
 	void operator()(TextBuffer& buf)
 	{
-		f_.consume(buf.data(), buf.size());
+		f_.write(buf.data(), buf.size());
 		buf.clear();
 	}
-	Consumer &f_;
+	File &f_;
 };
 
 struct JoinRecord
@@ -274,69 +278,64 @@ void join_query(
 	}
 }
 
-void join_worker(TaskQueue<TextBuffer, JoinWriter> *queue, const Search::Config* cfg, BitVector* ranking_db_filter_out)
+void join_worker(const std::atomic<bool>& stop, TaskQueue<TextBuffer, JoinWriter>* queue, const Search::Config* cfg, BitVector* ranking_db_filter_out)
 {
-	try {
-		static std::mutex mtx;
-		JoinFetcher fetcher(JoinFetcher::block_count());
-		size_t n;
-		TextBuffer* out;
-		Statistics stat;
-		const StringSet& qids = cfg->query->ids();
-		//BitVector ranking_db_filter(config.global_ranking_targets > 0 ? cfg->db_seqs : 0);
+	static std::mutex mtx;
+	JoinFetcher fetcher(JoinFetcher::block_count());
+	size_t n;
+	TextBuffer* out;
+	Statistics stat;
+	const StringSet& qids = cfg->query->ids();
+	//BitVector ranking_db_filter(config.global_ranking_targets > 0 ? cfg->db_seqs : 0);
 
-		while (queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
-			//if (!config.global_ranking_targets) stat.inc(Statistics::ALIGNED);
-			stat.inc(Statistics::ALIGNED);
-			size_t seek_pos;
+	while (!stop.load(std::memory_order_relaxed) && queue->get(n, out, fetcher) && fetcher.query_id != IntermediateRecord::FINISHED) {
+		//if (!config.global_ranking_targets) stat.inc(Statistics::ALIGNED);
+		stat.inc(Statistics::ALIGNED);
+		size_t seek_pos;
 
-			const char* query_name = qids[qids.check_idx(fetcher.query_id)];
+		const char* query_name = qids[qids.check_idx(fetcher.query_id)];
 
-			const Sequence query_seq = align_mode.query_translated ? cfg->query->source_seqs()[fetcher.query_id] : cfg->query->seqs()[fetcher.query_id];
+		const Sequence query_seq = align_mode.query_translated ? cfg->query->source_seqs()[fetcher.query_id] : cfg->query->seqs()[fetcher.query_id];
 
-			if (n > 0 && cfg->output_format->query_separator != '\0')
-				out->write(cfg->output_format->query_separator);
-			if (*cfg->output_format != OutputFormat::daa && config.report_unaligned != 0) {
-				for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
-					Output::Info info{ cfg->query->seq_info(i), true, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
-					cfg->output_format->print_query_intro(info);
-					cfg->output_format->print_query_epilog(info);
-				}
+		if (n > 0 && cfg->output_format->query_separator != '\0')
+			out->write(cfg->output_format->query_separator);
+		if (*cfg->output_format != OutputFormat::daa && config.report_unaligned != 0) {
+			for (unsigned i = fetcher.unaligned_from; i < fetcher.query_id; ++i) {
+				Output::Info info{ cfg->query->seq_info(i), true, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
+				cfg->output_format->print_query_intro(info);
+				cfg->output_format->print_query_epilog(info);
 			}
-
-			unique_ptr<OutputFormat> f(cfg->output_format->clone());
-
-			Output::Info info{ cfg->query->seq_info(fetcher.query_id), false, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
-			if (*f == OutputFormat::daa)
-				seek_pos = write_daa_query_record(*out, query_name, query_seq);
-			/*else if (config.global_ranking_targets)
-				seek_pos = Extension::GlobalRanking::write_merged_query_list_intro(fetcher.query_id, *out);*/
-			else
-				f->print_query_intro(info);
-
-			join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f, *cfg); // ranking_db_filter);
-
-			if (*f == OutputFormat::daa)
-				finish_daa_query_record(*out, seek_pos);
-			/*else if (config.global_ranking_targets)
-				Extension::GlobalRanking::finish_merged_query_list(*out, seek_pos);*/
-			else
-				f->print_query_epilog(info);
-			queue->push(n);
 		}
 
-		statistics += stat;
-		/*if (config.global_ranking_targets) {
-			std::lock_guard<std::mutex> lock(mtx);
-			(*ranking_db_filter_out) |= ranking_db_filter;
-		}*/
+		unique_ptr<OutputFormat> f(cfg->output_format->clone());
+
+		Output::Info info{ cfg->query->seq_info(fetcher.query_id), false, cfg->db.get(), *out, Util::Seq::AccessionParsing(), cfg->db->sequence_count(), cfg->db->letters() };
+		if (*f == OutputFormat::daa)
+			seek_pos = write_daa_query_record(*out, query_name, query_seq);
+		/*else if (config.global_ranking_targets)
+			seek_pos = Extension::GlobalRanking::write_merged_query_list_intro(fetcher.query_id, *out);*/
+		else
+			f->print_query_intro(info);
+
+		join_query(fetcher.buf, *out, stat, fetcher.query_id, query_name, (unsigned)query_seq.length(), *f, *cfg); // ranking_db_filter);
+
+		if (*f == OutputFormat::daa)
+			finish_daa_query_record(*out, seek_pos);
+		/*else if (config.global_ranking_targets)
+			Extension::GlobalRanking::finish_merged_query_list(*out, seek_pos);*/
+		else
+			f->print_query_epilog(info);
+		queue->push(n);
 	}
-	catch (std::exception& e) {
-		exit_with_error(e);
-	}
+
+	statistics += stat;
+	/*if (config.global_ranking_targets) {
+		std::lock_guard<std::mutex> lock(mtx);
+		(*ranking_db_filter_out) |= ranking_db_filter;
+	}*/
 }
 
-void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
+void join_blocks(int64_t ref_blocks, File &master_out, const vector<File*> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
 	const vector<string> tmp_file_names)
 {
 	if (*cfg.output_format != OutputFormat::daa)
@@ -357,12 +356,11 @@ void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempF
 	JoinWriter writer(config.global_ranking_targets ? *merged_query_list : master_out);*/
 	JoinWriter writer(master_out);
 	TaskQueue<TextBuffer, JoinWriter> queue(3 * config.threads_, writer);
-	vector<thread> threads;
+	SimpleThreadPool pool;
 	//BitVector ranking_db_filter(config.global_ranking_targets > 0 ? cfg.db_seqs : 0);
 	for (int i = 0; i < config.threads_; ++i)
-		threads.emplace_back(join_worker, &queue, &cfg, nullptr); // &ranking_db_filter);
-	for (auto &t : threads)
-		t.join();
+		pool.spawn(join_worker, &queue, &cfg, nullptr); // &ranking_db_filter);
+	pool.join_all();
 	JoinFetcher::finish();
 	if (*cfg.output_format != OutputFormat::daa && config.report_unaligned != 0) {
 		TextBuffer out;

@@ -103,8 +103,8 @@ void TaxonomyNodes::save(Serializer &out)
 	serialize(out, parent_);
 	out.write(rank_.data(), rank_.size());
 	timer.finish();
-	message_stream << node_count_ << " taxonomy nodes processed." << endl;
-	message_stream << "Maximum taxon id: " << parent_.size() - 1 << endl;
+    *message_stream << node_count_ << " taxonomy nodes processed." << endl;
+    *message_stream << "Maximum taxon id: " << parent_.size() - 1 << endl;
 	size_t rank_count[Rank::count];
 	std::fill(rank_count, rank_count + Rank::count, 0);
 	for (const Rank r : rank_) {
@@ -112,13 +112,13 @@ void TaxonomyNodes::save(Serializer &out)
 	}
 	
 	const size_t w = MAX_LEN(Rank::names) + 2;
-	message_stream << "Number of nodes assigned to rank:" << endl;
+    *message_stream << "Number of nodes assigned to rank:" << endl;
 	for (size_t i = 0; i < Rank::count; ++i)
-		message_stream << std::left << std::setw(w) << Rank::names[i] << rank_count[i] << endl;
-	message_stream << endl;
+        *message_stream << std::left << std::setw(w) << Rank::names[i] << rank_count[i] << endl;
+    *message_stream << endl;
 }
 
-TaxonomyNodes::TaxonomyNodes(Deserializer &in, uint32_t db_build):
+TaxonomyNodes::TaxonomyNodes(File &in, uint32_t db_build):
 	node_count_(0)
 {
 	deserialize(in, parent_);

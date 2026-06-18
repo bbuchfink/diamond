@@ -146,14 +146,14 @@ string Config::single_query_file() const {
 	return query_file.empty() ? string() : query_file.front();
 }
 
-Compressor Config::compressor() const
+CompressionLib Config::compressor() const
 {
 	if (compression.empty() || compression == "0")
-		return Compressor::NONE;
+		return CompressionLib::NONE;
 	else if (compression == "1")
-		return Compressor::ZLIB;
+		return CompressionLib::ZLIB;
 	else if (compression == "zstd")
-		return Compressor::ZSTD;
+		return CompressionLib::ZSTD;
 	else
 		throw runtime_error("Invalid compression algorithm: " + compression);
 }
@@ -216,7 +216,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	auto& general = parser.add_group("General options", { makedb, blastp, blastx, cluster, view, getseq, dbinfo, makeidx, CLUSTER_REALIGN, GREEDY_VERTEX_COVER, DEEPCLUST, RECLUSTER, MERGE_DAA, LINCLUST, CLUSTER_REASSIGN });
 	general.add()
 		("threads", 'p', "number of CPU threads", threads_)
-		("verbose", 'v', "verbose console output", verbose)
 		("log", 0, "enable debug log", debug_log)
 		("quiet", 0, "disable console output", quiet)
 		("tmpdir", 't', "directory for temporary files", tmpdir)
@@ -443,7 +442,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("sam-query-len", 0, "add the query length to the SAM format (tag ZQ)", sam_qlen_field)
 		("stop-match-score", 0, "Set the match score of stop codons against each other.", stop_match_score, 1)		
 		("target-indexed", 0, "Enable target-indexed mode", target_indexed)
-		("unaligned-targets", 0, "", unaligned_targets)
+		("daa-build-version", 0, "diamond build version to write to DAA file", daa_build_version)
 		("cut-bar", 0, "", cut_bar)
 		("check-multi-target", 0, "", check_multi_target)
 		("roc-file", 0, "", roc_file)
@@ -489,6 +488,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	double rank_ratio2, lambda, K;
 	unsigned window, min_ungapped_score, hit_band, min_hit_score;
+	bool verbose;
 	auto& deprecated_options = parser.add_group("", { blastp, blastx });
 	deprecated_options.add()
 		("window", 'w', "window size for local hit search", window)
@@ -499,7 +499,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("rank-ratio2", 0, "include subjects within this ratio of last hit (stage 2)", rank_ratio2, -1.0)
 		("rank-ratio", 0, "include subjects within this ratio of last hit", rank_ratio, -1.0)
 		("lambda", 0, "lambda parameter for custom matrix", lambda)
-		("K", 0, "K parameter for custom matrix", K);
+		("K", 0, "K parameter for custom matrix", K)
+		("verbose", 'v', "verbose console output", verbose);
 
 #ifdef EXTRA
 	auto& hidden_options = parser.add_group("", {});
@@ -557,7 +558,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("gapped-filter-diag-score", 0, "", gapped_filter_diag_bit_score, 12.0)
 		("gapped-filter-window", 0, "", gapped_filter_window, 200)
 		("output-hits", 0, "", output_hits)
-		("no-logfile", 0, "", no_logfile)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)
 		("self", 0, "", self)
@@ -650,22 +650,17 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		verbosity = 3;
 	else if (quiet)
 		verbosity = 0;
-	else if (verbose)
-		verbosity = 2;
-	else if (((command == Config::view || command == blastx || command == blastp || command == blastn) && output_file == "" && argc != 2)
-		|| command == Config::version || command == getseq || command == fastq2fasta || command == regression_test)
-		verbosity = 0;
 	else
 		verbosity = 1;
 
-	if (verbosity >= 1 || command == regression_test) {
+	if (verbosity >= 1 && command != version) {
 		ostream& header_out = command == Config::help ? cout : cerr;
 		header_out << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version
 			<< " (C) Max Planck Society for the Advancement of Science, Benjamin J. Buchfink, University of Tuebingen" << endl;
 		header_out << "Documentation, support and updates available at http://www.diamondsearch.org" << endl;
 		header_out << "Please cite: http://dx.doi.org/10.1038/s41592-021-01101-x Nature Methods (2021)" << endl << endl;
 	}
-	log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
+	*log_stream << Const::program_name << " v" << Const::version_string << "." << (unsigned)Const::build_version << endl;
 
     if(argc == 2 && command != version && command != regression_test) {
         if (command != help) {
@@ -746,22 +741,25 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	switch (verbosity) {
 	case 0:
-		message_stream = MessageStream(false);
 		break;
-	case 3:
-		log_stream = MessageStream(true, !config.no_logfile);
-		verbose_stream = MessageStream(true, !config.no_logfile);
-		message_stream = MessageStream(true, !config.no_logfile);
+	case 1:
+		delete message_stream;
+		message_stream = &std::cerr;
 		break;
 	case 2:
-		verbose_stream = MessageStream();
+	case 3:
+		delete message_stream;
+		delete log_stream;
+		log_stream = &std::cerr;
+		message_stream = &std::cerr;
+		break;
 	default:
 		;
 	}
 
 	std::ostringstream invocation;
 	join(" ", &argv[0], &argv[argc], invocation);
-	log_stream << invocation.str() << endl;
+	*log_stream << invocation.str() << endl;
 	this->invocation = invocation.str();
 
 	if (!no_auto_append) {
@@ -777,7 +775,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	
 #ifndef NDEBUG
-	verbose_stream << "Assertions enabled." << endl;
+	*log_stream << "Assertions enabled." << endl;
 #endif
 	set_option(threads_, (int)std::thread::hardware_concurrency());
 
@@ -796,7 +794,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case Config::GREEDY_VERTEX_COVER:
 	case Config::RECLUSTER:
 		if (argc != 2)
-			message_stream << "#CPU threads: " << threads_ << endl;
+			*message_stream << "#CPU threads: " << threads_ << endl;
 	default:
 		;
 	}
@@ -840,7 +838,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 			score_matrix = ScoreMatrix(matrix_file, gap_open, gap_extend, stop_match_score, ScoreMatrix::Custom());
 		}
 		if (argc != 2)
-			message_stream << "Scoring parameters: " << score_matrix << endl;
+			*message_stream << "Scoring parameters: " << score_matrix << endl;
 		Masking::instance = unique_ptr<Masking>(new Masking(score_matrix));
 	}
 
@@ -852,8 +850,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		temp_file_handler.init(tmpdir.c_str());
 
 		raw_ungapped_xdrop = score_matrix.rawscore(ungapped_xdrop);
-		verbose_stream << "CPU features detected: " << SIMD::features() << endl;
-		log_stream << "L3 cache size: " << l3_cache_size() << endl;
+		*log_stream << "CPU features detected: " << SIMD::features() << endl;
 	}
 
 	sensitivity = Sensitivity::DEFAULT;
@@ -884,7 +881,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	if (unfmt == "fastq" || alfmt == "fastq")
 		store_query_quality = true;
 	if (!aligned_file.empty())
-		log_stream << "Aligned file format: " << alfmt << endl;
+		*log_stream << "Aligned file format: " << alfmt << endl;
 
 	if (command == blastx) {
 		if (query_file.size() > 2)
@@ -921,7 +918,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1779708904);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1781790757);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;
@@ -929,16 +926,16 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		}
 	}
 
-	log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
-	log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
+	*log_stream << "TRACE_PT_MEMBUF=" << (trace_pt_membuf ? "ON" : "OFF") << endl;
+	*log_stream << "MAX_SHAPE_LEN=" << MAX_SHAPE_LEN;
 #ifdef SEQ_MASK
-	log_stream << " SEQ_MASK";
+	*log_stream << " SEQ_MASK";
 #endif
 #ifdef STRICT_BAND
-	log_stream << " STRICT_BAND";
+	*log_stream << " STRICT_BAND";
 #endif
 #ifdef HIT_KEEP_TARGET_ID
-	log_stream << "HIT_KEEP_TARGET_ID" << endl;
+	*log_stream << "HIT_KEEP_TARGET_ID" << endl;
 #endif
-	log_stream << endl;
+	*log_stream << endl;
 }

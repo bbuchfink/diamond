@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/queries.h"
 #include "masking/masking.h"
 #include "data/sequence_file.h"
+#include "util/parallel/simple_thread_pool.h"
 
 using std::unique_ptr;
 using std::mutex;
@@ -72,26 +73,20 @@ void extend_query(const QueryList& query_list, const TargetMap& db2block_id, con
 	output_sink->push(query_list.query_block_id, buf);
 }
 
-void align_worker(InputFile* query_list, const TargetMap* db2block_id, const Search::Config* cfg, uint32_t* next_query) {
+void align_worker(const std::atomic<bool>& stop, File* query_list, const TargetMap* db2block_id, const Search::Config* cfg, uint32_t* next_query) {
 	std::pmr::monotonic_buffer_resource pool;
-	try {
-		QueryList input;
-		Statistics stats;
-		while (input = fetch_query_targets(*query_list, *next_query), !input.targets.empty()) {
-			for (uint32_t i = input.last_query_block_id; i < input.query_block_id; ++i)
-				output_sink->push(i, nullptr);
-			extend_query(input, *db2block_id, *cfg, stats, pool);
-		}
-		statistics += stats;
+	QueryList input;
+	Statistics stats;
+	while (!stop.load(std::memory_order_relaxed) && (input = fetch_query_targets(*query_list, *next_query), !input.targets.empty())) {
+		for (uint32_t i = input.last_query_block_id; i < input.query_block_id; ++i)
+			output_sink->push(i, nullptr);
+		extend_query(input, *db2block_id, *cfg, stats, pool);
 	}
-	catch (std::exception& e) {
-		exit_with_error(e);
-	}
+	statistics += stats;
 }
 
-void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Search::Config& cfg, Consumer& master_out) {
+void extend(SequenceFile& db, File& merged_query_list, BitVector& ranking_db_filter, Search::Config& cfg, File& master_out) {
 	TaskTimer timer("Loading reference sequences");
-	InputFile query_list(merged_query_list);
 	db.set_seqinfo_ptr(0);
 	db.flags() |= SequenceFile::Flags::SEQS;
 	cfg.target.reset(db.load_seqs(INT64_MAX, 0, &ranking_db_filter));
@@ -101,27 +96,26 @@ void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db
 	for (BlockId i = 0; i < db_count; ++i)
 		db2block_id[cfg.target->block_id2oid(i)] = i;
 	timer.finish();
-	verbose_stream << "#Ranked database sequences: " << cfg.target->seqs().size() << endl;
+	*log_stream << "#Ranked database sequences: " << cfg.target->seqs().size() << endl;
 
 	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		stats.print(log_stream);
+		stats.print(*log_stream);
 	}
 
 	timer.go("Computing alignments");
 	OutputWriter writer{ &master_out };
 	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(0, writer));
 	uint32_t next_query = 0;
-	vector<thread> threads;
+	SimpleThreadPool pool;
 	for (size_t i = 0; i < (config.threads_align ? config.threads_align : config.threads_); ++i)
-		threads.emplace_back(align_worker, &query_list, &db2block_id, &cfg, &next_query);
-	for (auto& i : threads)
-		i.join();
+		pool.spawn(align_worker, &merged_query_list, &db2block_id, &cfg, &next_query);
+	pool.join_all();
 
 	timer.go("Cleaning up");
-	query_list.close_and_delete();
+	merged_query_list.close();
 	output_sink.reset();
 	cfg.target.reset();
 }
@@ -176,9 +170,9 @@ static BitVector db_filter(const Search::Config::RankingTable& table, size_t db_
 	return v;
 }
 
-void extend(Search::Config& cfg, Consumer& out) {
+void extend(Search::Config& cfg, File& out) {
 	TaskTimer timer("Listing target sequences");
-	const BitVector filter = db_filter(*cfg.ranking_table, cfg.db->sequence_count());
+		const BitVector filter = db_filter(*cfg.ranking_table, cfg.db->sequence_count().value());
 	timer.go("Loading target sequences");
 	cfg.db->set_seqinfo_ptr(0);
 	cfg.db->flags() |= SequenceFile::Flags::SEQS;
@@ -193,13 +187,13 @@ void extend(Search::Config& cfg, Consumer& out) {
 	for (BlockId i = 0; i < db_count; ++i)
 		db2block_id[cfg.target->block_id2oid(i)] = i;
 	timer.finish();
-	verbose_stream << "#Ranked database sequences: " << db_count << endl;
+	*log_stream << "#Ranked database sequences: " << db_count << endl;
 
 	if (cfg.target_masking != MaskingAlgo::NONE) {
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		stats.print(log_stream);
+		stats.print(*log_stream);
 	}
 
 	if (cfg.iterated()) {
@@ -215,24 +209,18 @@ void extend(Search::Config& cfg, Consumer& out) {
 
 	std::atomic<BlockId> next_query(0);
 	const BlockId query_count = cfg.query->seqs().size() / align_mode.query_contexts;
-	auto worker = [&next_query, &db2block_id, &cfg, query_count] {
-		try {
-			Statistics stats;
-			BlockId q;
-			std::pmr::monotonic_buffer_resource pool;
-			while ((q = next_query++) < query_count) extend_query(q, db2block_id, cfg, stats, pool);
-			statistics += stats;
-		}
-		catch (std::exception& e) {
-			exit_with_error(e);
-		}
-	};
+	auto worker = [&next_query, &db2block_id, &cfg, query_count](const std::atomic<bool>& stop) {
+		Statistics stats;
+		BlockId q;
+		std::pmr::monotonic_buffer_resource pool;
+		while (!stop.load(std::memory_order_relaxed) && (q = next_query++) < query_count) extend_query(q, db2block_id, cfg, stats, pool);
+		statistics += stats;
+		};
 
-	vector<thread> threads;
+	SimpleThreadPool pool;
 	for (size_t i = 0; i < (config.threads_align ? config.threads_align : config.threads_); ++i)
-		threads.emplace_back(worker);
-	for (auto& i : threads)
-		i.join();
+		pool.spawn(worker);
+	pool.join_all();
 
 	timer.go("Deallocating memory");
 	cfg.target.reset();

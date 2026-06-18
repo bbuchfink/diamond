@@ -201,7 +201,7 @@ void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 	}
 	else {
 		timer.finish();
-		log_stream << "Query: " << query_id << "; Seed hits: " << seed_hits.size() << "; Targets: " << n_targets() << endl;
+		*log_stream << "Query: " << query_id << "; Seed hits: " << seed_hits.size() << "; Targets: " << n_targets() << endl;
 	}
 
 	if (n_targets() > cfg.max_target_seqs || config.toppercent.present()) {
@@ -243,7 +243,7 @@ void Pipeline::run(Statistics &stat, const Search::Config& cfg)
 				v.erase(it, v.end());
 				timer.finish();
 			}
-			log_stream << "Targets after score-only ranking: " << targets.size() << endl;
+			*log_stream << "Targets after score-only ranking: " << targets.size() << endl;
 		}
 		else {
 			timer.go("Score only culling");

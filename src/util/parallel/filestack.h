@@ -88,7 +88,8 @@ class FileStack {
     private:
         
         int lock();
-        int unlock();        
+        int unlock();
+        size_t size_unlocked();
         
 #ifdef _WIN32
         HANDLE hFile;

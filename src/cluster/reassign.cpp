@@ -40,7 +40,7 @@ void reassign() {
 	config.database.require();
 	config.clustering.require();
 	init_thresholds();
-	message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
+	*message_stream << "Coverage cutoff: " << (config.mutual_cover.present() ? config.mutual_cover.get_present() : config.member_cover) << '%' << endl;
 
 	TaskTimer timer("Opening the database");
 	shared_ptr<SequenceFile> db;
@@ -50,10 +50,10 @@ void reassign() {
 	catch (FormatDetectionError& e) {
 		throw runtime_error("Error opening the database: " + string(e.what()));
 	}
-	config.db_size = db->letters();
+	config.db_size = db->letters().value();
 	timer.finish();
-	message_stream << "#Database sequences: " << db->sequence_count() << ", #Letters: " << db->letters() << endl;
-	unique_ptr<Util::Tsv::File> out(open_out_tsv());
+	*message_stream << "#Database sequences: " << db->sequence_count().value() << ", #Letters: " << db->letters().value() << endl;
+	//unique_ptr<Util::Tsv::File> out(open_out_tsv());
 
 	timer.go("Reading the input file");
 	vector<OId> clustering = read<OId>(config.clustering, *db);
@@ -63,12 +63,12 @@ void reassign() {
 	tie(centroids, members) = split(clustering);
 
 	timer.go("Creating member database");
-	shared_ptr<FastaFile> member_db(db->sub_db(members.cbegin(), members.cend()));
-	member_db->set_seqinfo_ptr(0);
+	shared_ptr<FastaFile> member_db; // (db->sub_db(members.cbegin(), members.cend()));
+	//member_db->set_seqinfo_ptr(0);
 
 	timer.go("Creating centroid database");
-	shared_ptr<FastaFile> centroid_db(db->sub_db(centroids.cbegin(), centroids.cend()));
-	centroid_db->set_seqinfo_ptr(0);
+	shared_ptr<FastaFile> centroid_db; // (db->sub_db(centroids.cbegin(), centroids.cend()));
+	//centroid_db->set_seqinfo_ptr(0);
 	timer.finish();
 
 	statistics.reset();
@@ -85,18 +85,18 @@ void reassign() {
 	config.sensitivity = from_string<Sensitivity>(cluster_steps(config.approx_min_id, false).back());
 	shared_ptr<Mapback> mapback = make_shared<Mapback>(members.size());
 	std::unique_ptr<std::vector<BitVector>> target_seed_hits;
-	Search::run(target_seed_hits, centroid_db, member_db, mapback);
+	//Search::run(target_seed_hits, centroid_db, member_db, mapback);
 
 	timer.go("Updating clustering");
 	const int64_t n = update_clustering(clustering.begin(), mapback->centroid_id.cbegin(), members.cbegin(), members.cend(), centroids.cbegin());
 	timer.finish();
 	
-	message_stream << "Reassigned members: " << n << '/' << members.size() << endl;
+	*message_stream << "Reassigned members: " << n << '/' << members.size() << endl;
 
 	timer.go("Generating output");
 	if (flag_any(db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))
 		db->init_random_access(0, 0, false);
-	output_mem(*out, *db, clustering);
+	//output_mem(*out, *db, clustering);
 
 	timer.go("Closing the database");
 	db.reset();

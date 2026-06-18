@@ -75,7 +75,7 @@ struct VolumedFile : public std::vector<Volume> {
 	VolumedFile(const std::string& file_name, uint64_t letter_count = 0) :
 		list_file_(file_name),
 		records_(std::numeric_limits<OId>::max()),
-		max_oid_(0),
+		max_oid_(std::numeric_limits<OId>::max()),
 		letter_count_(letter_count)
 	{
 		std::ifstream volume_file(file_name);
@@ -103,7 +103,7 @@ struct VolumedFile : public std::vector<Volume> {
 				records_ += v.record_count;
 			}
 			if (v.oid_end > 0)
-				max_oid_ = std::max(max_oid_, v.oid_end - 1);
+				max_oid_ = max_oid_ != std::numeric_limits<OId>::max() ? std::max(max_oid_, v.oid_end - 1) : v.oid_end - 1;
 		}
 		std::sort(begin(), end());
 		if (empty())
@@ -115,7 +115,7 @@ struct VolumedFile : public std::vector<Volume> {
 		return records_;
 	}
 	OId max_oid() const {
-		if (max_oid_ == 0)
+		if (max_oid_ == std::numeric_limits<OId>::max())
 			throw std::runtime_error("max_oid not set");
 		return max_oid_;
 	}

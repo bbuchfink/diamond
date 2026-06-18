@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <queue>
-#include "../io/exceptions.h"
 
 template<typename T, typename It, typename F>
 void merge_sorted_files(const It begin, const It end, F& f) {
@@ -45,23 +44,18 @@ void merge_sorted_files(const It begin, const It end, F& f) {
 		ptrdiff_t idx;
 	};
 	std::priority_queue<Entry> q;
-	std::vector<InputFile*> d;
+	std::vector<File*> d;
+	T h;
 	for (It i = begin; i != end; ++i) {
 		d.emplace_back(*i);
-		try {
-			q.emplace(deserialize(d.back()), i - begin);
-		}
-		catch (EndOfStream&) {
-		}
+		if (deserialize(d.back(), h))
+			q.emplace(std::move(h), i - begin);
 	}
 	while (!q.empty()) {
 		f(q.top().value);
 		const ptrdiff_t idx = q.top().idx;
 		q.pop();
-		try {
-			q.emplace(deserialize(d[idx]), idx);
-		}
-		catch (EndOfStream&) {
-		}
+		if (deserialize(d[idx], h))
+			q.emplace(std::move(h), idx);
 	}
 }

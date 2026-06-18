@@ -103,12 +103,12 @@ void FrequentSeeds::build(unsigned sid, const SeedPartitionRange &range, DoubleA
 
 	Sd ref_sd(ref_sds), query_sd(query_sds);
 	const unsigned ref_max_n = (unsigned)(ref_sd.mean() + cfg.freq_sd*ref_sd.sd()), query_max_n = (unsigned)(query_sd.mean() + cfg.freq_sd*query_sd.sd());
-	log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
-	log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
-	log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
+	*log_stream << "Seed frequency mean (reference) = " << ref_sd.mean() << ", SD = " << ref_sd.sd() << endl;
+	*log_stream << "Seed frequency mean (query) = " << query_sd.mean() << ", SD = " << query_sd.sd() << endl;
+	*log_stream << "Seed frequency cap query: " << query_max_n << ", reference: " << ref_max_n << endl;
 	vector<unsigned> counts(range.size());
 	Util::Parallel::scheduled_thread_pool_auto(config.threads_, range.size(), build_worker<SeedLoc>, query_seed_hits, ref_seed_hits, &range, sid, ref_max_n, query_max_n, &counts, &cfg);
-	log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
+	*log_stream << "Masked positions = " << std::accumulate(counts.begin(), counts.end(), 0) << std::endl;
 }
 
 template void FrequentSeeds::build(unsigned, const SeedPartitionRange&, DoubleArray<PackedLoc>*, DoubleArray<PackedLoc>*, Search::Config&);

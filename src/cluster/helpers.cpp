@@ -19,13 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <sstream>
 #include "cluster.h"
-#include "util/tsv/tsv.h"
+#include "util/io/file.h"
 #include "util/string/tokenizer.h"
 #include "basic/config.h"
 #include "util/log_stream.h"
 #include "util/system/system.h"
-
-const char* const HEADER_LINE = "centroid\tmember";
 
 using std::pair;
 using std::endl;
@@ -40,31 +38,33 @@ using std::unique_ptr;
 using std::back_inserter;
 using std::less;
 using std::stringstream;
-using namespace Util::Tsv;
 
 namespace Cluster {
 
+const char* const HEADER_LINE = "centroid\tmember";
+
 template<typename Int>
 pair<FlatArray<Int>, vector<Int>> read(const string& file_name, const SequenceFile& db, CentroidSorted) {
-	const int64_t lines = Util::Tsv::count_lines(file_name);
-	TextInputFile in(file_name);
+	const int64_t lines = File::count_lines(file_name);
+	File in(file_name, "rb", File::Flags::DETECT_COMPRESSION);
 	string centroid, member;
 	vector<pair<Int, Int>> pairs;
 	pairs.reserve(lines);
 	int64_t mappings = 0;
+	const char* l;
 	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE) {
-		in.getline();
-		if (in.line != HEADER_LINE)
+		l = in.getline();
+		if (strcmp(l, HEADER_LINE) != 0)
 			throw runtime_error("Clusters file is missing header line.");
 	}
-	while (in.getline(), !in.eof() || !in.line.empty()) {
-		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> centroid >> member;
+	while (l = in.getline(), !in.eof() || l[0] != '\0') {
+		Util::String::Tokenizer<Util::String::CharDelimiter>(l, Util::String::CharDelimiter('\t')) >> centroid >> member;
 		const Int centroid_oid = (Int)db.accession_to_oid(centroid).front();
 		const Int member_oid = (Int)db.accession_to_oid(member).front();
 		pairs.emplace_back(centroid_oid, member_oid);
 		++mappings;
 		if (mappings % 1000000 == 0)
-			log_stream << "#Entries: " << mappings << endl;
+			*log_stream << "#Entries: " << mappings << endl;
 	}
 	in.close();
 	return make_flat_array(pairs.begin(), pairs.end(), config.threads_);
@@ -75,27 +75,28 @@ template pair<FlatArray<uint64_t>, vector<uint64_t>> read(const string&, const S
 
 template<typename Int>
 vector<Int> read(const string& file_name, const SequenceFile& db) {
-	const int64_t lines = Util::Tsv::count_lines(file_name);
-	TextInputFile in(file_name);
+	const int64_t lines = File::count_lines(file_name);
+	File in(file_name, "rb", File::Flags::DETECT_COMPRESSION);
 	string centroid, member;
-	vector<Int> v(db.sequence_count());
+	vector<Int> v(db.sequence_count().value());
 	uint64_t mappings = 0;
+	const char* l;
 	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE) {
-		in.getline();
-		if (in.line != HEADER_LINE)
+		l = in.getline();
+		if (strcmp(l, HEADER_LINE) != 0)
 			throw runtime_error("Clustering input file is missing header line.");
 	}
-	while (in.getline(), !in.eof() || !in.line.empty()) {
-		Util::String::Tokenizer<Util::String::CharDelimiter>(in.line, Util::String::CharDelimiter('\t')) >> centroid >> member;
+	while (l = in.getline(), !in.eof() || l[0] != '\0') {
+		Util::String::Tokenizer<Util::String::CharDelimiter>(l, Util::String::CharDelimiter('\t')) >> centroid >> member;
 		const auto centroid_oid = db.accession_to_oid(centroid);
 		const auto member_oid = db.accession_to_oid(member);
 		v[member_oid.front()] = (Int)centroid_oid.front();
 		++mappings;
 		if (mappings % 1000000 == 0)
-			log_stream << "#Entries: " << mappings << endl;
+			*log_stream << "#Entries: " << mappings << endl;
 	}
 	in.close();
-	if (mappings != db.sequence_count())
+	if (mappings != db.sequence_count().value())
 		throw runtime_error("Invalid/incomplete clustering.");
 	return v;
 }
@@ -125,64 +126,6 @@ pair<FlatArray<Int>, vector<Int>> cluster_sorted(const vector<Int>& mapping) {
 
 template pair<FlatArray<uint32_t>, vector<uint32_t>> cluster_sorted<uint32_t>(const vector<uint32_t>&);
 template pair<FlatArray<uint64_t>, vector<uint64_t>> cluster_sorted<uint64_t>(const vector<uint64_t>&);
-
-void output(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
-	unique_ptr<File> sorted1(oid_to_centroid_oid.sort(1, config.threads_));
-	unique_ptr<File> joined1(join(*sorted1, db.seqid_file(), 1, 0, { {0,0},{1,1} }));
-	sorted1.reset();
-	unique_ptr<File> sorted2(joined1->sort(0, config.threads_));
-	join(*sorted2, db.seqid_file(), 0, 0, { {1,1}, {0,1} }, out);
-}
-
-template<typename Int>
-void output_mem(File& out, SequenceFile& db, const FlatArray<Int>& clusters, const vector<Int>& centroids) {
-	if (config.oid_output) {
-		for (Int i = 0; i < (Int)centroids.size(); ++i) {
-			const string centroid = std::to_string(centroids[i]);
-			for (auto j = clusters.cbegin(i); j != clusters.cend(i); ++j)
-				out.write_record(centroid, std::to_string(*j));
-		}
-	}
-	else {
-		const Util::Tsv::Table acc_mapping = db.seqid_file().read(config.threads_);
-		for (Int i = 0; i < (Int)centroids.size(); ++i) {
-			const string centroid = acc_mapping[centroids[i]].template get<string>(0);
-			for (auto j = clusters.cbegin(i); j != clusters.cend(i); ++j)
-				out.write_record(centroid, acc_mapping[*j].template get<string>(0));
-		}
-	}
-}
-
-template void output_mem<uint32_t>(File&, SequenceFile&, const FlatArray<uint32_t>&, const vector<uint32_t>&);
-template void output_mem<uint64_t>(File&, SequenceFile&, const FlatArray<uint64_t>&, const vector<uint64_t>&);
-
-template<typename Int>
-void output_mem(File& out, SequenceFile& db, const vector<Int>& mapping) {
-	vector<Int> centroids;
-	FlatArray<Int> clusters;
-	tie(clusters, centroids) = cluster_sorted(mapping);
-	output_mem<Int>(out, db, clusters, centroids);
-}
-
-template void output_mem<uint32_t>(File&, SequenceFile&, const vector<uint32_t>&);
-template void output_mem<uint64_t>(File&, SequenceFile&, const vector<uint64_t>&);
-
-template<typename Int>
-void output_mem(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
-	vector<pair<Int, Int>> centroid_oid;
-	oid_to_centroid_oid.template read<Int, Int>(back_inserter(centroid_oid));
-	vector<Int> centroids;
-	FlatArray<Int> clusters;
-	tie(clusters, centroids) = make_flat_array(centroid_oid.begin(), centroid_oid.end(), config.threads_);
-	output_mem<Int>(out, db, clusters, centroids);
-}
-
-void output_mem(File& out, SequenceFile& db, File& oid_to_centroid_oid) {
-	if (db.sequence_count() > (int64_t)INT32_MAX)
-		output_mem<uint64_t>(out, db, oid_to_centroid_oid);
-	else
-		output_mem<uint32_t>(out, db, oid_to_centroid_oid);
-}
 
 template<typename Int>
 pair<vector<Int>, vector<Int>> split(const vector<Int>& mapping) {
@@ -232,13 +175,6 @@ void init_thresholds() {
 	}
 }
 
-File* open_out_tsv() {
-	File* file = new File(Schema{ Type::STRING, Type::STRING }, config.output_file, Flags::WRITE);
-	if (TabularFormat::header_format(::Config::cluster) == Header::SIMPLE)
-		file->write_record("centroid", "member");
-	return file;
-}
-
 vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>& edges) {
 	static constexpr BlockId NIL = std::numeric_limits<BlockId>::max();
 	vector<BlockId> v(edges.size(), NIL);
@@ -251,14 +187,6 @@ vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>
 				v[it->node2] = (BlockId)i;
 	}
 	return v;
-}
-
-void output_edges(const string& file, SequenceFile& db, const vector<Util::Algo::Edge<SuperBlockId>>& edges) {
-	File out(Schema{ Type::STRING, Type::STRING }, file, Flags::WRITE);
-	const Util::Tsv::Table acc_mapping = db.seqid_file().read(config.threads_);
-	for (const auto& e : edges) {
-		out.write_record(acc_mapping[e.node1].get<string>(0), acc_mapping[e.node2].get<string>(0));
-	}
 }
 
 double round_value(const vector<string>& par, const string& name, int round, int round_count) {

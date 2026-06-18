@@ -1,32 +1,21 @@
 /****
-Copyright © 2013-2025 Benjamin J. Buchfink <buchfink@gmail.com>
+DIAMOND protein sequence aligner
+Copyright (C) 2012-2026 Benjamin J. Buchfink
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-1. Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 #include "../sequence_file.h"
@@ -45,7 +34,6 @@ struct BlockWrapper : public SequenceFile
 	virtual void set_seqinfo_ptr(OId i) override;
 	virtual OId tell_seq() const override;
 	virtual bool eof() const override;
-	virtual bool files_synced() override;
 	virtual void init_seq_access() override;
 	virtual void init_seqinfo_access() override;
 	virtual void seek_chunk(const Chunk& chunk) override;
@@ -57,9 +45,9 @@ struct BlockWrapper : public SequenceFile
 	virtual void read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) override;
 	virtual void skip_id_data() override;
 	virtual std::string seqid(OId oid, bool all, bool full_titles) override;
-	virtual uint64_t sequence_count() const override;
+	virtual optional<uint64_t> sequence_count() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;
-	virtual uint64_t letters() const override;
+	virtual optional<uint64_t> letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual int build_version() override;

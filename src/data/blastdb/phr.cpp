@@ -226,7 +226,7 @@ vector<BlastDefLine> BlastVolume::deflines(uint32_t oid, bool all, bool full_tit
     if (oid != hdr_ptr_)
         phr_mapping_.seek(header_offset, SEEK_SET);
     hdr_ptr_ = oid + 1;
-    return decode_deflines(phr_mapping_.read(header_length), header_length, all, full_titles, taxids);
+    return decode_deflines(phr_mapping_.read_bytes(header_length), header_length, all, full_titles, taxids);
 }
 
 vector<char> BlastVolume::raw_deflines(uint32_t count) {

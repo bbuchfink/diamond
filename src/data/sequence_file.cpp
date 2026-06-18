@@ -26,14 +26,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "blastdb/blastdb.h"
 #include "sequence_file.h"
 #include "masking/masking.h"
-#include "dmnd/dmnd.h"
+#include "legacy/dmnd/dmnd.h"
 #include "util/system/system.h"
 #include "util/sequence/sequence.h"
 #include "util/parallel/multiprocessing.h"
 #include "basic/config.h"
 #include "fasta/fasta_file.h"
 #include "util/string/tokenizer.h"
-#include "util/tsv/tsv.h"
 #include "util/log_stream.h"
 #include "util/data_structures/queue.h"
 
@@ -80,10 +79,6 @@ static size_t single_oid(const SequenceFile* f, const string& acc) {
 	if (oid.size() > 1)
 		throw std::runtime_error("Multiple oids for target accession: " + acc);
 	return oid.front();
-}
-
-bool SequenceFile::files_synced() {
-	throw OperationNotSupported();
 }
 
 void SequenceFile::init_write() {
@@ -134,7 +129,7 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 			RawChunk* c;
 			if (!queue.wait_and_dequeue(c))
 				break;
-			DecodedPackage* pkg = c->decode(flags(), filter, accs);
+			DecodedPackage* pkg = c->decode(flags(), filter, accs, value_traits_.seq_type);
 			output_queue.enqueue(pkg);
 			delete c;
 		}
@@ -152,17 +147,10 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 				pkg = backlog.begin()->second;
 				const size_t n_seqs = pkg->seq_count;
 				seqs += n_seqs;
-				if (load_seqs) {
-					block->seqs_.append(pkg->seqs);
-				}
-				if (load_titles) {
-					block->ids_.append(pkg->ids);
-				}
+				block->append(pkg->block, false, load_seqs, load_titles, have_oids);
 				if (load_taxids) {
 					add_taxid_mapping(pkg->taxids);
 				}
-				if (have_oids)
-					block->block2oid_.insert(block->block2oid_.end(), pkg->oids.begin(), pkg->oids.end());
 				delete pkg;
 				backlog.erase(backlog.begin());
 				++next;
@@ -198,10 +186,14 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 		static_cast<FastaFile*>(this)->advance_seq_count((OId)seqs);
 	}
 	if (seqs > 0) {
-		if (load_seqs)
+		if (load_seqs) {
+			block->source_seqs().finish_reserve();
 			block->seqs().finish_reserve();
+		}
 		if (load_titles)
 			block->ids().finish_reserve();
+		if (value_traits_.seq_type == SequenceType::nucleotide)
+			block->source_seqs_.finish_reserve();
 	}
 	block->raw_bytes_ = bytes;
 	return { block, seqs };
@@ -291,7 +283,7 @@ pair<Block*, uint64_t> SequenceFile::load_twopass(const uint64_t max_letters, co
 	return { block, seqs_processed };
 }
 
-static int frame_mask() {
+int frame_mask() {
 	if (config.query_strands == "both")
 		return (1 << 6) - 1;
 	else if (config.query_strands == "plus")
@@ -339,8 +331,9 @@ pair<Block*, uint64_t> SequenceFile::load_onepass(const uint64_t max_letters, OI
 	} while (goon() || seq_count % modulo != 0);
 	if (seq_count > 0 && looks_like_dna == seq_count)
 		throw runtime_error(DNA_ERR);
-	if (file_count() == 2 && !files_synced())
-		throw runtime_error("Unequal number of sequences in paired read files.");
+	// TODO: Implement this check
+	//if (file_count() == 2 && !files_synced())
+		//throw runtime_error("Unequal number of sequences in paired read files.");
 	block->seqs_.finish_reserve();
 	if (value_traits_.seq_type == SequenceType::nucleotide)
 		block->source_seqs_.finish_reserve();
@@ -366,7 +359,7 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, OId max_seqs, const Bi
 	if (type_ == Type::BLAST) {
 		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
 	}
-	else if (type_ == Type::FASTA && filter == nullptr && static_cast<FastaFile*>(this)->is_fasta() && max_seqs == 0 && chunk.n_seqs == 0 && value_traits_.seq_type == SequenceType::amino_acid && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION) && config.command != Config::regression_test) {
+	else if (type_ == Type::FASTA && filter == nullptr && file_count() == 1 && static_cast<FastaFile*>(this)->is_fasta() && max_seqs == 0 && chunk.n_seqs == 0 && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION) && config.command != Config::regression_test) {
 		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
 	}
 	else if (flag_any(format_flags_, FormatFlags::LENGTH_LOOKUP))
@@ -390,9 +383,10 @@ void SequenceFile::get_seq()
 {
 	std::map<string, string> seq_titles;
 	if (!config.query_file.empty()) {
-		TextInputFile list(config.single_query_file());
-		while (list.getline(), !list.eof()) {
-			const vector<string> t(Util::String::tokenize(list.line.c_str(), "\t"));
+		File list(config.single_query_file(), "rb", File::Flags::DETECT_COMPRESSION);
+		const char* l;
+		while (l = list.getline(), !list.eof() || l[0] != '\0') {
+			const vector<string> t(Util::String::tokenize(l, "\t"));
 			if (t.size() != 2)
 				throw std::runtime_error("Query file format error.");
 			seq_titles[t[0]] = t[1];
@@ -409,22 +403,23 @@ void SequenceFile::get_seq()
 		for (vector<string>::const_iterator i = config.seq_no.begin(); i != config.seq_no.end(); ++i)
 			seqs.insert(atoi(i->c_str()) - 1);
 	if (!config.oid_list.empty()) {
-		TextInputFile f(config.oid_list);
+		File f(config.oid_list, "rb", File::Flags::DETECT_COMPRESSION);
 		OId oid;
-		while (f.getline(), !f.line.empty() || !f.eof()) {
-			Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> oid;
+		const char* l;
+		while (l = f.getline(), !f.eof() || l[0] != '\0') {
+			Util::String::Tokenizer<Util::String::CharDelimiter>(l, Util::String::CharDelimiter('\t')) >> oid;
 			seqs.insert(oid);
 		}
 		f.close();
 	}
 	if (!seqs.empty())
-		message_stream << "#Selected sequences: " << seqs.size() << endl;
+		*message_stream << "#Selected sequences: " << seqs.size() << endl;
 
 	const size_t max_letters = config.chunk_size == 0.0 ? std::numeric_limits<size_t>::max() : (size_t)(config.chunk_size * 1e9);
 	size_t letters = 0;
 	TextBuffer buf;
 	OutputFile out(config.output_file);
-	for (uint64_t n = 0; n < sequence_count(); ++n) {
+	for (uint64_t n = 0; n < sequence_count().value(); ++n) {
 		read_seq(seq, id);
 		std::map<string, string>::const_iterator mapped_title = seq_titles.find(Util::Seq::seqid(id.c_str()));
 		if (all || seqs.find(n) != seqs.end() || mapped_title != seq_titles.end()) {
@@ -454,7 +449,7 @@ void SequenceFile::get_seq()
 	out.close();
 }
 
-Util::Tsv::File* SequenceFile::make_seqid_list() {
+/*Util::Tsv::File* SequenceFile::make_seqid_list() {
 	Util::Tsv::File* f = new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::STRING }, "", Util::Tsv::Flags::TEMP);
 	vector<Letter> seq;
 	string id;
@@ -464,7 +459,7 @@ Util::Tsv::File* SequenceFile::make_seqid_list() {
 		f->write_record(Util::Seq::seqid(id.c_str()));
 	}
 	return f;
-}
+}*/
 
 SequenceFile::~SequenceFile()
 {
@@ -500,7 +495,7 @@ SequenceFile* SequenceFile::auto_create(const vector<string>& path, Flags flags,
 	throw FormatDetectionError("Sequence file does not have a supported format.");
 }
 
-void SequenceFile::load_dict_block(InputFile* f, const size_t ref_block)
+void SequenceFile::load_dict_block(File* f, const size_t ref_block)
 {
 	while (load_dict_entry(*f, ref_block));
 }
@@ -516,13 +511,13 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 			dict_self_aln_score_ = vector<vector<double>>(ref_blocks);
 		reserve_dict(ref_blocks);
 		for (size_t i = 0; i < ref_blocks; ++i) {
-			InputFile f(dict_file_name(query_block, i), InputFile::NO_AUTODETECT);
+			File f(dict_file_name(query_block, i), "rb");
 			load_dict_block(&f, i);
-			f.close_and_delete();
+			f.close();
 		}
 	}
 	else {
-		TempFile* t = dynamic_cast<TempFile*>(dict_file_.get());
+		File* t = dynamic_cast<File*>(dict_file_.get());
 		if (!t)
 			throw std::runtime_error("Failed to load dictionary file.");
 		dict_oid_ = { {} };
@@ -532,11 +527,11 @@ void SequenceFile::load_dictionary(const size_t query_block, const size_t ref_bl
 			dict_self_aln_score_.front().reserve(next_dict_id_);
 		}
 		reserve_dict(0);
-		InputFile f(*t);
-		load_dict_block(&f, 0);
+		t->rewind();
+		load_dict_block(t, 0);
 		if ((DictId)dict_oid_.front().size() != next_dict_id_)
 			throw std::runtime_error("Dictionary corrupted.");
-		f.close_and_delete();
+		t->close();
 		dict_file_.reset();
 	}
 }
@@ -556,9 +551,11 @@ void SequenceFile::free_dictionary()
 	block_to_dict_id_.clear();
 }
 
-size_t SequenceFile::total_blocks() const {
+optional<size_t> SequenceFile::total_blocks() const {
+	if (!letters())
+		return nullopt;
 	const size_t c = (size_t)(config.chunk_size * 1e9);
-	return (this->letters() + c - 1) / c;
+	return (this->letters().value() + c - 1) / c;
 }
 
 SequenceSet SequenceFile::seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end)
@@ -600,7 +597,7 @@ void SequenceFile::init_dict(const size_t query_block, const size_t target_block
 {
 	if (dict_file_)
 		dict_file_->close();
-	dict_file_.reset(config.multiprocessing ? new OutputFile(dict_file_name(query_block, target_block)) : new TempFile());
+	dict_file_.reset(config.multiprocessing ? new File(dict_file_name(query_block, target_block), "wb") : new File(Temporary()));
 	next_dict_id_ = 0;
 	dict_alloc_size_ = 0;
 	block_to_dict_id_.clear();
@@ -669,18 +666,21 @@ SequenceFile::SequenceFile(Type type, Flags flags, FormatFlags format_flags, con
 	type_(type)
 {
 	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
-		//seqid_file_.reset(new File(Schema{ ::Type::INT64, ::Type::STRING }, "", ::Flags::TEMP)); // | ::Flags::RECORD_ID_COLUMN));
-		seqid_file_.reset(new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::STRING }, "", Util::Tsv::Flags::TEMP));
+		throw runtime_error("Not implemented");
+}
+
+uint64_t SequenceFile::disk_size() const {
+	return disk_size_;
 }
 
 void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score)
 {
-	OutputFile& f = *dict_file_;
+	File& f = *dict_file_;
 	f.write((uint32_t)oid);
 	if (flag_any(format_flags_, FormatFlags::DICT_LENGTHS))
 		f.write((uint32_t)len);
 	if (flag_any(format_flags_, FormatFlags::DICT_SEQIDS)) {
-		f << id;
+		f.write_c_str(id);
 		dict_alloc_size_ += strlen(id);
 	}
 	if (flag_any(flags_, Flags::TARGET_SEQS))
@@ -689,20 +689,20 @@ void SequenceFile::write_dict_entry(size_t block, size_t oid, size_t len, const 
 		f.write(self_aln_score);
 }
 
-bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
+bool SequenceFile::load_dict_entry(File& f, size_t ref_block)
 {
 	const size_t b = dict_block(ref_block);
 	uint32_t oid, len;
 	string title;
-	if(f.read(&oid, 1) == 0)
+	if(f.read_max(&oid, sizeof(oid)) == 0)
 		return false;
 	dict_oid_[b].push_back(oid);
 	if (flag_any(format_flags_, FormatFlags::DICT_LENGTHS)) {
-		f.read(&len);
+		f.read(len);
 		dict_len_[b].push_back(len);
 	}
 	if (flag_any(format_flags_, FormatFlags::DICT_SEQIDS)) {
-		f >> title;
+		f.read_c_str(title);
 		dict_title_[b].push_back(title.begin(), title.end());
 	}
 	if (flag_any(flags_, Flags::TARGET_SEQS)) {
@@ -712,7 +712,7 @@ bool SequenceFile::load_dict_entry(InputFile& f, size_t ref_block)
 	}
 	if (flag_any(flags_, Flags::SELF_ALN_SCORES)) {
 		double self_aln_score;
-		f.read(&self_aln_score);
+		f.read(self_aln_score);
 		dict_self_aln_score_[b].push_back(self_aln_score);
 	}
 	return true;
@@ -771,7 +771,7 @@ std::vector<Letter> SequenceFile::dict_seq(DictId dict_id, const size_t ref_bloc
 
 DbFilter* SequenceFile::filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude)
 {
-	DbFilter *f = new DbFilter(sequence_count());
+	DbFilter *f = new DbFilter(sequence_count().value());
 	set<TaxId> taxon_filter_list;
 	string token;
 	while (std::getline(filter, token, delimiter)) {
@@ -781,7 +781,7 @@ DbFilter* SequenceFile::filter_by_taxonomy(std::istream& filter, char delimiter,
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with empty list.");
 	if (taxon_filter_list.find(1) != taxon_filter_list.end() || taxon_filter_list.find(0) != taxon_filter_list.end())
 		throw runtime_error("Option --taxonlist/--taxon-exclude used with invalid argument (0 or 1).");
-	for (OId i = 0; i < sequence_count(); ++i) {
+	for (OId i = 0; i < sequence_count().value(); ++i) {
 		const bool c = contained(taxids(i), taxon_filter_list, exclude, exclude);
 		if (c ^ exclude) {
 			f->oid_filter.set(i);
@@ -792,11 +792,11 @@ DbFilter* SequenceFile::filter_by_taxonomy(std::istream& filter, char delimiter,
 }
 
 void SequenceFile::build_acc_to_oid() {
-	acc2oid_.reserve(sequence_count());
+	acc2oid_.reserve(sequence_count().value());
 	set_seqinfo_ptr(0);
 	vector<Letter> seq;
 	string id;
-	for (OId i = 0; i < sequence_count(); ++i) {
+	for (OId i = 0; i < sequence_count().value(); ++i) {
 		read_seq(seq, id);
 		acc2oid_[Util::Seq::seqid(id.c_str())] = i;
 	}
@@ -824,14 +824,6 @@ std::string SequenceFile::seqid(OId oid, bool all, bool full_titles) {
 	//return acc_[oid];
 }
 
-void SequenceFile::write_accession_list(const std::vector<bool>& oids, std::string& file_name) {
-	ofstream f(file_name);
-	const Util::Tsv::Table acc = seqid_file().read(config.threads_);
-	for (OId i = 0; i < sequence_count(); ++i)
-		if (!oids[i])
-			f << acc[i].get<string>(0) << endl;
-}
-
 template<typename It>
 std::vector<int64_t> SequenceFile::seq_offsets(It begin, It end) {
 	assert(std::is_sorted(begin, end));
@@ -842,7 +834,7 @@ std::vector<int64_t> SequenceFile::seq_offsets(It begin, It end) {
 	set_seqinfo_ptr(0);
 	init_seqinfo_access();
 	const OId end_oid = *(end - 1) + 1;
-	if (end_oid > sequence_count())
+	if (end_oid > sequence_count().value())
 		throw runtime_error("OId out of bounds.");
 	It it = begin;
 	for (OId i = 0; i < end_oid; ++i) {
@@ -858,53 +850,13 @@ std::vector<int64_t> SequenceFile::seq_offsets(It begin, It end) {
 	return r;
 }
 
-template<typename It>
-void SequenceFile::sub_db(It begin, It end, FastaFile* out) {
-	vector<Letter> seq;
-	string id;
-	out->init_write();
-	if (end <= begin)
-		return;
-	if (flag_any(format_flags_, FormatFlags::LENGTH_LOOKUP)) {
-		const vector<int64_t> pos = seq_offsets(begin, end);
-		for (int64_t p : pos) {
-			if (p >= 0)
-				seek_offset(p);
-			read_seq(seq, id);
-			out->write_seq(Sequence(seq), id);
-		}
-	}
-	else {
-		assert(std::is_sorted(begin, end));
-		set_seqinfo_ptr(0);
-		for (OId i = 0; i <= *(end - 1); ++i) {
-			read_seq(seq, id);
-			if (*begin == i) {
-				out->write_seq(Sequence(seq), id);
-				++begin;
-			}
-		}
-	}
-}
-
-template void SequenceFile::sub_db<vector<SuperBlockId>::const_iterator>(vector<SuperBlockId>::const_iterator, vector<SuperBlockId>::const_iterator, FastaFile*);
-
-template<typename It>
-FastaFile* SequenceFile::sub_db(It begin, It end, const string& file_name) {
-	FastaFile* f = new FastaFile(file_name, true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP);
-	sub_db(begin, end, f);
-	return f;
-}
-
-template FastaFile* SequenceFile::sub_db<vector<OId>::const_iterator>(vector<OId>::const_iterator, vector<OId>::const_iterator, const string&);
-template FastaFile* SequenceFile::sub_db<vector<SuperBlockId>::const_iterator>(vector<SuperBlockId>::const_iterator, vector<SuperBlockId>::const_iterator, const string&);
-
 pair<int64_t, int64_t> SequenceFile::read_fai_file(const string& file_name, int64_t seqs, int64_t letters) {
 	string acc;
 	Loc len;
-	TextInputFile fai(file_name);
-	while (fai.getline(), !fai.line.empty() || !fai.eof()) {
-		Util::String::Tokenizer<Util::String::CharDelimiter>(fai.line, Util::String::CharDelimiter('\t')) >> acc >> len;
+	File fai(file_name, "rb", File::Flags::DETECT_COMPRESSION);
+	const char* l;
+	while (l = fai.getline(), !fai.eof() || l[0] != '\0') {
+		Util::String::Tokenizer<Util::String::CharDelimiter>(l, Util::String::CharDelimiter('\t')) >> acc >> len;
 		if (flag_any(flags_, Flags::ACC_TO_OID_MAPPING))
 			acc2oid_[acc] = seqs;
 		//if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING))
@@ -931,10 +883,10 @@ void db_info() {
 	cout << setw(w) << "Database format version  " << db->db_version() << endl;
 	if(db->type() == SequenceFile::Type::DMND)
 		cout << setw(w) << "Diamond build  " << db->program_build_version() << endl;
-	cout << setw(w) << "Sequences  " << db->sequence_count() << endl;
+	cout << setw(w) << "Sequences  " << db->sequence_count().value() << endl;
 	/*if (db->type() == SequenceFile::Type::BLAST && db->sequence_count() != db->sparse_sequence_count())
 		cout << setw(w) << "Sequences (filtered) " << db->sparse_sequence_count() << endl;*/
-	cout << setw(w) << "Letters  " << db->letters() << endl;
+	cout << setw(w) << "Letters  " << db->letters().value() << endl;
 	db->close();
 	delete db;
 }
@@ -948,71 +900,6 @@ void SequenceFile::add_seqid_mapping(const std::string& id, OId oid) {
 		if (!r.second)
 			throw runtime_error("Accession is not unique in database file: " + acc);
 	}
-	if (flag_any(flags_, Flags::OID_TO_ACC_MAPPING)) {
-		seqid_file_->write_record(acc);
-	}
-}
-
-vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> SequenceFile::length_sort(int64_t block_size, function<int64_t(Loc)>& seq_size) {
-	static const int64_t MIN_BLOCK_SIZE = 1;
-	vector<tuple<FastaFile*, vector<OId>, Util::Tsv::File*>> files;
-	init_seq_access();
-	vector<Letter> seq;
-	string id;
-	vector<pair<Loc, OId>> lengths;
-	lengths.reserve(sequence_count());
-	for (OId i = 0; i < sequence_count(); ++i) {
-		read_seq(seq, id);
-		lengths.emplace_back((Loc)seq.size(), i);
-	}
-	ips4o::parallel::sort(lengths.begin(), lengths.end(), greater<pair<Loc, OId>>(), config.threads_);
-
-	int64_t size = 0, seqs = 0, letters = 0;
-	int block = 0;
-	for (auto i = lengths.begin(); i != lengths.end(); ++i) {
-		size += seq_size(i->first);
-		letters += i->first;
-		++seqs;
-		i->first = block;
-		if ((size >= block_size && letters >= MIN_BLOCK_SIZE) || seqs >= numeric_limits<SuperBlockId>::max()) {
-			log_stream << "Super block " << block << " seqs=" << seqs << " letters=" << letters << endl;
-			++block;
-			size = 0;
-			seqs = 0;
-			letters = 0;
-		}
-	}
-	if (size > 0) {
-		log_stream << "Super block " << block << " seqs=" << seqs << " letters=" << letters << endl;
-		++block;
-	}
-	ips4o::parallel::sort(lengths.begin(), lengths.end(), [](const pair<Loc, OId>& p1, const pair<Loc, OId>& p2) { return p1.second < p2.second; }, config.threads_);
-
-	files.reserve(block);
-	for (int i = 0; i < block; ++i) {
-		//files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess()), vector<OId>(),
-		files.emplace_back(new FastaFile("", true, FastaFile::WriteAccess(), Flags::NEED_LENGTH_LOOKUP | Flags::TITLES | Flags::SEQS), vector<OId>(),
-			new Util::Tsv::File(Util::Tsv::Schema{ Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::TEMP));
-		get<0>(files.back())->init_write();
-	}
-	init_seq_access();
-	//Util::Tsv::File map_file(Util::Tsv::Schema{ Util::Tsv::Type::INT64 }, "", Util::Tsv::Flags::WRITE_ACCESS);
-	const string placeholer("X");
-	for (OId i = 0; i < sequence_count(); ++i) {
-		read_seq(seq, id);
-		auto& f = files[lengths[i].first];
-		get<0>(f)->write_seq(seq, placeholer);
-		get<2>(f)->write_record(i);
-		
-	}
-	for (auto f : files)
-		get<0>(f)->set_seqinfo_ptr(0);
-	return files;
-}
-
-Util::Tsv::File& SequenceFile::seqid_file() {
-	seqid_file_->rewind();
-	return *seqid_file_;
 }
 
 size_t SequenceFile::letters_filtered(const DbFilter& v) {
@@ -1153,10 +1040,10 @@ void SequenceFile::init_cache() {
 }
 
 void SequenceFile::print_info() const {
-	message_stream << "Database: " << config.database << ' ';
-	message_stream << "(type: " << to_string(type()) << ", ";
-	message_stream << "sequences: " << sequence_count() << ", ";
-	message_stream << "letters: " << letters() << ')' << endl;
+	*message_stream << "Database: " << config.database << ' ';
+	*message_stream << "(type: " << to_string(type()) << ", ";
+	*message_stream << "sequences: " << sequence_count().value() << ", ";
+	*message_stream << "letters: " << letters().value() << ')' << endl;
 }
 
 void SequenceFile::init_taxon_output_fields() {

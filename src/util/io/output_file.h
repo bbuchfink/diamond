@@ -23,10 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 enum class Compressor { NONE, ZLIB, ZSTD };
 
-const size_t MEGABYTES = 1 << 20;
-const size_t GIGABYTES = 1 << 30;
-const size_t KILOBYTES = 1 << 10;
-
 struct TempFileData {
 	std::string name;
 	int fd;

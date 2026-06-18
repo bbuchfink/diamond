@@ -21,13 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <vector>
 #include "data/sequence_file.h"
-#include "util/io/consumer.h"
+#include "util/io/file.h"
 
 void get_seq();
 void random_seqs();
 
 namespace Search {
 
-void run(std::unique_ptr<std::vector<BitVector>>& target_seed_hits, const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<Consumer>& out = nullptr, const std::shared_ptr<DbFilter>& db_filter = nullptr);
+void run(std::unique_ptr<std::vector<BitVector>>& target_seed_hits, const std::shared_ptr<SequenceFile>& db = nullptr, const std::shared_ptr<SequenceFile>& query = nullptr, const std::shared_ptr<File>& out = nullptr, const std::shared_ptr<DbFilter>& db_filter = nullptr);
 
 }

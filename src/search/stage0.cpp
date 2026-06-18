@@ -107,14 +107,16 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 	const SeedHistogram& ref_hst = cfg.target->hst(), query_hst = cfg.query->hst();
 
 	for (unsigned chunk = 0; chunk < p.parts; ++chunk) {
-		message_stream << "Processing query block " << query_block + 1;
+		*message_stream << "Processing query block " << query_block + 1;
 		if (cfg.iterated())
-			message_stream << ", query iteration " << query_iteration + 1;
-		message_stream << ", reference block " << (cfg.current_ref_block + 1) << "/" << cfg.ref_blocks
-			<< ", shape " << (sid + 1) << "/" << shapes.count();
+			*message_stream << ", query iteration " << query_iteration + 1;
+		*message_stream << ", reference block " << (cfg.current_ref_block + 1);
+		if (cfg.ref_blocks)
+			*message_stream << "/" << cfg.ref_blocks.value();
+		*message_stream	<< ", shape " << (sid + 1) << "/" << shapes.count();
 		if (cfg.index_chunks > 1)
-			message_stream << ", index chunk " << chunk + 1 << "/" << cfg.index_chunks;
-		message_stream << '.' << endl;
+			*message_stream << ", index chunk " << chunk + 1 << "/" << cfg.index_chunks;
+		*message_stream << '.' << endl;
 		const SeedPartitionRange range(p.begin(chunk), p.end(chunk));
 		current_range = range;
 
@@ -145,9 +147,9 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		timer.finish();
 		log_rss();
 
-		log_stream << "Indexed query seeds = " << Util::String::ratio_percentage(query_idx->size(), query_seqs.letters())
+		*log_stream << "Indexed query seeds = " << Util::String::ratio_percentage(query_idx->size(), query_seqs.letters())
 			<< ", reference seeds = " << Util::String::ratio_percentage(ref_idx->size(), ref_seqs.letters()) << endl;
-		log_stream << "Soft masked letters = " << Util::String::ratio_percentage(cfg.query->soft_masked_letters(), cfg.query->seqs().letters())
+		*log_stream << "Soft masked letters = " << Util::String::ratio_percentage(cfg.query->soft_masked_letters(), cfg.query->seqs().letters())
 			<< ", " << Util::String::ratio_percentage(cfg.target->soft_masked_letters(), cfg.target->seqs().letters()) << endl;
 		/*log_stream << "Low complexity seeds = " << Util::String::ratio_percentage(query_idx->stats().low_complexity_seeds, query_idx->stats().good_seed_positions)
 			<< ", " << Util::String::ratio_percentage(ref_idx->stats().low_complexity_seeds, ref_idx->stats().good_seed_positions) << endl;*/

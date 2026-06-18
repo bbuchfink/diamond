@@ -25,11 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/shape_config.h"
 #include "output/output_format.h"
 #include "data/frequent_seeds.h"
-#include "output/daa/daa_write.h"
+#include "legacy/daa/daa_write.h"
 #include "masking/masking.h"
 #include "data/block/block.h"
 #include "search/search.h"
-#include "util/io/consumer.h"
 #include "util/parallel/multiprocessing.h"
 #include "util/parallel/parallelizer.h"
 #include "util/system/system.h"
@@ -40,7 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config.h"
 #include "search/seed_array/seed_array.h"
 #include "data/fasta/fasta_file.h"
-#include "data/dmnd/dmnd.h"
+#include "legacy/dmnd/dmnd.h"
 #include "data/blastdb/blastdb.h"
 
 #ifdef WITH_DNA
@@ -76,7 +75,7 @@ static const string stack_join_redo = label_join + "_redo";
 static const string stack_join_done = label_join + "_done";
 
 static bool use_query_index(const size_t table_size) {
-	return table_size <= std::max(MAX_HASH_SET_SIZE, l3_cache_size());
+	return table_size <= std::max(MAX_HASH_SET_SIZE, 32 * MEGABYTES);
 }
 
 static string get_ref_part_file_name(const string & prefix, size_t query, string suffix="") {
@@ -102,8 +101,8 @@ static pair<char*, char*> alloc_buffers(Config& cfg) {
 
 static void run_ref_chunk(SequenceFile &db_file,
 	const unsigned query_iteration,
-	Consumer &master_out,
-	PtrVector<TempFile> &tmp_file,
+	File &master_out,
+	vector<File*> &tmp_file,
 	Config& cfg)
 {
 	TaskTimer timer;
@@ -124,7 +123,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 		timer.go("Masking reference");
 		const MaskingStat stats = mask_seqs(cfg.target->seqs(), Masking::get(), true, cfg.target_masking);
 		timer.finish();
-		stats.print(log_stream);
+		stats.print(*log_stream);
 	}
 
 	if (flag_any(cfg.output_format->flags, Output::Flags::SELF_ALN_SCORES)) {
@@ -175,7 +174,7 @@ static void run_ref_chunk(SequenceFile &db_file,
 		char* ref_buffer, * query_buffer;
 		tie(ref_buffer, query_buffer) = alloc_buffers(cfg);
 		timer.finish();
-		log_stream << "Query bins = " << cfg.query_bins << endl;
+		*log_stream << "Query bins = " << cfg.query_bins << endl;
 
 		::HashedSeedSet* target_seeds = nullptr;
 		if (config.target_indexed) {
@@ -215,17 +214,17 @@ static void run_ref_chunk(SequenceFile &db_file,
 		log_rss();
 	}
 
-    Consumer* out;
+    File* out;
 	const bool temp_output = (cfg.blocked_processing || cfg.iterated()) && !config.global_ranking_targets;
 	if (temp_output) {
 		timer.go("Opening temporary output file");
 		if (config.multiprocessing) {
 			const string file_name = get_ref_block_tmpfile_name(cfg.current_query_block, cfg.current_ref_block);
-			tmp_file.push_back(new TempFile(file_name));
+			tmp_file.push_back(new File(file_name, "wb"));
 		} else {
-			tmp_file.push_back(new TempFile());
+			tmp_file.push_back(new File(Temporary()));
 		}
-		out = &tmp_file.back();
+		out = tmp_file.back();
 	}
 	else
 		out = &master_out;
@@ -252,10 +251,10 @@ static void run_ref_chunk(SequenceFile &db_file,
 }
 
 static void run_query_iteration(const unsigned query_iteration,
-	Consumer& master_out,
+	File& master_out,
 	OutputFile* unaligned_file,
 	OutputFile* aligned_file,
-	PtrVector<TempFile>& tmp_file,
+	std::vector<File*>& tmp_file,
 	Config& options)
 {
 	TaskTimer timer;
@@ -268,7 +267,7 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (config.algo == ::Config::Algo::AUTO &&
 		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
 			|| query_seqs.letters() > MAX_INDEX_QUERY_SIZE
-			|| options.db_letters < MIN_QUERY_INDEXED_DB_SIZE
+			|| (options.db_letters ? options.db_letters.value() : db_file.disk_size()) < MIN_QUERY_INDEXED_DB_SIZE
 			|| config.target_indexed
 			|| config.swipe_all
 			|| options.minimizer_window
@@ -297,7 +296,7 @@ static void run_query_iteration(const unsigned query_iteration,
 	const Sensitivity sens = options.sensitivity[query_iteration].sensitivity;
 	::Config::set_option(options.index_chunks, config.lowmem_, 0u, config.algo == ::Config::Algo::DOUBLE_INDEXED ? sensitivity_traits.at(sens).index_chunks : 1u);
 	options.seedp_bits = Search::seedp_bits(shapes[0].weight_, config.threads_, options.index_chunks);
-	log_stream << "Seed partition bits = " << options.seedp_bits << endl;
+	*log_stream << "Seed partition bits = " << options.seedp_bits << endl;
 	options.lazy_masking = config.algo != ::Config::Algo::DOUBLE_INDEXED && options.target_masking != MaskingAlgo::NONE && config.frame_shift == 0;
 	if (config.command != ::Config::blastn && options.gapped_filter_evalue != 0.0) {
 		options.cutoff_gapped1 = { config.gapped_filter_evalue1 };
@@ -307,10 +306,10 @@ static void run_query_iteration(const unsigned query_iteration,
 	}
 
 	if (options.current_query_block == 0 && query_iteration == 0) {
-		message_stream << "Algorithm: " << to_string(config.algo) << endl;
+		*message_stream << "Algorithm: " << to_string(config.algo) << endl;
 		if (config.freq_masking && !config.lin_stage1_query)
-			verbose_stream << "Seed frequency SD: " << options.freq_sd << endl;
-		verbose_stream << "Shape configuration: " << ::shapes << endl;
+			*log_stream << "Seed frequency SD: " << options.freq_sd << endl;
+		*log_stream << "Shape configuration: " << ::shapes << endl;
 	}
 
 	if (config.global_ranking_targets) {
@@ -371,13 +370,13 @@ static void run_query_iteration(const unsigned query_iteration,
 				run_ref_chunk(db_file, query_iteration, master_out, tmp_file, options);
 			else {
 				const string file_name = get_ref_block_tmpfile_name(options.current_query_block, options.current_ref_block);
-				tmp_file.push_back(new TempFile(file_name));
-				tmp_file.back().write(IntermediateRecord::FINISHED);
+				tmp_file.push_back(new File(file_name, "wb"));
+				tmp_file.back()->write(IntermediateRecord::FINISHED);
 				db_file.init_dict(options.current_query_block, options.current_ref_block);
 				db_file.close_dict_block(false);
 			}
 
-			tmp_file.back().close();
+			tmp_file.back()->close();
 
 			size_t size_after_push = 0;
 			done->push(buf, size_after_push);
@@ -419,11 +418,11 @@ static void run_query_iteration(const unsigned query_iteration,
 				options.target.reset(db_file.load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
 				const auto t = timer.microseconds();
 				timer.finish();
-				options.target->load_stats(message_stream, t);
+				options.target->load_stats(*message_stream, t);
 			}
 			if (options.current_ref_block == 0) {
-				const int64_t db_seq_count = options.db_filter ? options.db_filter->oid_filter.one_count() : options.db->sequence_count();
-				options.blocked_processing = config.global_ranking_targets || options.target->seqs().size() < db_seq_count;
+				//const int64_t db_seq_count = options.db_filter ? options.db_filter->oid_filter.one_count() : options.db->sequence_count();
+				options.blocked_processing = config.global_ranking_targets || !options.db->eof(); // options.target->seqs().size() < db_seq_count;
 			}
 			if (options.target->empty()) break;
 			timer.finish();
@@ -439,10 +438,10 @@ static void run_query_iteration(const unsigned query_iteration,
 
 	if (config.global_ranking_targets) {
 		timer.go("Computing alignments");
-		Consumer* out;
+		File* out;
 		if (options.iterated()) {
-			tmp_file.push_back(new TempFile());
-			out = &tmp_file.back();
+			tmp_file.push_back(new File(Temporary()));
+			out = tmp_file.back();
 		}
 		else {
 			out = &master_out;
@@ -452,7 +451,7 @@ static void run_query_iteration(const unsigned query_iteration,
 	}
 }
 
-static void run_query_chunk(Consumer &master_out,
+static void run_query_chunk(File &master_out,
 	OutputFile *unaligned_file,
 	OutputFile *aligned_file,
 	Config &options)
@@ -462,7 +461,7 @@ static void run_query_chunk(Consumer &master_out,
 	auto& db_file = *options.db;
 	auto& query_seqs = options.query->seqs();
 
-	PtrVector<TempFile> tmp_file;
+	vector<File*> tmp_file;
 	if (options.track_aligned_queries) {
 		query_aligned.clear();
 		query_aligned.insert(query_aligned.end(), options.query->source_seq_count(), false);
@@ -490,7 +489,7 @@ static void run_query_chunk(Consumer &master_out,
 		run_query_iteration(query_iteration, master_out, unaligned_file, aligned_file, tmp_file, options);
 		if (options.iterated()) {
 			aligned += options.iteration_query_aligned;
-			message_stream << "Aligned " << options.iteration_query_aligned << '/' << options.query->source_seq_count() << " queries in this iteration, "
+			*message_stream << "Aligned " << options.iteration_query_aligned << '/' << options.query->source_seq_count() << " queries in this iteration, "
 				<< aligned << '/' << options.query->source_seq_count() << " total." << endl;
 			options.iteration_query_aligned = 0;
 		}
@@ -528,7 +527,7 @@ static void run_query_chunk(Consumer &master_out,
 				}
 
 				const string query_chunk_output_file = append_label(config.output_file + "_", options.current_query_block);
-				Consumer *query_chunk_out(new OutputFile(query_chunk_output_file, config.compressor()));
+				File *query_chunk_out(new File(query_chunk_output_file, "wb", File::Flags::NONE, config.compressor()));
 				// if (*output_format != Output_format::daa)
 				// 	output_format->print_header(*query_chunk_out, align_mode.mode, config.matrix.c_str(), score_matrix.gap_open(), score_matrix.gap_extend(), config.max_evalue, query_ids::get()[0],
 				// 		unsigned(align_mode.query_translated ? query_source_seqs::get()[0].length() : query_seqs::get()[0].length()));
@@ -540,7 +539,7 @@ static void run_query_chunk(Consumer &master_out,
 				// 	throw std::runtime_error("output_format::daa");
 				// else
 				// 	output_format->print_footer(*query_chunk_out);
-				query_chunk_out->finalize();
+				query_chunk_out->close();
 				delete query_chunk_out;
 
 				done->push(buf);
@@ -596,7 +595,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 					j++;
 				}
 				if (j > 0)
-					message_stream << "Restored " << j << " align chunks for query " << i << endl;
+					*message_stream << "Restored " << j << " align chunks for query " << i << endl;
 			}
 			const string file_join_wip = get_ref_part_file_name(stack_join_wip, i);
 			FileStack stack_wip(file_join_wip);
@@ -610,12 +609,12 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 					j++;
 				}
 				if (j > 0)
-					message_stream << "Restored join of query " << i << endl;
+					*message_stream << "Restored join of query " << i << endl;
 			}
 		}
 		if (file_exists("stop")) {
 			std::remove("stop");
-			message_stream << "Removed \'stop\' file" << endl;
+			*message_stream << "Removed \'stop\' file" << endl;
 		}
 		return;
 	}
@@ -644,7 +643,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			options.query_file.reset(new FastaFile(config.query_file, qflags, input_value_traits));
 			timer.finish();
 			if (!options.query_file->open_stats().empty())
-				log_stream << options.query_file->open_stats();
+				*log_stream << options.query_file->open_stats();
 		}
 	}
 
@@ -684,9 +683,9 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 
 	timer.go("Opening the output file");
 	if (!options.out)
-		options.out.reset(new OutputFile(config.output_file, config.compressor()));
+		options.out.reset(new File(config.output_file, "wb", File::Flags::TREAT_BLANK_AS_STDOUT, config.compressor()));
 	if (*options.output_format == OutputFormat::daa)
-		init_daa(*static_cast<OutputFile*>(options.out.get()));
+		init_daa(*options.out.get());
 	unique_ptr<OutputFile> unaligned_file, aligned_file;
 	if (!config.unaligned.empty())
 		unaligned_file = unique_ptr<OutputFile>(new OutputFile(config.unaligned));
@@ -707,7 +706,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			options.query.reset(db_file->load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
 			const auto t = timer.microseconds();
 			timer.finish();
-			options.query->load_stats(message_stream, t);
+			options.query->load_stats(*message_stream, t);
 			query_file_offset = db_file->tell_seq();
 		}
 		else {
@@ -715,7 +714,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 			options.query.reset(options.query_file->load_seqs(config.block_size(), 0, nullptr));
 			const auto t = timer.microseconds();
 			timer.finish();
-			options.query->load_stats(message_stream, t);
+			options.query->load_stats(*message_stream, t);
 		}
 		timer.finish();
 
@@ -744,7 +743,7 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 		run_query_chunk(*options.out, unaligned_file.get(), aligned_file.get(), options);
 
 		if (file_exists("stop")) {
-			message_stream << "Encountered \'stop\' file, shutting down run" << endl;
+			*message_stream << "Encountered \'stop\' file, shutting down run" << endl;
 			break;
 		}
 	}
@@ -757,21 +756,16 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 	timer.go("Closing the output file");
 	if (*options.output_format == OutputFormat::daa) {
 		db_file->init_random_access(options.current_query_block, 0);
-		finish_daa(*static_cast<OutputFile*>(options.out.get()), *db_file);
+		finish_daa(*static_cast<File*>(options.out.get()), *db_file);
 		db_file->end_random_access();
 	}
 	else
 		options.output_format->print_footer(*options.out);
-	options.out->finalize();
+	options.out->close();
 	if (unaligned_file.get())
 		unaligned_file->close();
 	if (aligned_file.get())
 		aligned_file->close();
-
-	if (!config.unaligned_targets.empty()) {
-		timer.go("Writing unaligned targets");
-		options.db->write_accession_list(options.aligned_targets, config.unaligned_targets);
-	}
 
 	timer.go("Closing the database");
 	options.db.reset();
@@ -781,19 +775,19 @@ static void master_thread(TaskTimer &total_timer, Config &options)
 
 	timer.finish();
 	log_rss();
-	message_stream << "Total time = " << total_timer.get() << "s" << endl;
+	*message_stream << "Total time = " << total_timer.get() << "s" << endl;
 	statistics.print();
 	//print_warnings();
 }
 
-void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<Consumer>& out, const shared_ptr<DbFilter>& db_filter)
+void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<SequenceFile>& db, const shared_ptr<SequenceFile>& query, const shared_ptr<File>& out, const shared_ptr<DbFilter>& db_filter)
 {
 	TaskTimer total;
 
 	align_mode = AlignMode(AlignMode::from_command(config.command));
-    (align_mode.sequence_type == SequenceType::amino_acid) ? value_traits = amino_acid_traits : value_traits = nucleotide_traits;
+	(align_mode.sequence_type == SequenceType::amino_acid) ? value_traits = amino_acid_traits : value_traits = nucleotide_traits;
 
-	message_stream << "Temporary directory: " << TempFile::get_temp_dir() << endl;
+	*message_stream << "Temporary directory: " << TempFile::get_temp_dir() << endl;
 
 	if (config.sensitivity >= Sensitivity::VERY_SENSITIVE)
 		::Config::set_option(config.chunk_size, 0.4);
@@ -825,8 +819,6 @@ void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<Seque
 		flags |= SequenceFile::Flags::TARGET_SEQS;
 	if (flag_any(cfg.output_format->flags, Output::Flags::SELF_ALN_SCORES))
 		flags |= SequenceFile::Flags::SELF_ALN_SCORES;
-	if (!config.unaligned_targets.empty())
-		flags |= SequenceFile::Flags::OID_TO_ACC_MAPPING;
 	if (taxon_filter)
 		flags |= SequenceFile::Flags::NEED_EARLY_TAXON_MAPPING | SequenceFile::Flags::NEED_LENGTH_LOOKUP;
 	if (!config.seqidlist.empty())
@@ -849,7 +841,7 @@ void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<Seque
 		}
 		timer.finish();
 		if (!cfg.db->open_stats().empty())
-			message_stream << cfg.db->open_stats();
+			*message_stream << cfg.db->open_stats();
 	}
 	if (config.multiprocessing && cfg.db->type() == SequenceFile::Type::FASTA)
 		throw runtime_error("Multiprocessing mode is not compatible with FASTA databases.");
@@ -862,12 +854,10 @@ void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<Seque
 	cfg.query_file = query;
 	cfg.db_filter = db_filter;
 	cfg.out = out;
-	if (!config.unaligned_targets.empty())
-		cfg.aligned_targets.insert(cfg.aligned_targets.begin(), cfg.db->sequence_count(), false);
 	timer.finish();
 
 	cfg.db->print_info();
-	message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;	
+	*message_stream << "Block size = " << (size_t)(config.chunk_size * 1e9) << endl;	
 	const bool alias_taxfilter = pal && pal->metadata.find("TAXIDLIST") != pal->metadata.end();
 
 	if (taxon_filter) {
@@ -899,15 +889,15 @@ void run(unique_ptr<vector<BitVector>>& target_seed_hits, const shared_ptr<Seque
 	if (!seqidlist.empty()) {
 		if (taxon_filter)
 			throw runtime_error("--seqidlist is not compatible with taxonomy filtering.");
-		message_stream << "Filtering database by accession list: " << seqidlist << endl;
+		*message_stream << "Filtering database by accession list: " << seqidlist << endl;
 		timer.go("Building database filter");
 		cfg.db_filter.reset(cfg.db->filter_by_accession(seqidlist));
 		timer.finish();
 	}
 
 	if (cfg.db_filter)
-		message_stream << "Filtered database contains " << cfg.db_filter->oid_filter.one_count() << " sequences, " << cfg.db_filter->letter_count << " letters." << endl;
-	score_matrix.set_db_letters(config.db_size ? config.db_size : (cfg.db_filter && cfg.db_filter->letter_count ? cfg.db_filter->letter_count : cfg.db->letters()));
+		*message_stream << "Filtered database contains " << cfg.db_filter->oid_filter.one_count() << " sequences, " << cfg.db_filter->letter_count << " letters." << endl;
+	score_matrix.set_db_letters(config.db_size ? config.db_size : (cfg.db_filter && cfg.db_filter->letter_count ? cfg.db_filter->letter_count : cfg.db->letters().value()));
 
 #ifdef WITH_DNA
 	if (align_mode.sequence_type == SequenceType::nucleotide)

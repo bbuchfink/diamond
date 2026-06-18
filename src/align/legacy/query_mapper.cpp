@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/ungapped.h"
 #include "output/output.h"
 #include "output/output_format.h"
-#include "output/daa/daa_write.h"
+#include "legacy/daa/daa_write.h"
 #include "output/target_culling.h"
 #include "util/util.h"
 #include "stats/cbs.h"
@@ -100,7 +100,7 @@ QueryMapper::QueryMapper(size_t query_id, Search::Hit* begin, Search::Hit* end, 
 void QueryMapper::init()
 {
 	if(config.log_query)
-		message_stream << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << std::endl;
+		*message_stream << "Query = " << metadata.query->ids()[query_id] << '\t' << query_id << std::endl;
 	if (Stats::CBS::hauser(config.comp_based_stats))
 		for (int i = 0; i < align_mode.query_contexts; ++i)
 			query_cb.emplace_back(query_seq(i));

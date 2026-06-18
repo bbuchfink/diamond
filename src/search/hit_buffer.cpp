@@ -60,7 +60,7 @@ HitBuffer::HitBuffer(const vector<Key>& key_partition, const string& tmpdir, boo
 	load_worker_(nullptr),
 	load_exception_(nullptr)
 {
-	log_stream << "Async_buffer() " << key_partition.back() << std::endl;
+	*log_stream << "Async_buffer() " << key_partition.back() << std::endl;
 	count_ = new atomic_size_t[key_partition.size()];
 
 	for (size_t i = 0; i < key_partition.size(); ++i) {
@@ -177,7 +177,7 @@ bool HitBuffer::load(size_t max_size) {
 			disk_size += tmp_file_[end].size();
 			++end;
 		}
-		log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
+		*log_stream << "Async_buffer.load() " << size << " (" << (double)size * sizeof(Hit) / (1 << 30) << " GB, " << (double)disk_size / (1 << 30) << " GB on disk)" << endl;
 		total_disk_size_ += disk_size;
 		data_size_next_ = size;
 		load_worker_ = new thread(worker, end);

@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/io/compressed_buffer.h"
 #include "file_array.h"
 #include "input_buffer.h"
+#include "../cluster.h"
 
 using std::endl;
 using std::unordered_map;
@@ -88,11 +89,11 @@ struct AccMapping {
 		buf.write(m.rep_acc.c_str(), m.rep_acc.length() + 1);
 		buf.write(m.member_acc.c_str(), m.member_acc.length() + 1);
 	}
-	friend void deserialize(InputFile& f, AccMapping& m) {
-		f.read(&m.rep);
-		f.read(&m.member);
-		f >> m.rep_acc;
-		f >> m.member_acc;
+	friend void deserialize(File& f, AccMapping& m) {
+		f.read(m.rep);
+		f.read(m.member);
+		f.read_c_str(m.rep_acc);
+		f.read_c_str(m.member_acc);
 	}
 };
 
@@ -142,18 +143,20 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 	return output_files->buckets(shift);
 }
 
-static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile& volumes, const RadixedTable& round1) {
+static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile& volumes, const RadixedTable& round1, Header hdr_format) {
 	std::pmr::unsynchronized_pool_resource pool;
 	ofstream out(config.output_file);
 	if (!out.good())
 		throw runtime_error("Error opening output file: " + config.output_file);
+	if (hdr_format == Header::SIMPLE)
+		out << Cluster::HEADER_LINE << endl;
 	OId cluster_count = 0;
 	for (size_t v = 0; v < volumes.size(); ++v) {
 		const Volume& vol = volumes.at(v);
 		job.log("Building output table (round 2) volume %zu/%zu oid %" PRId64 " - %" PRId64, v + 1, volumes.size(), vol.oid_begin, vol.oid_end);
+		log_rss();
 		const std::pmr::unordered_map<OId, std::pmr::string> oid2acc = read_mapping_table(job, vol, v, pool, true);
 		for (const Bucket& b : round1) {
-			log_rss();
 			if (b.key_end() <= vol.oid_begin || b.key_begin() >= vol.oid_end)
 				continue;
 			VolumedFile f(b);
@@ -179,7 +182,7 @@ static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile&
 	return cluster_count;
 }
 
-void merge(Job& job, const VolumedFile& volumes) {
+void merge(Job& job, const VolumedFile& volumes, Header hdr_format) {
 	job.log("Merging clusterings");
 	const vector<OId> merged = build_merged(job);
 	OId n;
@@ -187,7 +190,7 @@ void merge(Job& job, const VolumedFile& volumes) {
 		n = output_oids(job, merged);
 	else {
 		const RadixedTable round1 = output_round1(job, merged, volumes);
-		n = output_round2(job, merged, volumes, round1);
+		n = output_round2(job, merged, volumes, round1, hdr_format);
 	}
 	job.log("Total clusters: %" PRId64, (int64_t)n);
 }

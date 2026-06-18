@@ -121,7 +121,7 @@ string auto_append_extension_if_exists(const string &str, const char *ext) {
 }
 
 void log_rss() {
-	log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
+	*log_stream << "Current RSS: " << convert_size(getCurrentRSS()) << ", Peak RSS: " << convert_size(getPeakRSS()) << endl;
 }
 
 void set_color(Color color, bool err) {
@@ -223,15 +223,6 @@ void unmap_file(char* ptr, size_t size, int fd) {
 #else
 	munmap((void*)ptr, size);
 	close(fd);
-#endif
-}
-
-size_t l3_cache_size() {
-#if defined(_MSC_VER) || defined(__APPLE__) || defined(__FreeBSD__) || (! defined(_SC_LEVEL3_CACHE_SIZE))
-	return 0;
-#else
-	const auto s = sysconf(_SC_LEVEL3_CACHE_SIZE);
-	return s == -1 ? 0 : s;
 #endif
 }
 

@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/value.h"
 #include "util/enum.h"
 #include "util/intrin.h"
-#include "util/log_stream.h"
 
 enum struct MaskingAlgo { NONE = 0, TANTAN = 1, SEG = 2, MOTIF = 4 };
 
@@ -48,12 +47,6 @@ struct MaskingStat {
 		for (size_t i = 0; i < masked_letters.size(); ++i)
 			masked_letters[i] += other.masked_letters[i];
 		return *this;
-	}
-	void print(MessageStream& str) const {
-		str << "Masked letters: "
-			<< "  tantan: " << get(MaskingAlgo::TANTAN)
-			<< "  seg: " << get(MaskingAlgo::SEG)
-			<< "  motif: " << get(MaskingAlgo::MOTIF) << std::endl;
 	}
 	void print(std::ostream& str) const {
 		str << "Masked letters: "

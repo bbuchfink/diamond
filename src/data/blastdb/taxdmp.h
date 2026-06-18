@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <string>
-#include "util/io/text_input_file.h"
+#include "util/io/file.h"
 #include "util/string/tokenizer.h"
 #include "basic/value.h"
 #include "util/string/string.h"
@@ -27,11 +27,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 template<typename F>
 inline void read_nodes_dmp(const std::string& file_name, F& f)
 {
-	TextInputFile file(file_name);
+	File file(file_name, "rb", File::Flags::DETECT_COMPRESSION);
 	TaxId taxid, parent;
 	std::string rank;
-	while (!file.eof() && (file.getline(), !file.line.empty())) {
-		Util::String::Tokenizer<Util::String::StringDelimiter>(file.line, Util::String::StringDelimiter("\t|\t")) >> taxid >> parent >> rank;
+	const char* l;
+	while (l = file.getline(), !file.eof() || l[0] != '\0') {
+		Util::String::Tokenizer<Util::String::StringDelimiter>(l, Util::String::StringDelimiter("\t|\t")) >> taxid >> parent >> rank;
 		f(taxid, parent, rank);
 	}
 	file.close();
@@ -39,13 +40,14 @@ inline void read_nodes_dmp(const std::string& file_name, F& f)
 
 template<typename F>
 inline void read_names_dmp(const std::string& file_name, F& f) {
-	TextInputFile in(file_name);
+	File in(file_name, "rb", File::Flags::DETECT_COMPRESSION);
 	std::string name, type;
 	TaxId id;
-	while (in.getline(), !in.eof()) {
-		if (in.line.empty())
+	const char* l;
+	while (l = in.getline(), !in.eof() || l[0] != '\0') {
+		if (std::string(l).empty())
 			continue;
-		Util::String::Tokenizer<Util::String::StringDelimiter>(in.line, Util::String::StringDelimiter("\t|\t")) >> id >> name >> Util::String::Skip() >> type;
+		Util::String::Tokenizer<Util::String::StringDelimiter>(l, Util::String::StringDelimiter("\t|\t")) >> id >> name >> Util::String::Skip() >> type;
 		type = rstrip(type, "\t|");
 		if (type == "scientific name") {
 			f(id, name);

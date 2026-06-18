@@ -41,8 +41,8 @@ struct InputBuffer {
 		auto worker = [&](const std::atomic<bool>& stop) {
 			int64_t v;
 			while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)f.size())) {
-				InputFile in(f[v].path);
-				in.read(&data_[f[v].oid_begin], f[v].record_count);
+				File in(f[v].path, "rb", File::Flags::DETECT_COMPRESSION);
+				in.read((void*) &data_[f[v].oid_begin], f[v].record_count * sizeof(T));
 				in.close();
 			}
 			};
@@ -63,7 +63,7 @@ struct InputBuffer {
 			int64_t v;
 			while (!stop.load(std::memory_order_relaxed) && (v = next.fetch_add(1, std::memory_order_relaxed), v < (int64_t)f.size())) {
 				std::pmr::list<T> lst(&mem_pool);
-				InputFile in(f[v].path);
+				File in(f[v].path, "rb", File::Flags::DETECT_COMPRESSION);
 				T x(mem_pool);
 				for (size_t i = 0; i < f[v].record_count; ++i) {
 					deserialize(in, x);

@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/escape_sequences.h"
 #include "basic/config.h"
 #include "search/seed_array/flags.h"
+#include "util/io/file.h"
+#include "util/optional.h"
 
 struct SequenceFile;
 
@@ -38,7 +40,7 @@ struct Info {
 	SequenceFile* db;
 	TextBuffer& out;
 	Util::Seq::AccessionParsing acc_stats;
-	uint64_t db_seqs, db_letters;
+	optional<uint64_t> db_seqs, db_letters;
 };
 
 }
@@ -123,9 +125,9 @@ struct OutputFormat
 	{}
 	virtual void print_match(const HspContext& r, Output::Info& info)
 	{}
-	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
+	virtual void print_header(File &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const
 	{ }
-	virtual void print_footer(Consumer &f) const
+	virtual void print_footer(File &f) const
 	{ }
 	virtual OutputFormat* clone() const = 0;
 	virtual ~OutputFormat()
@@ -189,8 +191,8 @@ struct TabularFormat : public OutputFormat
 	TabularFormat(bool json = false);
 	static std::map<FieldId, OutputField> field_def;
 	static std::map<FieldId, FieldCallbacks> field_callbacks;
-	virtual void print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const override;
-	virtual void print_footer(Consumer& f) const override;
+	virtual void print_header(File& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const override;
+	virtual void print_footer(File& f) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
 	virtual ~TabularFormat()
@@ -201,7 +203,7 @@ struct TabularFormat : public OutputFormat
 		return new TabularFormat(*this);
 	}
 	static Header header_format(unsigned workflow);
-	void output_header(Consumer& f, bool cluster) const;
+	void output_header(File& f, bool cluster) const;
 	std::vector<FieldId> fields;
 	bool is_json;
 };
@@ -228,7 +230,7 @@ struct SamFormat : public OutputFormat
 		OutputFormat(sam, HspValues::TRANSCRIPT, Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED)
 	{ }
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
+	virtual void print_header(File&f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual ~SamFormat()
 	{ }
@@ -244,10 +246,10 @@ struct XMLFormat : public OutputFormat
 		OutputFormat(blast_xml, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED | Output::Flags::ALL_SEQIDS)
 	{} 
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
+	virtual void print_header(File &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_query_epilog(Output::Info& info) const override;
-	virtual void print_footer(Consumer &f) const override;
+	virtual void print_footer(File&f) const override;
 	virtual ~XMLFormat()
 	{ }
 	virtual OutputFormat* clone() const override
@@ -262,10 +264,10 @@ struct PairwiseFormat : public OutputFormat
 		OutputFormat(blast_pairwise, HspValues::TRANSCRIPT, Output::Flags::FULL_TITLES | Output::Flags::SSEQID | Output::Flags::DEFAULT_REPORT_UNALIGNED | Output::Flags::ALL_SEQIDS)
 	{}
 	virtual void print_match(const HspContext& r, Output::Info& info) override;
-	virtual void print_header(Consumer &f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
+	virtual void print_header(File&f, int mode, const char *matrix, int gap_open, int gap_extend, double evalue, const char *first_query_name, unsigned first_query_len) const override;
 	virtual void print_query_intro(Output::Info& info) const override;
 	virtual void print_query_epilog(Output::Info& infos) const override;
-	virtual void print_footer(Consumer &f) const override;
+	virtual void print_footer(File&f) const override;
 	virtual ~PairwiseFormat()
 	{ }
 	virtual OutputFormat* clone() const override

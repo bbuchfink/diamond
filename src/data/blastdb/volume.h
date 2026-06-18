@@ -65,7 +65,7 @@ public:
         virtual bool empty() const override {
             return end_ <= begin_;
         }
-        virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, std::unordered_map<std::string, bool>* accs) const override;
+        virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, std::unordered_map<std::string, bool>* accs, SequenceType seq_type) const override;
         virtual OId begin() const noexcept override {
             return begin_;
         }
@@ -112,3 +112,4 @@ private:
 
 std::vector<BlastDefLine> decode_deflines(const char* header_data, size_t len, bool all, bool full_titles, bool taxids);
 std::vector<Letter> decode_protein_sequence(const char* data, size_t len);
+void decode_protein_sequence(const char* data, size_t len, std::vector<Letter>& out);

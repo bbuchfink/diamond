@@ -23,11 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/packed_transcript.h"
 #include "util/text_buffer.h"
 #include "basic/match.h"
-#include "util/io/consumer.h"
 #include "output_format.h"
 #include "run/config.h"
 #include "util/data_structures/reorder_queue.h"
-#include "util/ptr_vector.h"
+#include "util/io/file.h"
 
 constexpr uint8_t INTERMEDIATE_RECORD_SEED_ONLY = 1u << 7;
 
@@ -75,7 +74,7 @@ struct IntermediateRecord
 	static void finish_query(TextBuffer& buf, size_t seek_pos);
 	static void write(TextBuffer& buf, const Hsp& match, unsigned query_id, DictId target, OId target_oid, const OutputFormat* output_format);
 	static void write(TextBuffer& buf, uint32_t target_block_id, int score, const Search::Config& cfg);
-	static void finish_file(Consumer& f);
+	static void finish_file(File& f);
 	static bool stats_mode(const HspValues v) {
 		return !flag_any(v, HspValues::TRANSCRIPT) && v != HspValues::NONE;
 	}
@@ -92,11 +91,11 @@ struct IntermediateRecord
 	PackedTranscript transcript;
 };
 
-void join_blocks(int64_t ref_blocks, Consumer &master_out, const PtrVector<TempFile> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
+void join_blocks(int64_t ref_blocks, File &master_out, const std::vector<File*> &tmp_file, Search::Config& cfg, SequenceFile &db_file,
 					const std::vector<std::string> tmp_file_names = std::vector<std::string>());
 
 struct OutputWriter {
-	OutputWriter(Consumer* file_, char sep = char(0), bool first = true) :
+	OutputWriter(File* file_, char sep = char(0), bool first = true) :
 		file_(file_),
 		first(first),
 		sep(sep)
@@ -104,12 +103,12 @@ struct OutputWriter {
 	void operator()(TextBuffer* buf) {
         if(!first && sep != '\0')
         {
-            file_->consume(&sep, 1);
+            file_->write(&sep, 1);
         }
-		file_->consume(buf->data(), buf->size());
+		file_->write(buf->data(), buf->size());
         first = false;
 	}
-	Consumer* file_;
+	File* file_;
     bool first;
     char sep;
 };

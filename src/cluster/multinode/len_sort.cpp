@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "multinode.h"
 #include "util/data_structures/queue.h"
 #include "util/parallel/simple_thread_pool.h"
+#include "util/log_stream.h"
 #define _REENTRANT
 #include "lib/ips4o/ips4o.hpp"
 
@@ -184,8 +185,8 @@ string len_sort(Job& job, VolumedFile& volumes) {
 				msg.pop_back();
 				job.log(msg.c_str());
 			}
-			letters += volume_file->letters();
-			const OId n = volume_file->sequence_count();
+			letters += volume_file->letters().value();
+			const OId n = volume_file->sequence_count().value();
 			for (OId i = 0; i < n; ++i)
 				lengths.emplace_back(volume_file->seq_length(i), lengths.size());
 		}
@@ -208,7 +209,7 @@ string len_sort(Job& job, VolumedFile& volumes) {
 			block_gb = 1e6;
 			index_chunks = 1;
 		} else
-			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
+			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FAST, true, config.threads_); // TODO take cluster steps into account here
 		const uint64_t block_size = gb_to_bytes(block_gb);
 		job.log("Block size = %" PRIu64 ", index chunks = %d", block_size, index_chunks);
 		ips4o::parallel::sort(lengths.begin(), lengths.end(), std::greater<pair<Loc, OId>>(), config.threads_);
@@ -250,7 +251,7 @@ string len_sort(Job& job, VolumedFile& volumes) {
 	if (first_round_linear) {
 		double block_gb;
 		int index_chunks;
-		tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FASTER, true, config.threads_); // TODO take cluster steps into account here
+		tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FAST, true, config.threads_); // TODO take cluster steps into account here
 		config.lowmem_ = index_chunks;
 	}
 	job.set_max_oid(seq_count - 1);

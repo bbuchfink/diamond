@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "multinode.h"
 #include "../cluster.h"
 #include "run/workflow.h"
+#include "util/log_stream.h"
 
 using std::vector;
 using std::string;
@@ -83,7 +84,7 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 	}
 	timer.finish();
 	if (!db->open_stats().empty())
-		message_stream << db->open_stats();
+		*message_stream << db->open_stats();
 	Search::run(seed_hit_table, db, nullptr, nullptr);
 	job.stats().extensions_computed += statistics.get(Statistics::EXT16) + statistics.get(Statistics::EXT32) + statistics.get(Statistics::EXT8);
 }
@@ -114,6 +115,8 @@ void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, stri
 	config.hamming_dist_boundary_check = true;
 	config.mapany = false;
 	config.lin_stage1_target = false;
+	config.output_header.clear();
+	config.output_header.unset();
 	if(job.is_linear_round())
 		run_block_combo(job, volumes, r, i, base_dir, seed_hit_table);
 	else

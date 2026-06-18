@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/config.h"
 #include "search/search.h"
 #include "seed_set.h"
-#include "dmnd/dmnd.h"
+#include "legacy/dmnd/dmnd.h"
 #include "basic/shape_config.h"
 #include "util/log_stream.h"
 

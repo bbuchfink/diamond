@@ -209,7 +209,7 @@ struct ThreadPool {
 		if (heartbeat)
 			heartbeat_ = std::thread([&]() {
 			while (default_finished_ < default_count_) {
-				log_stream << "Workers=" << workers_.size() << '/' << threads_finished_ << " begin = " << default_begin_ << " finished = "
+				*log_stream << "Workers=" << workers_.size() << '/' << threads_finished_ << " begin = " << default_begin_ << " finished = "
 					<< default_finished_ << " queue=" << queue_len(0) << '/' << queue_len(1) << std::endl;
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}});

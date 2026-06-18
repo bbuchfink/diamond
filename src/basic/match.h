@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "packed_transcript.h"
 #include "translated_position.h"
 #include "util/geo/diagonal_segment.h"
-#include "util/io/input_file.h"
+#include "util/io/file.h"
 #include "util/hsp/approx_hsp.h"
 
 inline Interval normalized_range(unsigned pos, int len, Strand strand)
@@ -456,7 +456,7 @@ struct HspContext
 	Sequence subject_seq;
 private:
 	Hsp hsp_;
-	friend HspContext deserialize(InputFile*);
+	friend bool deserialize(File*, HspContext&);
 };
 
 inline void serialize(const HspContext& h, TextBuffer& buf) {
@@ -487,34 +487,35 @@ inline void serialize(const HspContext& h, TextBuffer& buf) {
 #endif
 }
 
-inline HspContext deserialize(InputFile* file_) {
-	HspContext h;
-	file_->read(&h.query_id);
-	file_->read(&h.query_oid);
-	file_->read(&h.subject_oid);
-	*file_ >> h.query_title;
-	*file_ >> h.target_title;
-	file_->read(&h.query_len);
-	file_->read(&h.subject_len);
-	file_->read(&h.hsp_.identities);
-	file_->read(&h.hsp_.mismatches);
-	file_->read(&h.hsp_.positives);
-	file_->read(&h.hsp_.gaps);
-	file_->read(&h.hsp_.length);
-	file_->read(&h.hsp_.gap_openings);
-	file_->read(&h.hsp_.query_range.begin_);
-	file_->read(&h.hsp_.query_range.end_);
-	file_->read(&h.hsp_.subject_range.begin_);
-	file_->read(&h.hsp_.subject_range.end_);
-	file_->read(&h.hsp_.bit_score);
-	file_->read(&h.hsp_.evalue);
-	file_->read(&h.hsp_.score);
-	file_->read(&h.hsp_.approx_id);
+inline bool deserialize(File* file_, HspContext& h) {
+	const size_t n = file_->read_max(&h.query_id, sizeof(h.query_id));
+	if (n < sizeof(h.query_id))
+		return false;
+	file_->read(h.query_oid);
+	file_->read(h.subject_oid);
+	file_->read_c_str(h.query_title);
+	file_->read_c_str(h.target_title);
+	file_->read(h.query_len);
+	file_->read(h.subject_len);
+	file_->read(h.hsp_.identities);
+	file_->read(h.hsp_.mismatches);
+	file_->read(h.hsp_.positives);
+	file_->read(h.hsp_.gaps);
+	file_->read(h.hsp_.length);
+	file_->read(h.hsp_.gap_openings);
+	file_->read(h.hsp_.query_range.begin_);
+	file_->read(h.hsp_.query_range.end_);
+	file_->read(h.hsp_.subject_range.begin_);
+	file_->read(h.hsp_.subject_range.end_);
+	file_->read(h.hsp_.bit_score);
+	file_->read(h.hsp_.evalue);
+	file_->read(h.hsp_.score);
+	file_->read(h.hsp_.approx_id);
 #ifdef WITH_DNA
 	file_->read(&h.hsp_.mapping_quality);
 	file_->read(&h.hsp_.n_anchors);
 #endif
 	h.hsp_.query_source_range = h.hsp_.query_range;
 	h.hsp_.subject_source_range = h.hsp_.subject_range;
-	return h;
+	return true;
 }

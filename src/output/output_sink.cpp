@@ -43,7 +43,7 @@ void heartbeat_worker(size_t qend, const Search::Config* cfg)
 	while ((next = output_sink->next()) < qend) {
 		if (n == interval) {
 			const string title(cfg->query->ids()[next]);
-			verbose_stream << "Queries=" << next
+			*log_stream << "Queries=" << next
 				<< " size=" << megabytes(output_sink->size())
 				<< " max_size=" << megabytes(output_sink->max_size())
 				<< " next=" << title.substr(0, title.find(' '))

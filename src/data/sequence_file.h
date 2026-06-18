@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
-
 #include <utility>
 #include <unordered_map>
 #include "util/io/input_file.h"
@@ -26,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/data_structures/bit_vector.h"
 #include "util/enum.h"
 #include "block/block.h"
-#include "util/tsv/tsv.h"
 
 struct Chunk
 {
@@ -63,9 +61,7 @@ struct DbFilter {
 };
 
 struct DecodedPackage {
-	StringSet ids;
-	SequenceSet seqs;
-	std::vector<OId> oids;
+	Block block;
 	std::vector<std::pair<OId, TaxId>> taxids;
 	size_t seq_count = 0;
 	int no;
@@ -79,6 +75,8 @@ struct FormatDetectionError : public std::runtime_error {
 	{
 	}
 };
+
+int frame_mask();
 
 struct SequenceFile {
 
@@ -141,7 +139,6 @@ struct SequenceFile {
 	virtual void seek_chunk(const Chunk& chunk) = 0;
 	virtual OId tell_seq() const = 0;
 	virtual bool eof() const = 0;
-	virtual bool files_synced();
 	virtual SeqInfo read_seqinfo() = 0;
 	virtual void putback_seqinfo() = 0;
 	virtual size_t id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) = 0;
@@ -153,8 +150,8 @@ struct SequenceFile {
 	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const final;
 	virtual Loc dict_len(DictId dict_id, const size_t ref_block);
 	std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block);
-	virtual uint64_t sequence_count() const = 0;
-	virtual uint64_t letters() const = 0;
+	virtual optional<uint64_t> sequence_count() const = 0;
+	virtual optional<uint64_t> letters() const = 0;
 	virtual size_t letters_filtered(const DbFilter& v);
 	virtual int db_version() const = 0;
 	virtual int program_build_version() const = 0;
@@ -192,25 +189,20 @@ struct SequenceFile {
 	Type type() const { return type_; }
     Block* load_seqs(const int64_t max_letters, OId max_seqs = 0, const BitVector* filter = nullptr, const Chunk& chunk = Chunk());
 	void get_seq();
-	Util::Tsv::File* make_seqid_list();
-	size_t total_blocks() const;
+	//Util::Tsv::File* make_seqid_list();
+	optional<size_t> total_blocks() const;
 	std::pair<std::vector<OId>, std::vector<uint64_t>> partition(uint64_t max_block_size, uint64_t start_size = 0) const;
 	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end);
 	std::vector<Letter> seq_by_accession(const std::string& acc);
 	DbFilter* filter_by_taxonomy(std::istream& filter, char delimiter, bool exclude);
-	void write_accession_list(const std::vector<bool>& oids, std::string& file_name);
+	//void write_accession_list(const std::vector<bool>& oids, std::string& file_name);
 	template<typename It>
 	std::vector<int64_t> seq_offsets(It begin, It end);
-	template<typename It>
-	FastaFile* sub_db(It begin, It end, const std::string& file_name = std::string());
-	template<typename It>
-	void sub_db(It begin, It end, FastaFile* out);
-	std::vector<std::tuple<FastaFile*, std::vector<OId>, Util::Tsv::File*>> length_sort(int64_t block_size, std::function<int64_t(Loc)>& seq_size);
-	Util::Tsv::File& seqid_file();
 	static void init_taxon_output_fields();
     virtual RawChunk* raw_chunk(size_t letters, Flags flags);
 	virtual void add_taxid_mapping(const std::vector<std::pair<OId, TaxId>>& taxids);
 	virtual int raw_chunk_no() const;
+	uint64_t disk_size() const;
 
 	void init_dict(const size_t query_block, const size_t target_block);
 	void init_dict_block(size_t block, size_t seq_count, bool persist);
@@ -268,7 +260,7 @@ protected:
     const FormatFlags format_flags_;
     const ValueTraits& value_traits_;
 	uint64_t disk_size_;
-	std::unique_ptr<OutputFile> dict_file_;
+	std::unique_ptr<File> dict_file_;
 	DictId next_dict_id_;
 	size_t dict_alloc_size_;
 	std::vector<std::vector<OId>> dict_oid_;
@@ -277,7 +269,6 @@ protected:
 	std::vector<SequenceSet> dict_seq_;
 	std::vector<std::vector<double>> dict_self_aln_score_;
 	std::unordered_map<std::string, OId> acc2oid_;
-	std::unique_ptr<Util::Tsv::File> seqid_file_;
 	std::vector<Loc> seq_length_;
 	std::string open_stats_;
 
@@ -286,11 +277,11 @@ private:
 	static const DictId DICT_EMPTY;
 
 	void write_dict_entry(size_t block, size_t oid, size_t len, const char* id, const Letter* seq, const double self_aln_score);
-	bool load_dict_entry(InputFile& f, const size_t ref_block);
+	bool load_dict_entry(File& f, const size_t ref_block);
 	void reserve_dict(const size_t ref_blocks);
     std::pair<Block*, uint64_t> load_twopass(const uint64_t max_letters, const BitVector* filter, const Chunk& chunk);
     std::pair<Block*, uint64_t> load_onepass(const uint64_t max_letters, OId max_seqs, const BitVector* filter);
-	void load_dict_block(InputFile* f, const size_t ref_block);
+	void load_dict_block(File* f, const size_t ref_block);
 	void set_cached(TaxId taxon_id, bool contained)
 	{
 		cached_[taxon_id] = true;
@@ -313,7 +304,7 @@ struct RawChunk {
 	virtual bool empty() const = 0;
 	virtual OId begin() const noexcept = 0;
 	virtual OId end() const noexcept = 0;
-	virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, std::unordered_map<std::string, bool>* accs) const = 0;
+	virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, std::unordered_map<std::string, bool>* accs, SequenceType seq_type) const = 0;
 	virtual size_t letters() const noexcept = 0;
 	virtual size_t bytes() const noexcept = 0;
 	virtual ~RawChunk() = default;

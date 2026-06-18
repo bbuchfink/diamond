@@ -77,7 +77,8 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 		ids_.push_back(id, id + strlen(id));
 	if (quals)
 		qual_.push_back(quals->cbegin(), quals->cend());
-	block2oid_.push_back(oid);
+	if (oid != std::numeric_limits<OId>::max())
+		block2oid_.push_back(oid);
 	if (seq_type == SequenceType::amino_acid || !dna_translation) {
 		seqs_.push_back(seq.data(), seq.end());
 		return seq.length();
@@ -99,10 +100,17 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 	return letters;
 }
 
-void Block::append(const Block& b, bool remove_padding) {
-	seqs_.append(b.seqs_, remove_padding);
-	ids_.append(b.ids_, remove_padding);
-	block2oid_.insert(block2oid_.end(), b.block2oid_.begin(), b.block2oid_.end());
+void Block::append(const Block& b, bool remove_padding, bool append_seqs, bool append_ids, bool append_oids) {
+	if (append_seqs) {
+		seqs_.append(b.seqs_, remove_padding);
+		source_seqs_.append(b.source_seqs_, remove_padding);
+	}
+	if (append_ids) {
+		ids_.append(b.ids_, remove_padding);
+	}
+	if (append_oids) {
+		block2oid_.insert(block2oid_.end(), b.block2oid_.begin(), b.block2oid_.end());
+	}
 }
 
 bool Block::fetch_seq_if_unmasked(size_t block_id, std::vector<Letter>& seq) {

@@ -109,7 +109,7 @@ HashedSeedSet::HashedSeedSet(Block &seqs, const std::vector<bool>* skip, const d
 
 	for (int i = 0; i < shapes.count(); ++i) {
 		data_[i].finish();
-		log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
+		*log_stream << "Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 	}
 }
 
@@ -132,7 +132,7 @@ HashedSeedSet::HashedSeedSet(const string& index_file):
 
 	for (int i = 0; i < shapes.count(); ++i) {
 		data_.push_back(new Table(data_ptr, *size_ptr));
-		log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
+		*log_stream << "MMAPED Shape=" << i << " Hash_table_size=" << data_[i].size() << " load=" << (double)data_[i].load() / data_[i].size() << endl;
 		data_ptr += *size_ptr + Table::PADDING;
 		++size_ptr;
 	}

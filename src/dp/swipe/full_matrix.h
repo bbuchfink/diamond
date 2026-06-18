@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <stdexcept>
 #include "util/data_structures/mem_buffer.h"
 
 namespace DP { namespace Swipe {
@@ -58,8 +59,11 @@ struct Matrix
 	};
 	Matrix(int rows, int)
 	{
-		hgap_.resize(rows);
-		score_.resize(rows + 1);
+		if (rows < 0)
+			throw std::invalid_argument("Negative matrix row count.");
+		const size_t row_count = static_cast<size_t>(rows);
+		hgap_.resize(row_count);
+		score_.resize(row_count + 1);
 		const auto z = Sv();
 		std::fill(hgap_.begin(), hgap_.end(), z);
 		std::fill(score_.begin(), score_.end(), z);
@@ -210,9 +214,13 @@ struct TracebackVectorMatrix
 		rows_(rows),
 		cols_(cols)
 	{
-		hgap_.resize(rows);
-		score_.resize(rows + 1);
-		trace_mask_.resize((size_t)cols * rows);
+		if (rows < 0 || cols < 0)
+			throw std::invalid_argument("Negative matrix dimension.");
+		const size_t row_count = static_cast<size_t>(rows);
+		const size_t col_count = static_cast<size_t>(cols);
+		hgap_.resize(row_count);
+		score_.resize(row_count + 1);
+		trace_mask_.resize(col_count * row_count);
 		std::fill(hgap_.begin(), hgap_.end(), Sv());
 		std::fill(score_.begin(), score_.end(), Sv());
 	}

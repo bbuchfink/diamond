@@ -32,7 +32,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/simd/transpose.h"
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
-#include "util/profiler.h"
 #include "dp/swipe/cell_update.h"
 #include "dp/swipe/anchored.h"
 #include "dp/swipe/config.h"
@@ -149,7 +148,7 @@ void benchmark_ungapped(const Sequence& s1, const Sequence& s2)
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	std::chrono::nanoseconds time_span = duration_cast<std::chrono::nanoseconds>(t2 - t1);
 
-	message_stream << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Scalar ungapped extension:\t" << (double)time_span.count() / (n*64) * 1000 << " ps/Cell" << endl;
 }
 
 #if (defined(__SSSE3__) && defined(__SSE4_1__)) | defined(__aarch64__)
@@ -169,9 +168,9 @@ void benchmark_ssse3_shuffle(const Sequence&s1, const Sequence&s2)
 		volatile auto x = sv.data_;
 	}
 #ifdef __ARM_NEON
-	message_stream << "NEON score shuffle:\t\t"
+	*message_stream << "NEON score shuffle:\t\t"
 #else
-	message_stream << "SSSE3 score shuffle:\t\t"
+	*message_stream << "SSSE3 score shuffle:\t\t"
 #endif
 		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * CHANNELS) * 1000 << " ps/Letter" << endl;
 }
@@ -191,9 +190,9 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 		//::DP::ARCH_SSE4_1::window_ungapped(s1.data(), targets, 16, 64, out);
 	}
 #ifdef __ARM_NEON
-	message_stream << "NEON ungapped extend:\t\t"
+	*message_stream << "NEON ungapped extend:\t\t"
 #else
-	message_stream << "SSE ungapped extend:\t\t"
+	*message_stream << "SSE ungapped extend:\t\t"
 #endif
 		<< (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 64) * 1000 << " ps/Cell" << endl;
 
@@ -209,7 +208,7 @@ void benchmark_ungapped_sse(const Sequence&s1, const Sequence&s2) {
 		for (size_t i = 0; i < n; ++i) {
 			//::DP::ARCH_AVX2::window_ungapped(s1.data(), targets, 32, 64, out);
 		}
-		message_stream << "AVX2 ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 64) * 1000 << " ps/Cell" << endl;
+		*message_stream << "AVX2 ungapped extend:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 64) * 1000 << " ps/Cell" << endl;
 	}
 #endif
 }
@@ -228,7 +227,7 @@ void benchmark_transpose() {
 		transpose_scalar<16>((const signed char**)v, 16, out);
 		in[0] = out[0];
 	}
-	message_stream << "Transpose (16x16, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+	*message_stream << "Transpose (16x16, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
 
         high_resolution_clock::time_point t2 = high_resolution_clock::now();
         for (size_t i = 0; i < n; ++i) {
@@ -239,7 +238,7 @@ void benchmark_transpose() {
 #endif
             in[0] = out[0];
         }
-        message_stream << "Transpose (16x16, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
+        *message_stream << "Transpose (16x16, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 16 * 16) * 1000 << " ps/Letter" << endl;
 
 
 #if ARCH_ID == 2
@@ -254,14 +253,14 @@ void benchmark_transpose() {
 			transpose_scalar<32>((const signed char**)v, 32, out);
 			in[0] = out[0];
 		}
-		message_stream << "Transpose (32x32, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		*message_stream << "Transpose (32x32, scalar):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 
 		high_resolution_clock::time_point t2 = high_resolution_clock::now();
 		for (size_t i = 0; i < n; ++i) {
 			transpose((const signed char**)v, 32, out, __m256i());
 			in[0] = out[0];
 		}
-		message_stream << "Transpose(32x32, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
+		*message_stream << "Transpose(32x32, vectorized):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t2).count() / (n * 32 * 32) * 1000 << " ps/Letter" << endl;
 	}
 #endif
 }
@@ -299,7 +298,7 @@ void mt_swipe(const Sequence& s1, const Sequence& s2) {
 		th.emplace_back(f);
 	for (auto& t : th)
 		t.join();
-	message_stream << "MT_SWIPE (int8_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "MT_SWIPE (int8_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 }
 
 void swipe(const Sequence&s1, const Sequence&s2) {
@@ -325,7 +324,7 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int8_t):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	targets[1] = targets[0];
@@ -333,13 +332,13 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int8_t, Stats):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int8_t, Stats):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < 32; ++i)
@@ -347,19 +346,19 @@ void swipe(const Sequence&s1, const Sequence&s2) {
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int8_t, MatrixAdjust):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int8_t, MatrixAdjust):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int8_t, CBS):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int8_t, CBS):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile list<Hsp> v = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "SWIPE (int8_t, TB):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
+	*message_stream << "SWIPE (int8_t, TB):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / dp_size * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -380,20 +379,20 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Banded SWIPE (int16_t, CBS):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 	
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Banded SWIPE (int16_t):\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 
 	params.v = HspValues::TRANSCRIPT;
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		volatile auto out = ::DP::BandedSwipe::swipe(targets, params);
 	}
-	message_stream << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
 #if ARCH_ID == 2
@@ -437,7 +436,7 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 		DP::AnchoredSwipe::ARCH_AVX2::smith_waterman<ScoreVector<int16_t, 0>>(targets16.data(), 16, options);
 		volatile auto x = targets[0].score;
 	}
-	message_stream << "Anchored Swipe (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Anchored Swipe (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 16) * 1000 << " ps/Cell" << endl;
 
 	DP::Targets dp_targets;
 	Anchor a(DiagonalSegment(0, 0, 0, 0), 0, 0, 0, 0, 0);
@@ -451,7 +450,7 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 		DP::BandedSwipe::anchored_swipe(dp_targets, cfg, pool);
 		volatile auto x = targets[0].score;
 	}
-	message_stream << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;
 }
 
 //#endif
@@ -468,7 +467,7 @@ void diag_scores(const Sequence& s1, const Sequence& s2) {
 		DP::scan_diags128(p, s2, -32, 0, (int)s2.length(), scores);
 		volatile int x = scores[i & 128];
 	}
-	message_stream << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 128) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Diagonal scores:\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s2.length() * 128) * 1000 << " ps/Cell" << endl;
 }
 #endif
 
@@ -479,13 +478,13 @@ void evalue() {
 	for (size_t i = 0; i < n; ++i) {
 		x += score_matrix.evalue_norm((int)i, 300);
 	}
-	message_stream << "Evalue:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
+	*message_stream << "Evalue:\t\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		x += score_matrix.evalue(300, 300, 300);
 	}
-	message_stream << "Evalue (ALP):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
+	*message_stream << "Evalue (ALP):\t\t\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n) << " ns" << endl;
 }
 
 void matrix_adjust(const Sequence& s1, const Sequence& s2) {
@@ -548,7 +547,7 @@ void matrix_adjust(const Sequence& s1, const Sequence& s2) {
 		printf("\n");
 	}
 
-	message_stream << "Matrix adjust (openblas):\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
+	*message_stream << "Matrix adjust (openblas):\t\t\t" << (double)duration_cast<std::chrono::microseconds>(high_resolution_clock::now() - t1).count() / (n) << " ms" << endl;
 
 	//Profiler::print(n);
 }

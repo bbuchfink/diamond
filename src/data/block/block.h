@@ -56,6 +56,9 @@ struct Block {
 	const SequenceSet& source_seqs() const {
 		return source_seqs_;
 	}
+	SequenceSet& source_seqs() {
+		return source_seqs_;
+	}
 	SequenceSet& unmasked_seqs() {
 		return unmasked_seqs_;
 	}
@@ -93,7 +96,7 @@ struct Block {
 		return (BlockId)self_aln_score_.size() == seqs_.size();
 	}
 	int64_t push_back(const Sequence& seq, const char* id, const std::vector<char>* quals, const OId oid, const SequenceType seq_type, const int frame_mask, const bool dna_translation = true);
-	void append(const Block& b, bool remove_padding = false);
+	void append(const Block& b, bool remove_padding = false, bool append_seqs = true, bool append_ids = true, bool append_oids = true);
 	SeqInfo seq_info(const BlockId id) const;
 	Block* length_sorted(int threads) const;
 	bool has_ids() const;
@@ -102,8 +105,7 @@ struct Block {
 	uint64_t raw_bytes() const noexcept {
 		return raw_bytes_;
 	}
-	template<typename T>
-	void load_stats(T& stream, double microseconds) const {
+	void load_stats(std::ostream& stream, double microseconds) const {
 		if (raw_bytes() > 0)
 			stream << "Loaded " << raw_bytes() << " bytes from disk at " << ((double)raw_bytes() / MEGABYTES / microseconds * 1e6) << " MB/s" << std::endl;
 	}
@@ -127,5 +129,6 @@ private:
 	uint64_t raw_bytes_;
 
 	friend struct SequenceFile;
+	friend struct BlastVolume;
 
 };

@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include "taxon_list.h"
 #include "util/log_stream.h"
-#include "util/io/text_input_file.h"
+#include "util/io/file.h"
 #include "basic/config.h"
 #include "util/string/tokenizer.h"
 #include "util/algo/external_sort.h"
@@ -35,7 +35,7 @@ using std::vector;
 using std::pair;
 using std::string;
 
-TaxonList::TaxonList(Deserializer &in, size_t size, size_t data_size):
+TaxonList::TaxonList(File &in, size_t size, size_t data_size):
 	CompactArray(in, size, data_size)
 {}
 
@@ -56,18 +56,18 @@ static int mapping_file_format(const string& header) {
 static Util::Seq::AccessionParsing load_mapping_file(ExternalSorter<pair<string, TaxId>>& sorter)
 {
 	TaxId taxid;
-	TextInputFile f(config.prot_accession2taxid);
-	f.getline();
-	int format = mapping_file_format(f.line);
+	File f(config.prot_accession2taxid, "rb", File::Flags::DETECT_COMPRESSION);
+	const char* line = f.getline();
+	int format = mapping_file_format(line);
 	string accession, last;
 	Util::Seq::AccessionParsing stats;
 
-	while (!f.eof() && (f.getline(), !f.line.empty())) {
+	while (f.getline(), !f.eof() || line[0] != '\0') {
 		try {
 			if (format == 0)
-				Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> Util::String::Skip() >> accession >> taxid;
+				Util::String::Tokenizer<Util::String::CharDelimiter>(line, Util::String::CharDelimiter('\t')) >> Util::String::Skip() >> accession >> taxid;
 			else
-				Util::String::Tokenizer<Util::String::CharDelimiter>(f.line, Util::String::CharDelimiter('\t')) >> accession >> taxid;
+				Util::String::Tokenizer<Util::String::CharDelimiter>(line, Util::String::CharDelimiter('\t')) >> accession >> taxid;
 		}
 		catch (Util::String::TokenizerException&) {
 			throw std::runtime_error("Malformed input in line " + std::to_string(f.line_count));
@@ -136,5 +136,5 @@ void TaxonList::build(OutputFile &db, ExternalSorter<pair<string, OId>>& acc2oid
 	stats("Database sequences mapped to taxid", mapped_seqs);
 
 	if (!config.no_parse_seqids)
-		message_stream << endl << "Accession parsing rules triggered for mapping file seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
+		*message_stream << endl << "Accession parsing rules triggered for mapping file seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
 }

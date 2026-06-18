@@ -46,8 +46,8 @@ struct BlastDB : public SequenceFile {
 	virtual void skip_id_data() override;
 	virtual std::string seqid(OId oid, bool all, bool full_titles) override;
 	//virtual Loc dict_len(DictId dict_id, const size_t ref_block) override;
-	virtual uint64_t sequence_count() const override;
-	virtual uint64_t letters() const override;
+	virtual optional<uint64_t> sequence_count() const override;
+	virtual optional<uint64_t> letters() const override;
 	virtual int db_version() const override;
 	virtual int program_build_version() const override;
 	virtual bool read_seq(std::vector<Letter>& seq, std::string& id, std::vector<char>* quals = nullptr) override;

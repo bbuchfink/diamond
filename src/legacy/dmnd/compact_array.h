@@ -20,13 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <vector>
 #include <limits.h>
-#include "util/io/deserializer.h"
+#include <limits>
+#include "util/io/file.h"
 #include "util/algo/varint.h"
 
 struct CompactArray
 {
 
-	CompactArray(Deserializer &in, size_t size, size_t data_size) :
+	CompactArray(File &in, size_t size, size_t data_size) :
 		data_(data_size)
 	{
 		in.read(data_.data(), data_size);

@@ -1,3 +1,27 @@
+[2.2.2]
+- Fixed a crash in the `view` workflow (present since v2.2.0).
+- Fixed a bug that could cause an error clustering a database with a single sequence.
+- Using the `--log` option will no longer produce a `diamond.log` file.
+- The `--verbose/-v` option is deprecated and has no effect.
+- Removed a potential inter-system non-determinism caused by toggling query-indexed mode
+  by detection of L3 cache size.
+- Fixed the `--header` option not correctly working for clustering workflows.
+- Removed the `--unaligned-targets` option.
+- Fixed an error reading FASTQ files with line breaks in the sequence or quality lines.
+- Improved the performance of loading FASTA files containing DNA sequences.
+- Fixed an issue of not correctly loading compressed streams on Windows.
+- Fixed the Windows release version missing zstd support.
+- Fixed query-indexed mode not being correctly triggered when using the `--dbsize`
+  option in conjunction with a FASTA database.
+- Fixed a bug that could cause incorrect ordering in the output file when using the `--dbsize`
+  option in conjunction with a FASTA database.
+- Fixed a crash when using `--mp-init` on Windows.
+- Fixed a potential deadlock when using `--multiprocessing`.
+- Added the option `--daa-build-version` to overwrite the diamond build version written to
+  DAA files.
+- Disabled suppression of terminal logging output to stderr when requesting output be
+  written to stdout.
+
 [2.2.1]
 - Improved the performance of the search and clustering workflows.
 - Fixed an issue of increased memory use in greedy vertex cover computation.

@@ -121,9 +121,9 @@ void Search::mask_seeds(const Shape& shape, const SeedPartitionRange& range, Dou
 	for (auto& i : threads)
 		i.join();
 	timer.finish();
-	verbose_stream << "Masked seeds: " << Util::String::ratio_percentage(masked_seed_count, seed_count) << endl;
-	verbose_stream << "Masked positions (query): " << Util::String::ratio_percentage(query_count, query_seqs.letters()) << endl;
-	verbose_stream << "Masked positions (target): " << Util::String::ratio_percentage(target_count, cfg.target->seqs().letters()) << endl;
+	*log_stream << "Masked seeds: " << Util::String::ratio_percentage(masked_seed_count, seed_count) << endl;
+	*log_stream << "Masked positions (query): " << Util::String::ratio_percentage(query_count, query_seqs.letters()) << endl;
+	*log_stream << "Masked positions (target): " << Util::String::ratio_percentage(target_count, cfg.target->seqs().letters()) << endl;
 }
 
 template void Search::mask_seeds(const Shape&, const SeedPartitionRange&, DoubleArray<PackedLoc>*, DoubleArray<PackedLoc>*, Search::Config&);

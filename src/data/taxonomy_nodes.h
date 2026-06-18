@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <string>
 #include "util/io/serializer.h"
-#include "util/io/deserializer.h"
+#include "util/io/file.h"
 #include "basic/value.h"
 #include "util/util.h"
 
@@ -64,7 +64,7 @@ struct TaxonomyNodes
 {
 
 	TaxonomyNodes(const std::string& file_name);
-	TaxonomyNodes(Deserializer &in, uint32_t db_build);
+	TaxonomyNodes(File &in, uint32_t db_build);
 	void save(Serializer &out);
 	unsigned get_parent(TaxId taxid) const
 	{

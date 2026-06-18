@@ -135,16 +135,16 @@ void IntermediateRecord::write(TextBuffer& buf, const Hsp& match, unsigned query
 
 void IntermediateRecord::write(TextBuffer& buf, uint32_t target_block_id, int score, const Search::Config& cfg) {
 	const uint32_t target_oid = (uint32_t)cfg.target->block_id2oid(target_block_id); // check for overflow
-	assert(target_oid < cfg.db_seqs);
+	assert(target_oid < cfg.db_seqs.value());
 	buf.write(target_oid);
 	const uint16_t s = (uint16_t)std::min(score, USHRT_MAX);
 	buf.write(s);
 }
 
-void IntermediateRecord::finish_file(Consumer& f)
+void IntermediateRecord::finish_file(File& f)
 {
 	const uint32_t i = FINISHED;
-	f.consume(reinterpret_cast<const char*>(&i), 4);
+	f.write(reinterpret_cast<const char*>(&i), 4);
 }
 
 void OutputFormat::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc, bool json_array)
@@ -244,18 +244,18 @@ OutputFormat* init_output(int64_t& max_target_seqs)
 			max_target_seqs = INT64_MAX;
 	}
 	if (config.toppercent.blank()) {
-		message_stream << "#Target sequences to report alignments for: ";
+		*message_stream << "#Target sequences to report alignments for: ";
 		if (max_target_seqs == INT64_MAX)
-			message_stream << "unlimited";
+			*message_stream << "unlimited";
 		else
-			message_stream << max_target_seqs;
-		message_stream << endl;
+			*message_stream << max_target_seqs;
+		*message_stream << endl;
 	}
 	else
-		message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
+		*message_stream << "Percentage range of top alignment score to report hits: " << config.toppercent << endl;
 	if (config.frame_shift != 0 && (output_format->hsp_values != HspValues::NONE || config.query_range_culling))
 		output_format->hsp_values = HspValues::TRANSCRIPT;
-	log_stream << "DP fields: " << (unsigned)output_format->hsp_values << endl;
+	*log_stream << "DP fields: " << (unsigned)output_format->hsp_values << endl;
 	return output_format;
 }
 

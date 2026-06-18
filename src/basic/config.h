@@ -23,10 +23,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "util/options/option.h"
 #include "value.h"
+#include "util/io/decompressor.h"
 #include "util/enum.h"
 
 enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_40 = 2, LINCLUST_20 = 3, SHAPES6x10 = 4, SHAPES30x10 = 5, MID_SENSITIVE = 6, SENSITIVE = 7, MORE_SENSITIVE = 8, VERY_SENSITIVE = 9, ULTRA_SENSITIVE = 10 };
-enum class Compressor;
 
 template<> struct EnumTraits<Sensitivity> {
 	static const EMap<Sensitivity> to_string;
@@ -96,7 +96,7 @@ struct Config
     int mismatch_penalty;
     int match_reward;
 	string	matrix;
-	bool debug_log, verbose, quiet;
+	bool debug_log, quiet;
 	bool		salltitles;
 	int		reward;
 	int		penalty;
@@ -208,7 +208,6 @@ struct Config
 	int gapped_filter_window;
 	bool output_hits;
 	double ungapped_evalue_;
-	bool no_logfile;
 	int band_bin;
 	int col_bin;
 	int64_t file_buffer_size;
@@ -299,7 +298,6 @@ struct Config
 	int64_t reassign_max;
 	bool add_self_aln;
 	string centroid_out;
-	string unaligned_targets;
 	Option<double> approx_min_id;
 	bool mode_faster;
 	Option<double> member_cover;
@@ -367,6 +365,7 @@ struct Config
 	bool hamming_dist_boundary_check;
 	bool keep_temp_files;
 	std::string fasta_index_file;
+	int daa_build_version;
 
     SequenceType dbtype;
 
@@ -441,7 +440,7 @@ struct Config
 	std::string single_query_file() const;
 
 	bool mem_buffered() const { return tmpdir == "/dev/shm"; }
-	Compressor compressor() const;
+	CompressionLib compressor() const;
 
   	template<typename T>
 	static void set_option(T& option, T value, T def = 0) { if (option == def) option = value; }

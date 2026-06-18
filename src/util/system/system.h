@@ -48,7 +48,6 @@ size_t file_size(const char* name);
 double total_ram();
 std::tuple<char*, size_t, int> mmap_file(const char* filename);
 void unmap_file(char* ptr, size_t size, int fd);
-size_t l3_cache_size();
 void mkdir(const std::string& dir);
 void rmdir(const std::string& dir);
 std::pair<std::string, std::string> absolute_path(const std::string& file_path);

@@ -99,7 +99,7 @@ void XMLFormat::print_match(const HspContext& r, Output::Info& info)
 		<< "    </Hsp>" << '\n';
 }
 
-void XMLFormat::print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const
+void XMLFormat::print_header(File& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const
 {
 	stringstream ss;
 	ss << "<?xml version=\"1.0\"?>" << endl
@@ -126,7 +126,7 @@ void XMLFormat::print_header(Consumer& f, int mode, const char* matrix, int gap_
 		<< "    </Parameters>" << endl
 		<< "  </BlastOutput_param>" << endl
 		<< "<BlastOutput_iterations>" << endl;
-	f.consume(ss.str().c_str(), ss.str().length());
+	f.write(ss.str().c_str(), ss.str().length());
 }
 
 void XMLFormat::print_query_intro(Output::Info& info) const
@@ -147,25 +147,31 @@ void XMLFormat::print_query_epilog(Output::Info& info) const
 		info.out << "  </Hit_hsps>" << '\n'
 			<< "</Hit>" << '\n';
 	}
-	((info.out << "</Iteration_hits>" << '\n'
+	info.out << "</Iteration_hits>" << '\n'
 		<< "  <Iteration_stat>" << '\n'
-		<< "    <Statistics>" << '\n'
-		<< "      <Statistics_db-num>" << info.db_seqs << "</Statistics_db-num>" << '\n'
-		<< "      <Statistics_db-len>" << info.db_letters << "</Statistics_db-len>" << '\n'
-		<< "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
+		<< "    <Statistics>" << '\n';
+	if (info.db_seqs.has_value())
+		info.out << "      <Statistics_db-num>" << info.db_seqs.value() << "</Statistics_db-num>" << '\n';
+	if (info.db_letters.has_value())
+		info.out << "      <Statistics_db-len>" << info.db_letters.value() << "</Statistics_db-len>" << '\n';
+	info.out << "      <Statistics_hsp-len>0</Statistics_hsp-len>" << '\n'
 		<< "      <Statistics_eff-space>0</Statistics_eff-space>" << '\n'
-		<< "      <Statistics_kappa>").print_d(score_matrix.k()) << "</Statistics_kappa>" << '\n'
-		<< "      <Statistics_lambda>").print_d(score_matrix.lambda()) << "</Statistics_lambda>" << '\n'
+		<< "      <Statistics_kappa>";
+	info.out.print_d(score_matrix.k());
+	info.out << "</Statistics_kappa>" << '\n';
+	info.out << "      <Statistics_lambda>";
+	info.out.print_d(score_matrix.lambda());
+	info.out << "</Statistics_lambda>" << '\n'
 		<< "      <Statistics_entropy>0</Statistics_entropy>" << '\n'
 		<< "    </Statistics>" << '\n'
 		<< "  </Iteration_stat>" << '\n'
 		<< "</Iteration>" << '\n';
 }
 
-void XMLFormat::print_footer(Consumer& f) const
+void XMLFormat::print_footer(File& f) const
 {
 	std::stringstream ss;
 	ss << "</BlastOutput_iterations>" << endl
 		<< "</BlastOutput>";
-	f.consume(ss.str().c_str(), ss.str().length());
+	f.write(ss.str().c_str(), ss.str().length());
 }

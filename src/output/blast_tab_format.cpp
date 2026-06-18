@@ -625,7 +625,7 @@ map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
     }();
 
 Header TabularFormat::header_format(unsigned workflow) {
-	const bool cluster = workflow == Config::cluster || workflow == Config::DEEPCLUST;
+    const bool cluster = workflow == Config::cluster || workflow == Config::DEEPCLUST || workflow == Config::LINCLUST;
 	if (workflow != Config::blastp && !cluster)
 		throw runtime_error("header_format");
 	if (!config.output_header.present())
@@ -787,7 +787,7 @@ void TabularFormat::print_query_intro(Output::Info& info) const
     }
 }
 
-void TabularFormat::output_header(Consumer& f, bool cluster) const {
+void TabularFormat::output_header(File& f, bool cluster) const {
     vector<string> headers;
     transform(fields.begin(), fields.end(), back_inserter(headers), [cluster](FieldId i) {
         const OutputField& field = TabularFormat::field_def.at(i);
@@ -797,11 +797,11 @@ void TabularFormat::output_header(Consumer& f, bool cluster) const {
         return key;
         });
     const string s = join("\t", headers.begin(), headers.end()) + '\n';
-    f.consume(s.data(), s.length());
+    f.write(s.data(), s.length());
     return;
 }
 
-void TabularFormat::print_header(Consumer& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const {
+void TabularFormat::print_header(File& f, int mode, const char* matrix, int gap_open, int gap_extend, double evalue, const char* first_query_name, unsigned first_query_len) const {
     const Header h = header_format(Config::blastp);
     if (h == Header::VERBOSE) {
         std::ostringstream ss;
@@ -815,20 +815,20 @@ void TabularFormat::print_header(Consumer& f, int mode, const char* matrix, int 
         }
         ss << std::endl;
         const string s(ss.str());
-        f.consume(s.data(), s.length());
+        f.write(s.data(), s.length());
     }
     else if (h == Header::SIMPLE) {
         output_header(f, false);
     }
     if (is_json) {
         const char* hdr = "[";
-        f.consume(hdr, strlen(hdr));
+        f.write(hdr, strlen(hdr));
     }
 }
 
-void TabularFormat::print_footer(Consumer &f) const {
+void TabularFormat::print_footer(File &f) const {
     if(is_json) {
         const char* s = "\n]";
-		f.consume(s, strlen(s));
+		f.write(s, strlen(s));
     }
 }

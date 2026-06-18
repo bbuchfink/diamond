@@ -93,15 +93,15 @@ Config::Config(std::unique_ptr<std::vector<BitVector>>& target_seed_hits) :
 		throw std::runtime_error("The same sensitivity level was specified multiple times for --iterate.");
 
 	if (sensitivity.size() > 1) {
-		message_stream << "Running iterated search mode with sensitivity steps: ";
+		*message_stream << "Running iterated search mode with sensitivity steps: ";
 		for (auto it = sensitivity.begin(); it != sensitivity.end(); ++it) {
-			message_stream << to_string(it->sensitivity);
+			*message_stream << to_string(it->sensitivity);
 			if (it->linearize)
-				message_stream << " (linear)";
+				*message_stream << " (linear)";
 			if (it != sensitivity.end() - 1)
-				message_stream << ", ";
+				*message_stream << ", ";
 		}
-		message_stream << endl;
+		*message_stream << endl;
 		track_aligned_queries = true;
 	}
 
@@ -162,7 +162,7 @@ Config::Config(std::unique_ptr<std::vector<BitVector>>& target_seed_hits) :
 			throw runtime_error("--min-len-ratio is not supported for translated searches");
 		min_length_ratio = config.min_length_ratio;
 	}
-	log_stream << "Min length ratio: " << min_length_ratio << endl;
+	*log_stream << "Min length ratio: " << min_length_ratio << endl;
 	output_format.reset(init_output(max_target_seqs));
 
 	if(config.approx_min_id.present() && config.min_id != 0.0)

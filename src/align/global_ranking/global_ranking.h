@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/data_structures/bit_vector.h"
 #include "../extend.h"
 #include "../target.h"
+#include "util/io/file.h"
+#include "util/io/temp_file.h"
 
 namespace Extension { namespace GlobalRanking {
 
@@ -41,9 +43,9 @@ std::vector<Extension::Match> ranking_list(size_t query_id, std::vector<TargetSc
 void write_merged_query_list(const IntermediateRecord& r, TextBuffer& out, BitVector& ranking_db_filter, Statistics& stat);
 size_t write_merged_query_list_intro(uint32_t query_id, TextBuffer& buf);
 void finish_merged_query_list(TextBuffer& buf, size_t seek_pos);
-void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Search::Config& cfg, Consumer& master_out);
-void extend(Search::Config& cfg, Consumer& out);
-QueryList fetch_query_targets(InputFile& query_list, uint32_t& next_query);
+void extend(SequenceFile& db, TempFile& merged_query_list, BitVector& ranking_db_filter, Search::Config& cfg, File& master_out);
+void extend(Search::Config& cfg, File& out);
+QueryList fetch_query_targets(File& query_list, uint32_t& next_query);
 void update_table(Search::Config& cfg);
 
 struct Hit {

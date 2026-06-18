@@ -79,6 +79,9 @@ void Parallelizer::init(const string & tempdir) {
     gethostname(hostname, 1023);
     id = string(hostname) + "_" + to_string(getpid());
 #else
+    DWORD size = 1024;
+	if (!GetComputerNameA(hostname, &size))
+		throw runtime_error("GetComputerNameA failed: " + to_string(GetLastError()));
     id = string(hostname) + "_" + to_string(_getpid());
 #endif
 	

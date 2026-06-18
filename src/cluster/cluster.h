@@ -28,7 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/flags.h"
 #include "output/output_format.h"
 #include "util/algo/algo.h"
-#include "util/tsv/tsv.h"
 #include "multinode/multinode.h"
 
 class ClusteringAlgorithm {
@@ -41,6 +40,7 @@ public:
 namespace Cluster {
 
 const double DEFAULT_MEMBER_COVER = 80.0;
+extern const char* const HEADER_LINE;
 
 struct CentroidSorted {};
 
@@ -52,17 +52,16 @@ template<typename Int>
 std::vector<Int> read(const std::string& file_name, const SequenceFile& db);
 template<typename Int>
 std::vector<Int> member2centroid_mapping(const FlatArray<Int>& clusters, const std::vector<Int>& centroids);
-template<typename Int>
-void output_mem(Util::Tsv::File& out, SequenceFile& db, const std::vector<Int>& mapping);
-void output_mem(Util::Tsv::File& out, SequenceFile& db, Util::Tsv::File& oid_to_centroid_oid);
-template<typename Int>
-void output_mem(Util::Tsv::File& out, SequenceFile& db, std::vector<std::pair<Int, Int>>& mapping);
+//template<typename Int>
+//void output_mem(Util::Tsv::File& out, SequenceFile& db, const std::vector<Int>& mapping);
+//void output_mem(Util::Tsv::File& out, SequenceFile& db, Util::Tsv::File& oid_to_centroid_oid);
+//template<typename Int>
+//void output_mem(Util::Tsv::File& out, SequenceFile& db, std::vector<std::pair<Int, Int>>& mapping);
 template<typename Int>
 std::pair<FlatArray<Int>, std::vector<Int>> cluster_sorted(const std::vector<Int>& mapping);
 template<typename Int>
 std::pair<std::vector<Int>, std::vector<Int>> split(const std::vector<Int>& mapping);
 std::vector<SuperBlockId> member_counts(const std::vector<SuperBlockId>& mapping);
-Util::Tsv::File* open_out_tsv();
 void init_thresholds();
 std::vector<BlockId> len_sorted_clust(const FlatArray<Util::Algo::Edge<SuperBlockId>>& edges);
 void output_edges(const std::string& file, SequenceFile& db, const std::vector<Util::Algo::Edge<SuperBlockId>>& edges);
@@ -144,7 +143,7 @@ struct Cfg {
 	std::shared_ptr<Block> centroid_block, member_block;
 };
 
-InputFile* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg);
+File* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg);
 std::string gvc_input_rep_list(int round, const std::string& tmp_dir, Job* job, OId max_oid);
 std::vector<std::string> cluster_steps(double approx_id, bool linear);
 std::vector<std::string> default_round_cov(int steps);

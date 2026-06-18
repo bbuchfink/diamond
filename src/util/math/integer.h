@@ -40,8 +40,7 @@ static inline int32_t saturated_add(int32_t x, int32_t y) {
 }
 
 static inline int bit_length(uint64_t x) {
-	assert(x > 0);
-	return 64 - clz(x);
+	return x == 0 ? 0 : 64 - clz(x);
 }
 
 inline size_t next_pow2(size_t x) noexcept {

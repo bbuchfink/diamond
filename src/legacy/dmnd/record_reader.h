@@ -20,23 +20,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <stdint.h>
 #include <string.h>
-#include <basic/value.h>
-#include "util/io/deserializer.h"
 
 struct Finish {};
 
 struct DynamicRecordReader {
 
-	DynamicRecordReader(Deserializer& d) :
+	DynamicRecordReader(File& d) :
 		d_(d)
 	{
-		d >> size_;
+		d.read(size_);
+		size_ = big_endian_byteswap(size_);
 	}
 
 	DynamicRecordReader& operator>>(unsigned long long& x)
 	{
 		if (size_ >= sizeof(unsigned long long)) {
-			d_ >> x;
+			d_.read(x);
+			x = big_endian_byteswap(x);
 			size_ -= sizeof(unsigned long long);
 		}
 		else
@@ -47,7 +47,8 @@ struct DynamicRecordReader {
 	DynamicRecordReader& operator>>(unsigned long& x)
 	{
 		if (size_ >= sizeof(unsigned long)) {
-			d_ >> x;
+			d_.read(x);
+			x = big_endian_byteswap(x);
 			size_ -= sizeof(unsigned long);
 		}
 		else
@@ -60,7 +61,7 @@ struct DynamicRecordReader {
 	{
 		const size_t s = count * sizeof(T);
 		if (size_ >= s) {
-			d_.read(ptr, count);
+			d_.read((void*)ptr, count * sizeof(T));
 			size_ -= s;
 		}
 		else
@@ -71,7 +72,8 @@ struct DynamicRecordReader {
 	DynamicRecordReader& operator>>(int& x)
 	{
 		if (size_ >= sizeof(int)) {
-			d_ >> x;
+			d_.read(x);
+			x = big_endian_byteswap(x);
 			size_ -= sizeof(int);
 		}
 		else
@@ -90,7 +92,7 @@ struct DynamicRecordReader {
 	}
 
 private:
-	Deserializer& d_;
+	File& d_;
 	uint64_t size_;
 
 };

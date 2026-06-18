@@ -146,7 +146,7 @@ static void merge_hits(const size_t query, vector<Hit>& hits, vector<Hit>& merge
 
 void update_table(Search::Config& cfg) {
 	SeedHits& hits = *cfg.global_ranking_buffer;
-	log_stream << "Seed hits = " << hits.size() << endl;
+	*log_stream << "Seed hits = " << hits.size() << endl;
 	if (hits.size() == 0)
 		return;
 	TaskTimer timer("Sorting seed hits");
@@ -185,7 +185,7 @@ void update_table(Search::Config& cfg) {
 	timer.go("Deallocating seed hit list");
 	cfg.global_ranking_buffer.reset();
 	timer.finish();
-	log_stream << "Merged targets = " << merged_count << endl;
+	*log_stream << "Merged targets = " << merged_count << endl;
 }
 
 }}

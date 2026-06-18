@@ -137,7 +137,7 @@ static bool acc_filter(const vector<BlastDefLine>& deflines, unordered_map<std::
     return false;
 }
 
-DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<std::string, bool>* accs) const {
+DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<std::string, bool>* accs, SequenceType seq_type) const {
     assert(filter == nullptr || accs == nullptr);
     DecodedPackage* pkg = new DecodedPackage();
     pkg->no = no;
@@ -145,7 +145,12 @@ DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const B
     const char* seq_ptr = seq_data.data(), *phr_ptr = phr_data.data();
     const bool titles = bool(flags & SequenceFile::Flags::TITLES), seqs = bool(flags & SequenceFile::Flags::SEQS), taxids = bool(flags & SequenceFile::Flags::TAXON_MAPPING),
         full_titles = bool(flags & SequenceFile::Flags::FULL_TITLES), all_seqids = bool(flags & SequenceFile::Flags::ALL_SEQIDS);
-    pkg->oids.reserve(n);
+    pkg->block.block2oid_.reserve(n);
+    if (seqs)
+        pkg->block.seqs_.reserve(n, seq_data.size());
+    if (titles)
+        pkg->block.ids_.reserve(n, phr_data.size());
+    vector<Letter> seq_buf;
     for (size_t i = 0; i < n; ++i) {
         const OId oid = begin_ + i;
         bool f = !filter || filter->get(oid);
@@ -158,7 +163,7 @@ DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const B
                     f = acc_filter(deflines, *accs);
                 if (f && titles) {
                     const string title = build_title(deflines, "\1", true);
-                    pkg->ids.push_back(title.begin(), title.end());
+                    pkg->block.ids_.push_back(title.begin(), title.end());
                 }
                 if (f && taxids) {
                     set<TaxId> s;
@@ -175,14 +180,14 @@ DecodedPackage* BlastVolume::RawChunk::decode(SequenceFile::Flags flags, const B
         if (seqs) {
             const size_t lseq = seq_index[i + 1] - seq_index[i];
             if (f) {
-                const vector<Letter> seq = decode_protein_sequence(seq_ptr, lseq);
-                pkg->seqs.push_back(seq.begin(), seq.end());
+                decode_protein_sequence(seq_ptr, lseq, seq_buf);
+                pkg->block.seqs_.push_back(seq_buf.begin(), seq_buf.end());
             }
             seq_ptr += lseq;
         }
 
         if (f) {
-            pkg->oids.push_back(oid);
+            pkg->block.block2oid_.push_back(oid);
             ++pkg->seq_count;
         }
     }

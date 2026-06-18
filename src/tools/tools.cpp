@@ -29,14 +29,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "murmurhash/MurmurHash3.h"
 #include "data/sequence_file.h"
 #include "search/search.h"
+#include "util/io/file.h"
 #include "search/seed_array/enum_seeds.h"
 #define _REENTRANT
 #include "ips4o/ips4o.hpp"
 #include "masking/masking.h"
 #include "util/ptr_vector.h"
-#include "util/tsv/table.h"
-#include "util/tsv/tsv.h"
-#include "util/string/tokenizer_dyn.h"
 
 using std::array;
 using std::cout;
@@ -48,9 +46,6 @@ using std::unordered_map;
 using std::cerr;
 using std::ofstream;
 using std::string;
-using Util::Tsv::Schema;
-using Util::Tsv::Type;
-using Util::String::TokenIterator;
 using std::runtime_error;
 
 void split() {
@@ -87,7 +82,7 @@ void split() {
 }
 
 void hash_seqs() {
-	TextInputFile f(config.query_file.front());
+	File f(config.query_file.front(), "rb", File::Flags::DETECT_COMPRESSION);
 	//FASTA_format fmt;
 	string id;
 	vector<Letter> seq;

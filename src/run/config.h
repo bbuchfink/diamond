@@ -19,9 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <memory>
-#include <mutex>
+#include "util/optional.h"
 #include "util/data_structures/bit_vector.h"
 #include "util/scores/cutoff_table.h"
+#include "util/io/file.h"
 #include "util/parallel/simple_thread_pool.h"
 #include "util/data_structures/bit_vector.h"
 #ifdef WITH_DNA
@@ -118,7 +119,7 @@ struct Config {
 	
 	std::shared_ptr<SequenceFile>              db;
 	std::shared_ptr<SequenceFile>              query_file;
-	std::shared_ptr<Consumer>                  out;
+	std::shared_ptr<File>                      out;
 	std::shared_ptr<DbFilter>                  db_filter;
 
 	std::shared_ptr<Block>                     query, target;
@@ -142,10 +143,8 @@ struct Config {
     int                                        current_query_block;
 	int                                        current_ref_block;
 	bool                                       blocked_processing;
-	std::vector<bool>                          aligned_targets;
-	std::mutex                                 aligned_targets_mtx;
 
-    uint64_t db_seqs, db_letters, ref_blocks;
+    optional<uint64_t> db_seqs, db_letters, ref_blocks;
 #ifdef UNGAPPED_SPOUGE
 	const Util::Scores::CutoffTable2D cutoff_table;
 #else

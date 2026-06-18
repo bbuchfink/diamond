@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/sequence_file.h"
 #include "util/parallel/simple_thread_pool.h"
 #include "util/data_structures/queue.h"
+#include "util/log_stream.h"
 
 using std::ostringstream;
 using std::thread;

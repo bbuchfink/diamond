@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "util/algo/varint.h"
 #include "util/io/serializer.h"
+#include "util/io/file.h"
+#include "util/io/deserializer.h"
 
 static inline void write_varint(Serializer& s, int32_t x) {
 	char buf[5];
@@ -80,6 +82,33 @@ static inline void deserialize(Deserializer& d, std::vector<std::int32_t>& out) 
 	int32_t x;
 	for (uint32_t i = 0; i < n; ++i) {
 		d >> x;
+		out.push_back(x);
+	}
+}
+
+static inline void deserialize(File& d, std::vector<std::string>& out) {
+	uint32_t n;
+	d.read(n);
+	n = big_endian_byteswap(n);
+	out.clear();
+	out.reserve(n);
+	std::string s;
+	for (uint32_t i = 0; i < n; ++i) {
+		d.read_c_str(s);
+		out.push_back(std::move(s));
+	}
+}
+
+static inline void deserialize(File& d, std::vector<std::int32_t>& out) {
+	uint32_t n;
+	d.read(n);
+	n = big_endian_byteswap(n);
+	out.clear();
+	out.reserve(n);
+	int32_t x;
+	for (uint32_t i = 0; i < n; ++i) {
+		d.read(x);
+		x = big_endian_byteswap(x);
 		out.push_back(x);
 	}
 }

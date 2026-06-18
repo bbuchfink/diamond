@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/sequence_file.h"
 #include "cluster/cluster.h"
 #include "tools/tools.h"
+#include "util/log_stream.h"
 
 const char* const DEFAULT_MEMORY_LIMIT = "16G";
 const double CASCADED_ROUND_MAX_EVALUE = 0.001;
@@ -53,7 +54,7 @@ void Job::log(const char* format, ...) {
 #endif
 	ptr[i++] = '\n';
 	ptr[i] = '\0';
-	message_stream << buffer;
+	*message_stream << buffer;
 	log_file_->push(buffer);
 	va_end(args);
 }
@@ -186,11 +187,12 @@ void multinode() {
 		//throw runtime_error("Option not supported for this workflow: --id");
 	config.database.require();
 	Cluster::init_thresholds();
+	const Header hdr_format = TabularFormat::header_format(::Config::cluster);
 	const bool parallel = !config.parallel_tmpdir.empty();
 	if (config.output_file.empty())
 		throw runtime_error("Option missing: output file (--out/-o)");
 	const string output_file = config.output_file;
-	config.file_buffer_size = 64 * 1024;
+	config.file_buffer_size = 64 * 1024; // TODO
 	const bool linclust = config.command == ::Config::LINCLUST;
 	const vector<string> steps = Cluster::cluster_steps(config.approx_min_id.present() ? config.approx_min_id : config.min_id, linclust); // TODO
 	if (parallel) {
@@ -272,7 +274,7 @@ void multinode() {
 	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock", job);
 	config.output_file = output_file;
 	if (output_lock.fetch_add() == 0) {
-		merge(job, input_volumes);
+		merge(job, input_volumes, hdr_format);
 		job.log(job.stats());
 		output_lock.close();
 		lock.close();

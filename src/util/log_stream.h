@@ -20,42 +20,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <exception>
 #include <ostream>
-#include <fstream>
-#include <mutex>
 #include <chrono>
 #include <stdint.h>
 #include <limits.h>
 
-struct MessageStream
-{
-	MessageStream(bool to_cout = true, bool to_file = false);
-	template<typename T>
-	MessageStream& operator<<(const T& x)
-	{
-		if(to_cout_)
-			(*out_stream_) << x;
-		if (to_file_) {
-			std::ofstream f("diamond.log", std::ios_base::out | std::ios_base::app);
-			f << x;
-			f.close();
-		}
-		return *this;
-	}
-	//Message_stream& operator<<(std::ostream & (__cdecl *_Pfn)(std::ostream&))
-	MessageStream& operator<<(std::ostream& (*_Pfn)(std::ostream&));
-	static std::mutex mtx;
-private:
-	std::ostream* out_stream_;
-	bool to_cout_, to_file_;
-};
+extern std::ostream* message_stream;
+extern std::ostream* log_stream;
 
-extern MessageStream message_stream;
-extern MessageStream verbose_stream;
-extern MessageStream log_stream;
+void cleanup();
 
 struct TaskTimer
 {
-	TaskTimer(MessageStream& stream, unsigned level = 1) :
+	TaskTimer(std::ostream* stream, unsigned level = 1) :
 		level_(level),
 		msg_(nullptr),
 		stream_(stream)
@@ -65,7 +41,7 @@ struct TaskTimer
 	TaskTimer(unsigned level = 1) :
 		TaskTimer(get_stream(level), level)
 	{}
-	TaskTimer(const char* msg, MessageStream& stream, unsigned level = 1) :
+	TaskTimer(const char* msg, std::ostream* stream, unsigned level = 1) :
 		level_(level),
 		msg_(msg),
 		stream_(stream)
@@ -97,7 +73,7 @@ struct TaskTimer
 	{
 		if (!msg_ || level_ == UINT_MAX)
 			return;
-		stream_ << " [" << get() << "s]" << std::endl;
+		*stream_ << " [" << get() << "s]" << std::endl;
 		msg_ = 0;
 	}
 	double get()
@@ -124,16 +100,15 @@ private:
 			return;
 		if (!msg)
 			return;
-		stream_ << msg << "... " << std::flush;
+		*stream_ << msg << "... " << std::flush;
 
 	}
-	MessageStream& get_stream(unsigned level) const
+	std::ostream* get_stream(unsigned level) const
 	{
 		switch (level) {
 		case 1:
 			return message_stream;
 		case 2:
-			return verbose_stream;
 		case 3:
 			return log_stream;
 		default:
@@ -142,8 +117,6 @@ private:
 	}
 	unsigned level_;
 	const char *msg_;
-	MessageStream& stream_;
+	std::ostream* stream_;
 	std::chrono::high_resolution_clock::time_point t;
 };
-
-void exit_with_error(const std::exception& e);

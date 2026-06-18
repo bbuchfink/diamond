@@ -32,7 +32,7 @@ SequenceSet::SequenceSet()
 
 void SequenceSet::print_stats() const
 {
-	verbose_stream << "Sequences = " << this->size() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << std::endl;
+	*log_stream << "Sequences = " << this->size() << ", letters = " << this->letters() << ", average length = " << this->avg_len() << std::endl;
 }
 
 std::pair<SequenceSet::Length, SequenceSet::Length> SequenceSet::len_bounds(Length min_len) const

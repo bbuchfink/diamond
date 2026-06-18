@@ -353,7 +353,7 @@ int64_t FileStack::push(const string & buf, size_t & size_after_push) {
     lock();
     int64_t n = push_exclusive(buf);
     if (size_after_push != numeric_limits<size_t>::max()) {
-        size_after_push = size();
+        size_after_push = size_unlocked();
     }
     unlock();
     return n;
@@ -384,11 +384,17 @@ int64_t FileStack::push(int64_t i) {
 
 size_t FileStack::size() {
     DBG("");
+    lock();
+    const size_t c = size_unlocked();
+    unlock();
+    return c;
+}
+
+size_t FileStack::size_unlocked() {
+    DBG("");
     size_t c = 0;
     const size_t chunk_size = default_max_line_length;
     char * raw = new char[chunk_size * sizeof(char)];
-
-    lock();
 
     size_t n_bytes, i;
     seek(0, SEEK_SET);
@@ -399,8 +405,6 @@ size_t FileStack::size() {
             }
         }
     }
-
-    unlock();
 
     delete [] raw;
     return c;

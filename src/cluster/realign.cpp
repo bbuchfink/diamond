@@ -50,7 +50,7 @@ void realign() {
 	}
 
 	TaskTimer timer("Opening the output file");
-	OutputFile out(config.output_file);
+	File out(config.output_file, "wb");
 	if (TabularFormat::header_format(Config::cluster) == Header::SIMPLE)
 		dynamic_cast<TabularFormat*>(output_format.get())->output_header(out, true);
 
@@ -62,17 +62,17 @@ void realign() {
 	catch (FormatDetectionError& e) {
 		throw runtime_error(string("Error opening database file " + config.database + ": ") + e.what());
 	}
-	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters());
+	score_matrix.set_db_letters(config.db_size ? config.db_size : db->letters().value());
 	config.max_evalue = DBL_MAX;
 	timer.finish();
-	message_stream << "#Database sequences: " << db->sequence_count() << ", #Letters: " << db->letters() << endl;
+	*message_stream << "#Database sequences: " << db->sequence_count().value() << ", #Letters: " << db->letters().value() << endl;
 	if (flag_any(db->format_flags(), SequenceFile::FormatFlags::TITLES_LAZY))
 		db->init_random_access(0, 0, false);
 
 	FlatArray<OId> clusters;
 	vector<OId> centroids;
 	tie(clusters, centroids) = read<OId>(config.clustering, *db, CentroidSorted());
-	message_stream << "Found " << centroids.size() << " centroids, " << clusters.data_size() << " mappings in input file." << endl;
+	*message_stream << "Found " << centroids.size() << " centroids, " << clusters.data_size() << " mappings in input file." << endl;
 
 	TextBuffer buf;
 	function<void(const HspContext&)> format_output([&buf, &out, &output_format](const HspContext& h) {

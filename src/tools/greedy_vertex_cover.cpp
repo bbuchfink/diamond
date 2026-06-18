@@ -26,7 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define _REENTRANT
 #include "util/algo/degree_partition.h"
 #include "lib/ips4o/ips4o.hpp"
-#include "util/tsv/tsv.h"
 #include "basic/config.h"
 #include "util/log_stream.h"
 #include "util/string/tokenizer.h"
@@ -37,6 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cluster/multinode/input_buffer.h"
 #include "util/memory/memory_resource.h"
 #include "tools.h"
+#include "data/fasta/parser.h"
 
 namespace Util { namespace Algo {
 inline void serialize(const Edge<uint64_t>& e, CompressedBuffer& buf) {
@@ -69,6 +69,8 @@ using Edge = Util::Algo::Edge<Int>;
 namespace GVC {
 
 static const bool merge_recursive = true;
+static const uint64_t RADIX_COUNT = 256;
+static const int RADIX_BITS = 8;
 
 struct PotentialRep {
 	OId oid, degree;
@@ -79,7 +81,7 @@ struct PotentialRep {
 	{
 	}
 	bool operator<(const PotentialRep& r) const {
-		return degree < r.degree;
+		return degree < r.degree || (degree == r.degree && oid < r.oid);
 	}
 	void set_degree(const vector<OId>& clustering) {
 		degree = 0;
@@ -122,7 +124,7 @@ static void greedy_vertex_cover(vector<OId>& clustering, vector<double>& weights
 	}
 }
 
-static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, bool triplets, bool symmetric, double cov, const unordered_map<Acc, OId>& acc2oid) {	
+static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, bool triplets, bool symmetric, double cov, const unordered_map<Acc, OId>& acc2oid) {
 	mkdir(base_dir);
 	FileArray file_array(base_dir, RADIX_COUNT, 0, true);
 	const int shift = std::max(bit_length(max_oid) - RADIX_BITS, 0);
@@ -172,11 +174,12 @@ static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, boo
 		}
 		total_lines.fetch_add(line_count, std::memory_order_relaxed);
 		});
-	Util::Tsv::File(Util::Tsv::Schema(), config.edges).read(INT64_MAX, config.threads_, fn2);
+	File in(config.edges, "rb");
+	in.read_text_mt(INT64_MAX, config.threads_, fn2);
 	timer.finish();
 	log_rss();
-	message_stream << "#Input lines: " << total_lines.load(std::memory_order_relaxed) << endl;
-	message_stream << "#Input edges: " << file_array.records_total() << endl;
+	*message_stream << "#Input lines: " << total_lines.load(std::memory_order_relaxed) << endl;
+	*message_stream << "#Input edges: " << file_array.records_total() << endl;
 	file_array.close();
 	return file_array.buckets(shift);
 }
@@ -195,7 +198,7 @@ static DegreePartition edge_pass_two(const RadixedTable& rep_sorted) {
 	for (RadixedTable::const_iterator it = rep_sorted.begin(); it != rep_sorted.end(); ++it) {
 		VolumedFile f(*it);
 		InputBuffer<Edge> data(f);
-		message_stream << "Finding neighbor counts bucket " << it - rep_sorted.begin() + 1 << "/" << rep_sorted.size() << " records=" << data.size() << endl;
+		*message_stream << "Finding neighbor counts bucket " << it - rep_sorted.begin() + 1 << "/" << rep_sorted.size() << " records=" << data.size() << endl;
 		ips4o::parallel::sort(data.begin(), data.end());
 		auto i = merge_keys(data.begin(), data.end(), Edge::GetKey());
 		while (i.good()) {
@@ -215,7 +218,7 @@ static RadixedTable edge_pass_three(const RadixedTable& rep_sorted, const Degree
 	for (RadixedTable::const_iterator it = rep_sorted.begin(); it != rep_sorted.end(); ++it) {
 		VolumedFile f(*it);
 		InputBuffer<Edge> data(f);
-		message_stream << "Writing degree sorted edges " << it - rep_sorted.begin() + 1 << "/" << rep_sorted.size() << " records=" << data.size() << endl;
+		*message_stream << "Writing degree sorted edges " << it - rep_sorted.begin() + 1 << "/" << rep_sorted.size() << " records=" << data.size() << endl;
 		ips4o::parallel::sort(data.begin(), data.end());
 		auto i = merge_keys(data.begin(), data.end(), Edge::GetKey());
 		while (i.good()) {
@@ -242,9 +245,9 @@ static vector<OId> edge_pass_four(const RadixedTable& degree_sorted, OId db_size
 	for (int i = degree_sorted.size()  - 1; i >= 0; --i) {
 		VolumedFile f(degree_sorted[i]);
 		InputBuffer<Edge> data(f);
-		message_stream << "Computing vertex cover bucket " << i + 1 << "/" << degree_sorted.size() << " edges=" << data.size()
+		*message_stream << "Computing vertex cover bucket " << i + 1 << "/" << degree_sorted.size() << " edges=" << data.size()
 			<< " key_begin=" << degree_sorted[i].key_begin() << " key_end=" << degree_sorted[i].key_end() << endl;
-		message_stream << "Queue nodes=" << queue.size() << " edges=" << edges_queued << " top degree=" << (queue.empty() ? 0 : queue.top().degree) << endl;
+		*message_stream << "Queue nodes=" << queue.size() << " edges=" << edges_queued << " top degree=" << (queue.empty() ? 0 : queue.top().degree) << endl;
 		f.remove();
 		const OId next_degree = i > 0 ? degree_sorted[i - 1].key_end() - 1 : 0;
 		ips4o::parallel::sort(data.begin(), data.end());
@@ -280,23 +283,24 @@ void greedy_vertex_cover(Cfg& cfg) {
 	const bool triplets = config.edge_format == "triplet", symmetric = config.symmetric;
 	if (!triplets && symmetric)
 		throw runtime_error("--symmetric requires triplet edge format");
-	message_stream << "Coverage cutoff: " << cov << '%' << endl;
-	message_stream << "Edge format: " << (triplets ? "triplet" : "quintuplet") << endl;
-	message_stream << "Symmetric: " << (symmetric ? "yes" : "no") << endl;
+	*message_stream << "Coverage cutoff: " << cov << '%' << endl;
+	*message_stream << "Edge format: " << (triplets ? "triplet" : "quintuplet") << endl;
+	*message_stream << "Symmetric: " << (symmetric ? "yes" : "no") << endl;
 	TaskTimer timer("Reading mapping file");
 	unordered_map<Acc, OId> acc2oid;
-	acc2oid.reserve(Util::Tsv::count_lines(config.database));
-	TextInputFile mapping_file(config.database);
+	acc2oid.reserve(File::count_lines(config.database));
+	File mapping_file(config.database, "rb");
 	string query;
-	while (mapping_file.getline(), !mapping_file.line.empty() || !mapping_file.eof()) {
-		Util::String::Tokenizer<Util::String::CharDelimiter>(mapping_file.line, Util::String::CharDelimiter('\t')) >> query;
+	const char* line;
+	while (line = mapping_file.getline(), line[0] != '\0' || !mapping_file.eof()) {
+		Util::String::Tokenizer<Util::String::CharDelimiter>(line, Util::String::CharDelimiter('\t')) >> query;
 		auto e = acc2oid.emplace(query, acc2oid.size());
 		if (!e.second)
 			throw runtime_error("Duplicate sequence id found in database file");
 	}
 	mapping_file.close();
 	timer.finish();
-	message_stream << "#Sequences in database: " << acc2oid.size() << endl;
+	*message_stream << "#Sequences in database: " << acc2oid.size() << endl;
 	if (acc2oid.size() > (size_t)numeric_limits<Int>::max())
 		throw runtime_error("Input count exceeds supported maximum.");
 	const OId max_oid = acc2oid.size() - 1;
@@ -352,7 +356,7 @@ void greedy_vertex_cover(Cfg& cfg) {
 	if (out)
 		out->close();
 	timer.finish();
-	message_stream << "#Clusters: " << reps << endl;
+	*message_stream << "#Clusters: " << reps << endl;
 }
 
 void greedy_vertex_cover() {

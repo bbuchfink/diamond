@@ -23,9 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <iterator>
 #include <assert.h>
+#include "util/memory/memory_resource.h"
 #include "input_stream_buffer.h"
 #include "../system/endianness.h"
-#include "util/memory/memory_resource.h"
 
 struct Deserializer {
 
@@ -186,6 +186,14 @@ struct Deserializer {
 	}
 
 	size_t read_raw(char *ptr, int64_t count);
+	size_t read_raw(std::string& dst, size_t count) {
+		const size_t offset = dst.size();
+		dst.resize(offset + count);
+		const size_t n = read(&dst[offset], count);
+		dst.resize(offset + n);
+		return n;
+	}
+
 	std::string peek(int64_t n);
 	int64_t file_size() {
 		return buffer_->file_size();

@@ -74,6 +74,6 @@ void Taxonomy::init()
 		timer.go("Loading taxonomy names");
 		size_t n = load_names();
 		timer.finish();
-		message_stream << "Loaded taxonomy names for " << n << " taxon ids." << endl;
+		*message_stream << "Loaded taxonomy names for " << n << " taxon ids." << endl;
 	}
 }

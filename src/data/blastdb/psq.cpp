@@ -33,7 +33,7 @@ using std::runtime_error;
     return raw_len - trim;
 }*/
 
-vector<Letter> decode_protein_sequence(const char* data, size_t len)
+void decode_protein_sequence(const char* data, size_t len, vector<Letter>& out)
 {
     size_t begin = 0, end = len;
     if (begin < end && data[begin] == '\0')
@@ -41,16 +41,22 @@ vector<Letter> decode_protein_sequence(const char* data, size_t len)
     if (end > begin && data[end - 1] == '\0')
         --end;
 
-    vector<Letter> decoded;
-    decoded.reserve(end - begin);
+    out.clear();
     for (size_t i = begin; i < end; ++i) {
         const uint8_t aa = data[i];
         if (aa == '\0')
             throw runtime_error("Unexpected null terminator in sequence data");
         if (aa >= sizeof(NCBI_TO_STD) / sizeof(NCBI_TO_STD[0]))
             throw runtime_error("Invalid amino acid code in sequence data");
-        decoded.push_back(NCBI_TO_STD[aa]);
+        out.push_back(NCBI_TO_STD[aa]);
     }
+}
+
+vector<Letter> decode_protein_sequence(const char* data, size_t len)
+{
+    vector<Letter> decoded;
+    decoded.reserve(len);
+    decode_protein_sequence(data, len, decoded);
     return decoded;
 }
 
@@ -69,7 +75,7 @@ vector<Letter> BlastVolume::sequence(uint32_t oid)
     if (oid != seq_ptr_)
         psq_mapping_.seek(start, SEEK_SET);
     seq_ptr_ = oid + 1;
-    return decode_protein_sequence(psq_mapping_.read(end - start), end - start);
+    return decode_protein_sequence(psq_mapping_.read_bytes(end - start), end - start);
 }
 
 vector<char> BlastVolume::raw_sequence(uint32_t count) {

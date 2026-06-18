@@ -43,8 +43,28 @@ using std::function;
 using std::string;
 
 namespace Cluster {
+	
+struct OutputWriter {
+	OutputWriter(File* file_, char sep = char(0), bool first = true) :
+		file_(file_),
+		first(first),
+		sep(sep)
+	{
+	};
+	void operator()(TextBuffer* buf) {
+		if (!first && sep != '\0')
+		{
+			file_->write(sep);
+		}
+		file_->write(buf->data(), buf->size());
+		first = false;
+	}
+	File* file_;
+	bool first;
+	char sep;
+};
 
-static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, OutputWriter>& out, Statistics& stats, ThreadPool& tp, Cfg& cfg) {
+static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Cluster::OutputWriter>& out, Statistics& stats, ThreadPool& tp, Cfg& cfg) {
 	DP::Targets dp_targets;
 	const OId centroid_oid = cfg.centroids[centroid];
 	const BlockId centroid_id = cfg.centroid_block->oid2block_id(centroid_oid);
@@ -85,27 +105,27 @@ static void align_centroid(CentroidId centroid, ReorderQueue<TextBuffer*, Output
 	out.push(centroid, buf);
 }
 
-InputFile* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg) {
-	TempFile out;
-	OutputWriter writer{ &out };
-	output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(begin, writer));
+File* realign_block_pair(CentroidId begin, CentroidId end, Cfg& cfg) {
+	File* out = new File { Temporary() };
+	Cluster::OutputWriter writer(out);
+	ReorderQueue<TextBuffer*, Cluster::OutputWriter> output_sink(begin, writer);
 	auto worker = [&](ThreadPool& tp, int64_t i) {
 		Statistics stats;
-		align_centroid(i, *output_sink, stats, tp, cfg);
+		align_centroid(i, output_sink, stats, tp, cfg);
 		statistics += stats;
 	};
 	ThreadPool tp(worker, begin, end);
 	tp.run(config.threads_, true);
 	tp.join();
-	InputFile* f = new InputFile(out);
-	return f;
+	out->rewind();
+	return out;
 }
 
 void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, SequenceFile& db, function<void(const HspContext&)>& callback, HspValues hsp_values) {
 	const int64_t block_size = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)) / 2;
-	message_stream << "Block size: " << block_size << " byte." << endl;
+	*message_stream << "Block size: " << block_size << " byte." << endl;
 	db.set_seqinfo_ptr(0);
-	score_matrix.set_db_letters(config.db_size ? config.db_size : db.letters());
+	score_matrix.set_db_letters(config.db_size ? config.db_size : db.letters().value());
 	OId centroid_offset = 0;
 	int n1 = 0;
 	TaskTimer timer;
@@ -115,7 +135,7 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 	if (!cfg.lazy_titles)
 		db.flags() |= SequenceFile::Flags::TITLES;
 
-	while (centroid_offset < db.sequence_count()) {
+	while (centroid_offset < db.sequence_count().value()) {
 		timer.go("Loading centroid block");
 		db.set_seqinfo_ptr(centroid_offset);
 		cfg.centroid_block.reset(db.load_seqs(block_size, 0, nullptr));
@@ -126,10 +146,10 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 		const CentroidId begin = lower_bound(centroids.cbegin(), centroids.cend(), cfg.centroid_block->oid_begin()) - centroids.cbegin(),
 			end = lower_bound(centroids.cbegin(), centroids.cend(), cfg.centroid_block->oid_end()) - centroids.cbegin();
 		timer.finish();
-		log_stream << "Total centroids = " << end - begin << endl;
-		vector<InputFile*> tmp;
+		*log_stream << "Total centroids = " << end - begin << endl;
+		vector<File*> tmp;
 		for (;;) {
-			if (cfg.centroid_block->seqs().size() == db.sequence_count())
+			if (cfg.centroid_block->seqs().size() == db.sequence_count().value())
 				cfg.member_block = cfg.centroid_block;
 			else {
 				timer.go("Loading member block");
@@ -140,14 +160,14 @@ void realign(const FlatArray<OId>& clusters, const vector<OId>& centroids, Seque
 			timer.go("Processing centroid block " + to_string(n1 + 1) + ", member block " + to_string(n2 + 1));
 			tmp.push_back(realign_block_pair(begin, end, cfg));
 			++n2;
-			if (cfg.centroid_block->seqs().size() == db.sequence_count())
+			if (cfg.centroid_block->seqs().size() == db.sequence_count().value())
 				break;
 		}
 		timer.go("Joining centroid block " + to_string(n1 + 1));
 	
-		merge_sorted_files<HspContext, vector<InputFile*>::iterator, decltype(callback)>(tmp.begin(), tmp.end(), callback);
-		for (InputFile* f : tmp) {
-			f->close_and_delete();
+		merge_sorted_files<HspContext, vector<File*>::iterator, decltype(callback)>(tmp.begin(), tmp.end(), callback);
+		for (File* f : tmp) {
+			f->close();
 			delete f;
 		}
 		++n1;

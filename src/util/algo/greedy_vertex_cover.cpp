@@ -150,7 +150,7 @@ vector<Int> greedy_vertex_cover(FlatArray<Edge<Int>>& neighbors, const Int* memb
 		}
 	}
 	timer.finish();
-	message_stream << "Cluster count = " << cluster_count << std::endl;
+	*message_stream << "Cluster count = " << cluster_count << std::endl;
 
 	if (reassign) {
 		timer.go("Computing reassignment");

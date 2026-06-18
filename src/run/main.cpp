@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef WITH_MCL
 #include "contrib/mcl/recursive_parser.h"
 #endif
-#include "data/dmnd/dmnd.h"
+#include "legacy/dmnd/dmnd.h"
 #include "util/command_line_parser.h"
 #include "util/log_stream.h"
 #include "util/system/system.h"
@@ -46,17 +46,12 @@ void info();
 void seed_stat();
 void pairwise();
 void reverse();
-//void roc();
-//void roc_id();
 void makeindex();
-void find_shapes();
 void hash_seqs();
 void list_seeds();
 void merge_daa();
 void multinode();
 #ifdef EXTRA
-void word_count();
-void cut();
 namespace Cluster {
 #ifdef WITH_FAMSA
 	void profile_recluster();
@@ -167,9 +162,6 @@ int main(int ac, const char* av[])
 		case Config::makeidx:
 			makeindex();
 			break;
-		case Config::find_shapes:
-			find_shapes();
-			break;
 		case Config::HASH_SEQS:
 			hash_seqs();
 			break;
@@ -206,12 +198,6 @@ int main(int ac, const char* av[])
         case Config::blastn:
             Search::run(target_seed_hits);
             break;
-		case Config::WORD_COUNT:
-			word_count();
-			break;
-		case Config::CUT:
-			cut();
-			break;
 #ifdef WITH_FAMSA
 		case Config::PROFILE_RECLUSTER:
 			Cluster::profile_recluster();
@@ -223,21 +209,26 @@ int main(int ac, const char* av[])
 		}
 	}
 	catch (const std::bad_alloc &e) {
+		cleanup();
 		cerr << "Failed to allocate sufficient memory. Please refer to the online wiki for instructions on memory usage." << endl;
-		log_stream << "Error: " << e.what() << endl;
+		*log_stream << "Error: " << e.what() << endl;
 		return 1;
 	}
 	catch (const FileOpenException&) {
+		cleanup();
 		return 1;
 	} catch(const std::exception& e) {
+		cleanup();
         cerr << "Error: " << e.what() << endl;
-        log_stream << "Error: " << e.what() << endl;
+		*log_stream << "Error: " << e.what() << endl;
         return 1;
     }
     catch(...) {
+		cleanup();
         cerr << "Exception of unknown type!" << endl;
         return 1;
     }
 
+	cleanup();
     return 0;
 }

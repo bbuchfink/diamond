@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <iostream>
 #include <memory>
 #include "basic/value.h"
 #include "align.h"
@@ -187,14 +188,6 @@ static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 					++cfg->iteration_query_aligned;
 				}
 			}
-			if (!config.unaligned_targets.empty()) {
-				lock_guard<mutex> lock(cfg->aligned_targets_mtx);
-				for (const Extension::Match &m : matches) {
-					const OId oid = cfg->target->block_id2oid(m.target_block_id);
-					if (!cfg->aligned_targets[oid])
-						cfg->aligned_targets[oid] = true;
-				}
-			}
 			output_sink->push(h->query, buf);
 		}
 
@@ -202,11 +195,12 @@ static void align_worker(HitIterator* hit_it, Search::Config* cfg, int64_t next)
 		::dp_stat += dp_stat;
 	}
 	catch (std::exception& e) {
-		exit_with_error(e);
+		std::cerr << "Error: " << e.what() << std::endl;
+		exit(EXIT_FAILURE);
 	}
 }
 
-void align_queries(Consumer* output_file, Search::Config& cfg)
+void align_queries(File* output_file, Search::Config& cfg)
 {
 	const uint64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
 
@@ -229,7 +223,7 @@ void align_queries(Consumer* output_file, Search::Config& cfg)
 		timer.finish();
 		Search::Hit* hit_buf = get<0>(input);
 		const int64_t hit_count = get<1>(input);
-		log_stream << "Processing " << hit_count << " trace points (" << Util::String::format(int64_t(hit_count * sizeof(Search::Hit))) << ")." << std::endl;
+		*log_stream << "Processing " << hit_count << " trace points (" << Util::String::format(int64_t(hit_count * sizeof(Search::Hit))) << ")." << std::endl;
 		res_size += hit_count * sizeof(Search::Hit);
 		query_range = { get<2>(input), get<3>(input) };
 

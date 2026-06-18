@@ -292,7 +292,7 @@ set(OBJECTS
         src/stats/score_matrix.cpp
         src/data/queries.cpp
         src/search/seed_array/seed_histogram.cpp
-        src/output/daa/daa_record.cpp
+        src/legacy/daa/daa_record.cpp
         src/util/command_line_parser.cpp
         src/util/util.cpp
         src/basic/basic.cpp
@@ -315,7 +315,7 @@ set(OBJECTS
         src/data/seed_set.cpp
         src/util/simd.cpp
         src/output/taxon_format.cpp
-        src/output/daa/view.cpp
+        src/legacy/daa/view.cpp
         src/output/output_sink.cpp
         src/output/target_culling.cpp
         src/align/legacy/banded_swipe_pipeline.cpp
@@ -330,7 +330,6 @@ set(OBJECTS
         src/util/io/output_stream_buffer.cpp
         src/util/io/serializer.cpp
         src/util/io/temp_file.cpp
-        src/util/io/text_input_file.cpp
         src/util/io/file.cpp
         src/data/taxon_list.cpp
         src/data/taxonomy_nodes.cpp
@@ -351,7 +350,6 @@ set(OBJECTS
         src/align/full_db.cpp
         src/align/culling.cpp
         src/align/output.cpp
-        #src/tools/roc.cpp        
         src/chaining/smith_waterman.cpp
         src/output/xml_format.cpp
         src/align/gapped_filter.cpp
@@ -375,7 +373,6 @@ set(OBJECTS
         src/lib/alp/sls_pvalues.cpp
         src/align/global_ranking/global_ranking.cpp
         src/align/global_ranking/extend.cpp
-        #src/tools/rocid.cpp
         src/lib/blast/blast_seg.cpp
         src/lib/blast/blast_filter.cpp
         src/lib/blast/nlm_linear_algebra.cpp
@@ -385,17 +382,15 @@ set(OBJECTS
         src/stats/hauser_correction.cpp
         src/stats/matrix_adjust.cpp
         src/data/index.cpp
-        src/data/dmnd/dmnd.cpp
+        src/legacy/dmnd/dmnd.cpp
         src/data/sequence_file.cpp
-        src/tools/find_shapes.cpp
         src/data/block/block.cpp
         src/data/block/block_wrapper.cpp
         src/run/config.cpp
         src/data/sequence_set.cpp
         src/align/global_ranking/table.cpp
-        src/output/daa/daa_write.cpp
+        src/legacy/daa/daa_write.cpp
         src/search/seed_complexity.cpp
-        src/util/tsv/tsv.cpp
         src/basic/value.cpp
         src/masking/motifs.cpp
         src/align/alt_hsp.cpp
@@ -403,7 +398,7 @@ set(OBJECTS
         src/cluster/output.cpp
         src/cluster/realign.cpp
         src/cluster/reassign.cpp
-        src/util/tsv/read_text_mt.cpp
+        src/util/io/read_text_mt.cpp
         src/tools/greedy_vertex_cover.cpp
         #src/cluster/cascaded/recluster.cpp
         src/cluster/helpers.cpp
@@ -413,16 +408,10 @@ set(OBJECTS
         src/lib/blast/blast_stat.cpp
         src/lib/blast/blastn_score.cpp
         src/lib/blast/ncbi_std.cpp
-        src/util/tsv/table.cpp
-        src/util/tsv/file.cpp
-        src/util/tsv/record.cpp
         src/cluster/cascaded/helpers.cpp
-        src/output/daa/merge.cpp
+        src/legacy/daa/merge.cpp
         src/chaining/backtrace.cpp
-        src/util/tsv/merge.cpp
-        src/util/tsv/join.cpp
         src/dp/scalar/smith_waterman.cpp
-        src/tools/tsv.cpp
         #src/util/algo/mcl.cpp
         #src/stats/blast/matrix_adjust.cpp
         src/stats/blast/ncbi.cpp
@@ -441,6 +430,7 @@ set(OBJECTS
         src/cluster/multinode/len_sort.cpp
         src/cluster/multinode/merge.cpp
         src/cluster/multinode/search.cpp
+        src/util/io/zlib_bridge.cpp
 )
 
 if(WITH_DNA)
@@ -470,7 +460,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}")
 
 if(WITH_ZSTD)
-  set(ZSTD_OBJ "src/util/io/zstd_stream.cpp")
+  set(ZSTD_OBJ "src/util/io/zstd_stream.cpp" "src/util/io/zstd_bridge.cpp")
 endif()
 
 if(X86)
@@ -503,11 +493,19 @@ target_include_directories(diamond PRIVATE "${SQLite3_INCLUDE_DIR}")
 target_link_libraries(diamond ${SQLite3_LIBRARY} ${CMAKE_DL_LIBS})
 
 if(WITH_ZSTD)
-  find_path(${ZSTD_INCLUDE_DIR} NAMES zstd.h PATHS ${ZSTD_INCLUDE_DIR})
-  find_library(ZSTD_LIBRARY NAMES libzstd.a libzstd_static)
+  find_path(ZSTD_INCLUDE_DIR NAMES zstd.h)
+  find_library(ZSTD_LIBRARY NAMES zstd libzstd_static libzstd.a)
   message(STATUS "Zstd Library: ${ZSTD_LIBRARY}")
-  target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
-  target_link_libraries(diamond ${ZSTD_LIBRARY})
+  message(STATUS "Zstd include: ${ZSTD_INCLUDE_DIR}")
+  if(NOT ZSTD_INCLUDE_DIR)
+    message(FATAL_ERROR "Could not find zstd.h")
+  endif()
+  if(NOT ZSTD_LIBRARY)
+    message(FATAL_ERROR "Could not find zstd library")
+  endif()
+  #target_include_directories(diamond PRIVATE "${ZSTD_INCLUDE_DIR}")
+  include_directories("${ZSTD_INCLUDE_DIR}")
+  target_link_libraries(diamond "${ZSTD_LIBRARY}")
   add_definitions(-DWITH_ZSTD)
 endif()
 
@@ -542,6 +540,14 @@ add_test(NAME blastp-mid-sens COMMAND ${CMAKE_COMMAND} -DNAME=blastp-mid-sens "-
 add_test(NAME blastp-f0 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-f0 "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -f0 -p1" ${SP})
 add_test(NAME galaxy_7 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_7 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --swipe --algo 0 --index-chunks 4 --file-buffer-size 67108864" ${SP})
 add_test(NAME galaxy_9 COMMAND ${CMAKE_COMMAND} -DNAME=galaxy_9 "-DARGS=blastx --threads 2 --db ${TD}/galaxy/db.dmnd --query ${TD}/galaxy/nucleotide.fasta --query-gencode 1 --strand both --min-orf 1 --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore --header 0 --compress 0 --matrix BLOSUM62 --comp-based-stats 1 --masking tantan --max-target-seqs 25 --evalue 0.001 --id 0.0 --approx-id 0.0 --query-cover 0.0 --subject-cover 0.0 --block-size 2.0 --motif-masking 0 --soft-masking 0  --algo 0 --global-ranking 10 --index-chunks 4 --file-buffer-size 67108864" ${SP})
+add_test(NAME blastx-nanopore COMMAND ${CMAKE_COMMAND} -DNAME=blastx-nanopore "-DARGS=blastx -q ${TD}/SRR14011045_1.fastq -d ${TD}/nr_10k.faa -p4 -c1 -k0" ${SP})
+add_test(NAME blastx-nanopore-fna COMMAND ${CMAKE_COMMAND} -DNAME=blastx-nanopore-fna "-DARGS=blastx -q ${TD}/SRR14011045_1.fna.gz -d ${TD}/nr_10k.faa -p4 -c1 -k0" ${SP})
+add_test(NAME blastp-global-ranking COMMAND ${CMAKE_COMMAND} -DNAME=blastp-global-ranking "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -k0 --sensitive -s1 -g10 -b0.002" ${SP})
+add_test(NAME blastp-blocked COMMAND ${CMAKE_COMMAND} -DNAME=blastp-blocked "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -b0.002" ${SP})
+add_test(NAME linclust COMMAND ${CMAKE_COMMAND} -DNAME=linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p4 --approx-id 0" ${SP})
+add_test(NAME realign COMMAND ${CMAKE_COMMAND} -DNAME=realign "-DARGS=realign -d ${TD}/nr_10k.faa -p1 --clusters ${TD}/linclust.out" ${SP})
+add_test(NAME blastp-daa COMMAND ${CMAKE_COMMAND} -DNAME=blastp-daa "-DARGS=blastp -q ${TD}/nr_300.faa -d nr_10k.dmnd -p4 -f 100 -c1 --no-auto-append --daa-build-version 179" ${SP})
+add_test(NAME view COMMAND ${CMAKE_COMMAND} -DNAME=view "-DARGS=view -a ${TD}/test.daa -p4 -k0" ${SP})
 add_diamond_test(diamond-test-blastp-default "blastp -q ${TD}/data.faa -d ${TD}/data.faa -p1")
 add_diamond_test(diamond-test-blastp-multithreaded "blastp -q ${TD}/data.faa -d ${TD}/data.faa -p4")
 add_diamond_test(diamond-test-blastp-blocked "blastp -q ${TD}/data.faa -d ${TD}/data.faa -c1 -b0.00002 -p4")

@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define WIN32_LEAN_AND_MEAN
 #include <sqlite3.h>
 #include <iostream>
-#include "util/io/text_input_file.h"
 #include "blastdb.h"
 #include "util/system/system.h"
 #include "basic/config.h"
@@ -154,20 +153,20 @@ void BlastDB::open_volume(OId oid) {
 }
 
 void BlastDB::print_info() const {
-	message_stream << "Database: " << config.database << ' ';
-	message_stream << "(type: BLAST database, ";
-	message_stream << "volumes: " << pal_.volumes.size() << ", ";
-	message_stream << "sequences: " << sequence_count() << ", ";
-	message_stream << "letters: " << letters() << ')' << endl;
+	*message_stream << "Database: " << config.database << ' ';
+	*message_stream << "(type: BLAST database, ";
+	*message_stream << "volumes: " << pal_.volumes.size() << ", ";
+	*message_stream << "sequences: " << sequence_count().value() << ", ";
+	*message_stream << "letters: " << letters().value() << ')' << endl;
 	if (flag_any(flags_, Flags::TAXON_RANKS)) {
 		if (!custom_ranks_.empty())
-			message_stream << "Custom taxonomic ranks in database: " << custom_ranks_.size() << endl;
-		message_stream << "Taxonomic ids assigned to ranks: " << rank_mapping_.size() << endl;
+			*message_stream << "Custom taxonomic ranks in database: " << custom_ranks_.size() << endl;
+		*message_stream << "Taxonomic ids assigned to ranks: " << rank_mapping_.size() << endl;
 	}
 	if (flag_any(flags_, Flags::TAXON_NODES))
-		message_stream << "Maximum taxid in database: " << parent_cache_.size() - 1 << endl;
+		*message_stream << "Maximum taxid in database: " << parent_cache_.size() - 1 << endl;
 	if (flag_any(flags_, Flags::TAXON_SCIENTIFIC_NAMES))
-		message_stream << "Extra taxonomic scientific names in names.dmp: " << extra_names_.size() << endl;
+		*message_stream << "Extra taxonomic scientific names in names.dmp: " << extra_names_.size() << endl;
 }
 
 void BlastDB::init_seqinfo_access()
@@ -190,7 +189,7 @@ OId BlastDB::tell_seq() const
 }
 
 bool BlastDB::eof() const {
-	return oid_ == sequence_count();
+	return oid_ == sequence_count().value();
 }
 
 SequenceFile::SeqInfo BlastDB::read_seqinfo()
@@ -224,9 +223,9 @@ void BlastDB::seek_offset(size_t p)
 RawChunk* BlastDB::raw_chunk(size_t letters, SequenceFile::Flags flags) {
 	BlastVolume::RawChunk* c = volume_.raw_chunk(letters, flags);
 	c->no = raw_chunk_no_++;
-	OId oid = c->end_;
-	if (oid < pal_.sequence_count)
-		open_volume(oid);
+	oid_ = c->end_;
+	if (oid_ < pal_.sequence_count)
+		open_volume(oid_);
 	return c;
 }
 
@@ -292,12 +291,12 @@ string BlastDB::seqid(OId oid, bool all, bool full_titles)
 	return seq_length((int)dict_oid_[dict_block(ref_block)][dict_id]);
 }*/
 
-uint64_t BlastDB::sequence_count() const
+optional<uint64_t> BlastDB::sequence_count() const
 {
 	return pal_.sequence_count;
 }
 
-uint64_t BlastDB::letters() const
+optional<uint64_t> BlastDB::letters() const
 {
 	return pal_.letters;
 }
@@ -362,11 +361,12 @@ void BlastDB::close()
 
 DbFilter* BlastDB::filter_by_accession(const string& file_name)
 {
-	DbFilter* v = new DbFilter(sequence_count());
-	TextInputFile in(file_name);
+	DbFilter* v = new DbFilter(sequence_count().value());
+	File in(file_name, "rb", File::Flags::DETECT_COMPRESSION);
 	std::unordered_map<string, bool> accs;
-	while (in.getline(), (!in.line.empty() || !in.eof())) {
-		accs.emplace(in.line, false);
+	const char* l;
+	while (l = in.getline(), !in.eof() || l[0] != '\0') {
+		accs.emplace(std::string(l), false);
 	}
 	in.close();
 

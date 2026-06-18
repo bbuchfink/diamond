@@ -27,8 +27,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/sequence_set.h"
 #include "data/sequence_file.h"
 #include "masking/masking.h"
+#include "util/io/file.h"
 #include "basic/packed_transcript.h"
-#include "data/dmnd/dmnd.h"
+#include "legacy/dmnd/dmnd.h"
 #include "util/sequence/sequence.h"
 #include "basic/match.h"
 
@@ -88,7 +89,7 @@ void random_seqs()
 
 void run_masker()
 {
-	TextInputFile f(config.single_query_file());
+	File f(config.single_query_file(), "rb", File::Flags::DETECT_COMPRESSION);
 	vector<Letter> seq, seq2;
 	string id;
 	//const FASTA_format format;
@@ -124,7 +125,7 @@ void run_masker()
 
 void fastq2fasta()
 {
-	unique_ptr<TextInputFile> f(new TextInputFile(config.single_query_file()));
+	unique_ptr<File> f(new File(config.single_query_file(), "rb", File::Flags::DETECT_COMPRESSION));
 	vector<Letter> seq;
 	string id;
 //	const FASTQ_format format;
@@ -163,7 +164,7 @@ void info()
 	cout << endl;
 }
 
-void pairwise_worker(TextInputFile *in, std::mutex *input_lock, std::mutex *output_lock) {
+void pairwise_worker(File *in, std::mutex *input_lock, std::mutex *output_lock) {
 	//FASTA_format format;
 	std::string id_r, id_q;
 	vector<Letter> ref, query;
@@ -204,7 +205,7 @@ void pairwise()
 	value_traits = nucleotide_traits;
 	score_matrix = ScoreMatrix("DNA", 5, 2, 0, 1);
 
-	TextInputFile in(config.single_query_file());
+	File in(config.single_query_file(), "rb", File::Flags::DETECT_COMPRESSION);
 	std::mutex input_lock, output_lock;
 	vector<thread> threads;
 	for (int i = 0; i < config.threads_; ++i)
@@ -215,7 +216,7 @@ void pairwise()
 
 void reverse() {
 	input_value_traits = amino_acid_traits;
-	TextInputFile in(config.single_query_file());
+	File in(config.single_query_file(), "rb", File::Flags::DETECT_COMPRESSION);
 	string id;
 	vector<Letter> seq;
 	TextBuffer buf;

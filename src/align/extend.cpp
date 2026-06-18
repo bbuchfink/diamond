@@ -238,7 +238,7 @@ vector<Match> extend(
 	const char* query_title = cfg.query->ids()[query_id];
 
 	if (config.log_query || (flag_any(flags, DP::Flags::PARALLEL) && !config.swipe_all))
-		log_stream << "Query=" << query_title << " Hits=" << l.seed_hits.data_size() << endl;
+		*log_stream << "Query=" << query_title << " Hits=" << l.seed_hits.data_size() << endl;
 
 	for (unsigned i = 0; i < contexts; ++i)
 		query_seq.push_back(cfg.query->seqs()[query_id * contexts + i]);
