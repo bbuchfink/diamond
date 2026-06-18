@@ -190,7 +190,7 @@ struct SequenceFile {
     Block* load_seqs(const int64_t max_letters, OId max_seqs = 0, const BitVector* filter = nullptr, const Chunk& chunk = Chunk());
 	void get_seq();
 	//Util::Tsv::File* make_seqid_list();
-	optional<size_t> total_blocks() const;
+	optional<uint64_t> total_blocks() const;
 	std::pair<std::vector<OId>, std::vector<uint64_t>> partition(uint64_t max_block_size, uint64_t start_size = 0) const;
 	SequenceSet seqs_by_accession(const std::vector<std::string>::const_iterator begin, const std::vector<std::string>::const_iterator end);
 	std::vector<Letter> seq_by_accession(const std::string& acc);
