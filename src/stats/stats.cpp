@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include "stats/score_matrix.h"
 #include "standard_matrix.h"
@@ -113,7 +114,7 @@ double approx_id(Score raw_score, Loc range1, Loc range2) {
 	const Loc m = max(range1, range2);
 	if (m == 0)
 		return 100.0;
-	return min(max((double)raw_score / m * 16.56 + 11.41, 0.0), 100.0);
+	return min(max(std::fma((double)raw_score / m, 16.56, 11.41), 0.0), 100.0);
 }
 
 double approx_id(int score, Interval query_range, Interval target_range, const Sequence& query, const Sequence& target) {
