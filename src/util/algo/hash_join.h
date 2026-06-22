@@ -18,12 +18,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <limits>
+#include <stdexcept>
 #include <utility>
 #include "basic/config.h"
 #include "radix_cluster.h"
 #include "../data_structures/hash_table.h"
 #include "../data_structures/double_array.h"
 #include "../math/integer.h"
+
+static inline uint32_t checked_double_array_count(size_t n) {
+	if (n > std::numeric_limits<uint32_t>::max())
+		throw std::overflow_error("Hash join bucket size exceeds DoubleArray count limit.");
+	return static_cast<uint32_t>(n);
+}
 
 struct RelPtr
 {
@@ -77,8 +85,8 @@ void hash_table_join(
 		p = &table.data()[i];
 		if (p->value.s) {
 			size_t r = p->value.r, s = p->value.s;
-			it_r.count() = r;
-			it_s.count() = s;
+			it_r.count() = checked_double_array_count(r);
+			it_s.count() = checked_double_array_count(s);
 			p->value.r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
 			p->value.s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
@@ -135,8 +143,8 @@ void table_join(
 		p = &table[i];
 		if (p->s) {
 			size_t r = p->r, s = p->s;
-			it_r.count() = r;
-			it_s.count() = s;
+			it_r.count() = checked_double_array_count(r);
+			it_s.count() = checked_double_array_count(s);
 			p->r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
 			p->s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
