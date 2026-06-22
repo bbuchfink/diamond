@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 template<typename T>
 struct DoubleArray {
 
+	static constexpr size_t header_size = sizeof(uint32_t);
+
 	DoubleArray()
 	{}
 
@@ -53,7 +55,7 @@ struct DoubleArray {
 		}
 
 		Range<T*> operator*() {
-			return { (T*)(ptr_ + 4), (T*)(ptr_ + 4) + count() };
+			return { (T*)(ptr_ + header_size), (T*)(ptr_ + header_size) + count() };
 		}
 
 		Range<T*>* operator->() {
@@ -68,7 +70,7 @@ struct DoubleArray {
 		}
 
 		void next() {
-			ptr_ += count() * sizeof(T) + 4;
+			ptr_ += count() * sizeof(T) + header_size;
 		}
 
 		operator bool() const {
@@ -77,9 +79,9 @@ struct DoubleArray {
 
 		void erase() {
 			uint32_t n = count();
-			*(uint32_t*)(ptr_ + 4) = n;
+			*(uint32_t*)(ptr_ + header_size) = n;
 			count() = 0;
-			ptr_ += n * sizeof(T) + 4;
+			ptr_ += n * sizeof(T) + header_size;
 		}
 
 		ptrdiff_t operator-(const Iterator &x) const {
@@ -94,7 +96,7 @@ struct DoubleArray {
 
 		void skip_del() {
 			while (ptr_ < end_ && count() == 0)
-				ptr_ += (*(uint32_t*)(ptr_ + 4)) * sizeof(T) + 4;
+				ptr_ += (*(uint32_t*)(ptr_ + header_size)) * sizeof(T) + header_size;
 		}
 
 		Range<T*> range_;
@@ -121,11 +123,11 @@ struct DoubleArray {
 		size_ += d.size_;
 	}
 
-	uint32_t offset(const Iterator &it) const {
-		return uint32_t(it.ptr_ - data_);
+	size_t offset(const Iterator &it) const {
+		return size_t(it.ptr_ - data_);
 	}
 
-	T& operator[](uint32_t i) {
+	T& operator[](size_t i) {
 		return *(T*)(data_ + i);
 	}
 

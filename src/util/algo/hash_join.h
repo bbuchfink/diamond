@@ -29,15 +29,15 @@ struct RelPtr
 {
 	RelPtr()
 	{}
-	RelPtr(unsigned r):
+	RelPtr(size_t r):
 		r(r),
 		s(0)
 	{}
-	operator unsigned() const
+	operator size_t() const
 	{
 		return r;
 	}
-	unsigned r, s;
+	size_t r, s;
 };
 
 template<typename T>
@@ -76,11 +76,11 @@ void hash_table_join(
 	for (unsigned i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
 		if (p->value.s) {
-			unsigned r = p->value.r, s = p->value.s;
+			size_t r = p->value.r, s = p->value.s;
 			it_r.count() = r;
 			it_s.count() = s;
-			p->value.r = dst_r.offset(it_r) + 4;
-			p->value.s = dst_s.offset(it_s) + 4;
+			p->value.r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
+			p->value.s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
 			it_s.next();
 		}
@@ -134,11 +134,11 @@ void table_join(
 	for (Key i = 0; i < keys; ++i) {
 		p = &table[i];
 		if (p->s) {
-			unsigned r = p->r, s = p->s;
+			size_t r = p->r, s = p->s;
 			it_r.count() = r;
 			it_s.count() = s;
-			p->r = dst_r.offset(it_r) + 4;
-			p->s = dst_s.offset(it_s) + 4;
+			p->r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
+			p->s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
 			it_s.next();
 		}
