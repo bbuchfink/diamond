@@ -355,7 +355,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("kmer-ranking", 0, "Rank sequences based on kmer frequency in linear stage", kmer_ranking)
 		("round-coverage", 0, "Per-round coverage cutoffs for cascaded clustering", round_coverage)
 		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id)
-		("aln-out", 0, "Output file for clustering alignments", aln_out);
+		("aln-out", 0, "Output file for clustering alignments", aln_out)
+		("reps", 0, "Output file for representative sequences in FASTA format", reps_out);
 
 	auto& memory_opt = parser.add_group("Memory options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST, CLUSTER_REALIGN });
 	memory_opt.add()
