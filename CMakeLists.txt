@@ -545,6 +545,7 @@ add_test(NAME blastx-nanopore-fna COMMAND ${CMAKE_COMMAND} -DNAME=blastx-nanopor
 add_test(NAME blastp-global-ranking COMMAND ${CMAKE_COMMAND} -DNAME=blastp-global-ranking "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -k0 --sensitive -s1 -g10 -b0.002" ${SP})
 add_test(NAME blastp-blocked COMMAND ${CMAKE_COMMAND} -DNAME=blastp-blocked "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -b0.002" ${SP})
 add_test(NAME linclust COMMAND ${CMAKE_COMMAND} -DNAME=linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p4 --approx-id 0" ${SP})
+add_test(NAME linclust_reps COMMAND ${CMAKE_COMMAND} -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/linclust_reps.cmake)
 add_test(NAME realign COMMAND ${CMAKE_COMMAND} -DNAME=realign "-DARGS=realign -d ${TD}/nr_10k.faa -p1 --clusters ${TD}/linclust.out" ${SP})
 add_test(NAME blastp-daa COMMAND ${CMAKE_COMMAND} -DNAME=blastp-daa "-DARGS=blastp -q ${TD}/nr_300.faa -d nr_10k.dmnd -p1 -f 100 -c1 --no-auto-append --daa-build-version 179" ${SP})
 add_test(NAME view COMMAND ${CMAKE_COMMAND} -DNAME=view "-DARGS=view -a ${TD}/test.daa -p4 -k0" ${SP})

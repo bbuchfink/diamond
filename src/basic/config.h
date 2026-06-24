@@ -360,6 +360,7 @@ struct Config
 	bool hit_membuf;
 	size_t minichunk;
 	std::string aln_out;
+	std::string reps_out;
 	bool hamming_dist_boundary_check;
 	bool keep_temp_files;
 	std::string fasta_index_file;

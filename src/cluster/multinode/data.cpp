@@ -35,6 +35,7 @@ using std::atomic;
 using std::ofstream;
 using std::ifstream;
 using std::runtime_error;
+using std::unordered_map;
 using std::unordered_set;
 using std::endl;
 using std::pair;
@@ -50,6 +51,39 @@ struct RepChunk {
 	}
 };
 
+struct RepWriteConfig {
+	string rep_id_prefix;
+	string output_path;
+	string seqid_map_prefix;
+	bool single_out_file;
+	bool write_index;
+	bool remove_source_files;
+	FileStack* reps_list;
+};
+
+static string rep_id_file(const string& prefix, size_t idx) {
+	return prefix + std::to_string(idx);
+}
+
+static unordered_map<OId, string> read_seqid_mapping(const string& path, OId expected_count) {
+	ifstream in(path);
+	if (!in.good())
+		throw runtime_error("Error opening accessions file: " + path);
+	unordered_map<OId, string> oid2seqid;
+	oid2seqid.reserve(expected_count);
+	OId oid;
+	string seqid;
+	while (in >> oid >> seqid) {
+		if (!oid2seqid.emplace(oid, seqid).second)
+			throw runtime_error("Duplicate OID in accessions file: " + path);
+	}
+	if (!in.eof())
+		throw runtime_error("Format error in accessions file: " + path);
+	if (oid2seqid.size() != expected_count)
+		throw runtime_error("Accessions file does not contain all OIDs: " + path);
+	return oid2seqid;
+}
+
 static void flush_buffer(TextBuffer& buffer, vector<size_t>& record_offsets, size_t output, std::unique_ptr<Queue<RepChunk>>& queue) {
 	if (buffer.size() == 0)
 		return;
@@ -62,10 +96,10 @@ static void flush_buffer(TextBuffer& buffer, vector<size_t>& record_offsets, siz
 	record_offsets.clear();
 }
 
-static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& volumes, size_t idx, const string& out_dir, bool single_out_file, FileStack& reps_list,
+static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& volumes, size_t idx, const RepWriteConfig& cfg,
 	atomic<OId>& count_all, atomic<OId>& min_all, atomic<OId>& max_all) {
 	job.log("Writing representatives. Volume=%lli/%lli Records=%s", idx + 1, volumes.size(), Util::String::format(volumes[idx].record_count).c_str());
-	string id_file = job.base_dir() + "rep_ids" + std::to_string(idx);
+	const string id_file = rep_id_file(cfg.rep_id_prefix, idx);
 	ifstream rep_ids(id_file);
 	if (!rep_ids)
 		throw runtime_error("Error opening file " + id_file);
@@ -77,20 +111,23 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	}
 	rep_ids.close();
 	remove_tmp_file(id_file);
+	const unordered_map<OId, string> oid2seqid = !cfg.seqid_map_prefix.empty()
+		? read_seqid_mapping(cfg.seqid_map_prefix + std::to_string(idx) + ".tsv", volumes[idx].record_count)
+		: unordered_map<OId, string>();
 
 	const SequenceFile::Flags flags = SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::NEED_LETTER_COUNT;
-	string out_file = single_out_file ? out_dir + "reps_all.faa" : out_dir + std::to_string(idx) + ".faa";
+	string out_file = cfg.single_out_file ? cfg.output_path : cfg.output_path + std::to_string(idx) + ".faa";
 	const string offset_file = out_file + ".faidx";
 	ofstream out(out_file, std::ios::out | std::ios::app | std::ios::binary);
 	if (!out)
 		throw runtime_error("Error opening file " + out_file);
 	unique_ptr<ofstream> offsets;
-	if (single_out_file) {
+	if (cfg.write_index && cfg.single_out_file) {
 		offsets.reset(new ofstream(offset_file, std::ios::out | std::ios::app | std::ios::binary));
 		if (!offsets || !*offsets)
 			throw runtime_error("Error opening file " + offset_file);
 	}
-	else {
+	if (!cfg.single_out_file) {
 		count_all.store(0, std::memory_order_relaxed);
 		min_all.store(std::numeric_limits<OId>::max(), std::memory_order_relaxed);
 		max_all.store(0, std::memory_order_relaxed);
@@ -110,7 +147,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		RepChunk chunk;
 		while (!stop.load(std::memory_order_relaxed) && queue->wait_and_dequeue(chunk)) {
 			out.write(chunk.data.data(), chunk.data.size());
-			if (single_out_file) {
+			if (cfg.write_index && cfg.single_out_file) {
 				for (const size_t record_offset : chunk.record_offsets)
 					(*offsets) << out_offset + record_offset << '\n';
 				out_offset += chunk.data.size();
@@ -138,12 +175,21 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		OId count = 0, min = std::numeric_limits<OId>::max(), max = 0;
 		uint64_t bytes = 0;
 		uint64_t letters = 0;
+		string seqid;
 		while (!stop.load(std::memory_order_relaxed) && (j = next.fetch_add(1, std::memory_order_relaxed), j < seq_count)) {
 			const OId oid = std::atoll(b->ids()[j]);
 			if (rep_id_set.find(oid) == rep_id_set.end())
 				continue;
 			record_offsets.push_back(buffer.size());
-			Util::Seq::format(b->seqs()[j], b->ids()[j], nullptr, buffer, "fasta", amino_acid_traits);
+			const char* id = b->ids()[j];
+			if (!cfg.seqid_map_prefix.empty()) {
+				const auto it = oid2seqid.find(oid);
+				if (it == oid2seqid.end())
+					throw runtime_error("Missing sequence id mapping for OID " + std::to_string(oid));
+				seqid = it->second;
+				id = seqid.c_str();
+			}
+			Util::Seq::format(b->seqs()[j], id, nullptr, buffer, "fasta", amino_acid_traits);
 			if (buffer.size() >= flush_size) {
 				bytes += buffer.size();
 				flush_buffer(buffer, record_offsets, idx, queue);
@@ -183,14 +229,15 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	pool.join(writer_thread);
 	if (!out)
 		throw runtime_error("Error writing representative block");
-	if (single_out_file && (!offsets || !*offsets))
+	if (cfg.write_index && cfg.single_out_file && (!offsets || !*offsets))
 		throw runtime_error("Error writing representative offset file");
 	file.reset();
-	remove_tmp_file(volumes[idx].path);
-	if (!single_out_file || idx == volumes.size() - 1) {
+	if (cfg.remove_source_files)
+		remove_tmp_file(volumes[idx].path);
+	if (cfg.reps_list != nullptr && (!cfg.single_out_file || idx == volumes.size() - 1)) {
 		ostringstream ss;
 		ss << out_file << '\t' << count_all.load() << '\t' << min_all.load() << '\t' << max_all.load() + 1 << endl;
-		reps_list.push(ss.str());
+		cfg.reps_list->push(ss.str());
 	}
 	return std::make_tuple<OId, uint64_t, uint64_t>(count_this_volume, letters_all, bytes_all.load(std::memory_order_relaxed));
 }
@@ -211,13 +258,22 @@ pair<string, uint64_t> get_reps(Job& job, const VolumedFile& volumes) {
 	int64_t v = 0;
 	TaskTimer timer;
 	const bool single_out_file = !job.last_round() && !ends_with(job.steps().at(job.round() + 1), "_lin");
+	const RepWriteConfig cfg {
+		job.base_dir() + "rep_ids",
+		single_out_file ? base_dir + "reps_all.faa" : base_dir,
+		string(),
+		single_out_file,
+		single_out_file,
+		true,
+		reps_list.get()
+	};
 	atomic<OId> count_all(0);
 	atomic<OId> min_all(std::numeric_limits<OId>::max());
 	atomic<OId> max_all(0);
 	while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 		OId count;
 		uint64_t seq_letters, bytes_written;
-		std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, base_dir, single_out_file, *reps_list, count_all, min_all, max_all);
+		std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, cfg, count_all, min_all, max_all);
 		cluster_count += count;
 		bytes += bytes_written;
 		letter_count.fetch_add(seq_letters);
@@ -234,4 +290,55 @@ pair<string, uint64_t> get_reps(Job& job, const VolumedFile& volumes) {
 	const string out = reps_list->file_name();
 	reps_list.reset();
 	return { out, letters };
+}
+
+void write_representatives(Job& job, const VolumedFile& volumes, const vector<OId>& merged) {
+	job.log("Writing final representative sequences");
+	const string base_dir = job.root_dir() + "reps_out" + PATH_SEPARATOR;
+	job.make_temp_dir(base_dir);
+	const string rep_id_prefix = base_dir + "rep_ids";
+	OId expected_count = 0;
+	for (size_t v = 0; v < volumes.size(); ++v) {
+		ofstream rep_out(rep_id_file(rep_id_prefix, v));
+		if (!rep_out)
+			throw runtime_error("Error opening file " + rep_id_file(rep_id_prefix, v));
+		for (OId oid = volumes[v].oid_begin; oid < volumes[v].oid_end; ++oid) {
+			if (merged[oid] != oid)
+				continue;
+			rep_out << oid << '\n';
+			++expected_count;
+		}
+		if (!rep_out)
+			throw runtime_error("Error writing representative id file");
+	}
+	ofstream out(config.reps_out, std::ios::out | std::ios::binary);
+	if (!out)
+		throw runtime_error("Error opening output file: " + config.reps_out);
+	out.close();
+	const RepWriteConfig cfg {
+		rep_id_prefix,
+		config.reps_out,
+		job.root_dir() + "input",
+		true,
+		false,
+		false,
+		nullptr
+	};
+	atomic<OId> count_all(0);
+	atomic<OId> min_all(std::numeric_limits<OId>::max());
+	atomic<OId> max_all(0);
+	uint64_t letters = 0, bytes = 0;
+	TaskTimer timer;
+	for (size_t v = 0; v < volumes.size(); ++v) {
+		OId count;
+		uint64_t seq_letters, bytes_written;
+		std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, cfg, count_all, min_all, max_all);
+		letters += seq_letters;
+		bytes += bytes_written;
+	}
+	if (count_all.load() != expected_count)
+		throw runtime_error("Representative sequence count mismatch.");
+	const int64_t t = timer.microseconds();
+	job.log("Representative sequences written: %" PRIu64 " letters: %" PRIu64, count_all.load(), letters);
+	job.log("Wrote %zu bytes to disk at %.2f MB/s", bytes, (double)bytes / MEGABYTES / (t / 1e6));
 }

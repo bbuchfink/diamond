@@ -176,7 +176,8 @@ private:
 };
 
 std::pair<std::string, uint64_t> get_reps(Job& job, const VolumedFile& volumes);
-void merge(Job& job, const VolumedFile& volumes, Header hdr_format);
+void write_representatives(Job& job, const VolumedFile& volumes, const std::vector<OId>& merged);
+void merge(Job& job, const VolumedFile& volumes, Header hdr_format, const std::vector<OId>& merged);
 //void extend(Job& job, std::vector<std::pair<OId, OId>>& out, const VolumedFile& volumes);
 std::string len_sort(Job& job, VolumedFile& volumes);
 std::vector<OId> build_merged(Job& job);
