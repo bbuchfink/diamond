@@ -182,9 +182,8 @@ static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile&
 	return cluster_count;
 }
 
-void merge(Job& job, const VolumedFile& volumes, Header hdr_format) {
+void merge(Job& job, const VolumedFile& volumes, Header hdr_format, const vector<OId>& merged) {
 	job.log("Merging clusterings");
-	const vector<OId> merged = build_merged(job);
 	OId n;
 	if (config.oid_output)
 		n = output_oids(job, merged);

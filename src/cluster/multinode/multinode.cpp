@@ -138,7 +138,8 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& volumes) {
 	if (job.last_round()) {
 		if (!config.fasta_index_file.empty())
 			remove_tmp_file(config.fasta_index_file);
-		volumes.remove(job.round() > 0);
+		if (config.reps_out.empty() || job.round() > 0)
+			volumes.remove(job.round() > 0);
 	}
 	Atomic gvc_lock(base_dir + "gvc_lock", job);
 	Atomic gvc_done(base_dir + "gvc_done", job);
@@ -273,7 +274,10 @@ void multinode() {
 	Atomic output_lock(job.root_dir() + PATH_SEPARATOR + "output_lock", job);
 	config.output_file = output_file;
 	if (output_lock.fetch_add() == 0) {
-		merge(job, input_volumes, hdr_format);
+		const vector<OId> merged = build_merged(job);
+		if (!config.reps_out.empty())
+			write_representatives(job, input_volumes, merged);
+		merge(job, input_volumes, hdr_format, merged);
 		job.log(job.stats());
 		output_lock.close();
 		lock.close();
