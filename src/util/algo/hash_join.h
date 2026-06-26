@@ -81,7 +81,7 @@ void hash_table_join(
 
 	typename DoubleArray<typename T::Value>::Iterator it_r = dst_r.begin(), it_s = dst_s.begin();
 	
-	for (unsigned i = 0; i < table.size(); ++i) {
+	for (size_t i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
 		if (p->value.s) {
 			size_t r = p->value.r, s = p->value.s;
@@ -196,7 +196,7 @@ void hash_join(
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
+		size_t *hstR = new size_t[clusters], *hstS = new size_t[clusters];
 		radix_cluster<T, typename T::GetKey>(R, shift, dst_r, hstR);
 		radix_cluster<T, typename T::GetKey>(S, shift, dst_s, hstS);
 

@@ -141,7 +141,7 @@ struct SeedArray
 private:
 
 	Entry *data_;
-	std::vector<int64_t> begin_;
+	std::vector<size_t> begin_;
 	std::vector<std::vector<Entry>> entries_;
 	Search::SeedStats stats_;
 

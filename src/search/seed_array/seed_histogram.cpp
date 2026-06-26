@@ -45,7 +45,7 @@ size_t SeedHistogram::max_chunk_size(const int index_chunks) const
 template<typename Filter>
 SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, EnumCfg& enum_cfg, int seedp_bits) :
 	p_(seqs.seqs().partition(config.threads_)),
-	data_(shapes.count(), ShapeHistogram(p_.size() - 1, vector<unsigned>(seedp_count(seedp_bits), 0)))
+	data_(shapes.count(), ShapeHistogram(p_.size() - 1, vector<size_t>(seedp_count(seedp_bits), 0)))
 {
 	struct Callback {
 		Callback(size_t seqp, int seedp_bits, vector<ShapeHistogram>& data):
@@ -63,7 +63,7 @@ SeedHistogram::SeedHistogram(Block& seqs, bool serial, const Filter* filter, Enu
 		{
 		}
 		const PackedSeed seedp_mask;
-		vector<unsigned*> ptr;
+		vector<size_t*> ptr;
 	};
 
 	PtrVector<Callback> cb;
