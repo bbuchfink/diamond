@@ -19,9 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <inttypes.h>
 #include <atomic>
+#include <cstdio>
+#include <exception>
 #include <limits>
 #include <memory>
 #include "multinode.h"
+#include "len_sort.h"
 #include "util/data_structures/queue.h"
 #include "util/parallel/simple_thread_pool.h"
 #include "util/log_stream.h"
@@ -38,6 +41,28 @@ using std::vector;
 using std::endl;
 using std::tie;
 using std::atomic;
+
+bool Cluster::Multinode::can_add_to_len_sorted_block(
+	uint64_t block_letters,
+	uint64_t block_seqs,
+	uint64_t seq_len,
+	uint64_t block_letter_limit,
+	uint64_t block_seq_limit,
+	uint64_t block_raw_limit)
+{
+	if (seq_len > block_raw_limit)
+		return false;
+	if (block_letters > block_raw_limit - seq_len)
+		return false;
+	const uint64_t raw_len = block_letters + seq_len + block_seqs + 1 + LEN_SORT_BLOCK_RAW_PADDING;
+	if (raw_len > block_raw_limit)
+		return false;
+	if (block_seqs == 0)
+		return true;
+	if (block_seqs >= block_seq_limit)
+		return false;
+	return block_letters + seq_len <= block_letter_limit;
+}
 
 struct OutputChunk {
 	static constexpr size_t POISON = std::numeric_limits<size_t>::max();
@@ -165,8 +190,10 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 string len_sort(Job& job, VolumedFile& volumes) {
 	Atomic lock(job.root_dir() + "lensort_lock", job), done(job.root_dir() + "lensort_done", job);
 	const bool first_round_linear = job.is_linear_round();
-	const string input_parts = job.root_dir() + "input.tsv", input_letters = job.root_dir() + "input_letters.txt";
+	const string input_parts = job.root_dir() + "input.tsv", input_letters = job.root_dir() + "input_letters.txt", error_file = job.root_dir() + "lensort_error";
 	if (lock.fetch_add() == 0) {
+		try {
+		std::remove(error_file.c_str());
 		job.log("Memory limit = %" PRIu64, job.mem_limit);
 		vector<pair<Loc, OId>> lengths;
 		uint64_t letters = 0;
@@ -211,7 +238,7 @@ string len_sort(Job& job, VolumedFile& volumes) {
 		} else
 			tie(block_gb, index_chunks) = ::block_size(job.mem_limit, letters, Sensitivity::FAST, true, config.threads_); // TODO take cluster steps into account here
 		const uint64_t block_size = gb_to_bytes(block_gb);
-		job.log("Block size = %" PRIu64 ", index chunks = %d", block_size, index_chunks);
+		job.log("Block size = %" PRIu64 ", index chunks = %d, max sequences per block = %" PRIu64, block_size, index_chunks, Cluster::Multinode::LEN_SORT_BLOCK_SEQ_LIMIT);
 		ips4o::parallel::sort(lengths.begin(), lengths.end(), std::greater<pair<Loc, OId>>(), config.threads_);
 		ofstream idx(input_parts);
 		vector<unique_ptr<ofstream>> out;
@@ -221,12 +248,16 @@ string len_sort(Job& job, VolumedFile& volumes) {
 		OId new_oid = 0;
 		for (vector<pair<Loc, OId>>::const_iterator i = lengths.begin(); i != lengths.end();) {
 			uint64_t block_letters = 0, seqs = 0;
-			while (i != lengths.end() && block_letters + i->first <= block_size) {
+			while (i != lengths.end() && Cluster::Multinode::can_add_to_len_sorted_block(block_letters, seqs, i->first, block_size)) {
 				block_letters += i->first;
 				block_mapping[i->second] = { block, new_oid++ };
 				++i;
 				++seqs;
 			}
+			if (seqs == 0)
+				throw runtime_error("Sequence exceeds supported maximum block size.");
+			if (!first_round_linear && i != lengths.end())
+				throw runtime_error("The first clustering round requires multiple input blocks. Start with a linear clustering round or lower the input size.");
 			ss << seqs << '\t' << block_letters << endl;
 			const string block_idx = std::to_string(block);
 			const string name = job.root_dir() + "input" + block_idx + ".faa";
@@ -238,9 +269,22 @@ string len_sort(Job& job, VolumedFile& volumes) {
 		job.log(ss.str().c_str());
 		write_blocks(job, volumes, out, acc_out, block_mapping);
 		done.fetch_add();
+		} catch (const std::exception& e) {
+			ofstream error_out(error_file);
+			error_out << e.what() << endl;
+			error_out.close();
+			done.fetch_add();
+			throw;
+		}
 	}
 	else
 		done.await(1);
+	ifstream error_in(error_file);
+	if (error_in) {
+		string message;
+		getline(error_in, message);
+		throw runtime_error(message.empty() ? "Length sorting failed." : message);
+	}
 	uint64_t letters, seq_count;
 	ifstream input_letters_file(input_letters);
 	input_letters_file >> letters >> seq_count;

@@ -547,6 +547,7 @@ add_test(NAME blastp-blocked COMMAND ${CMAKE_COMMAND} -DNAME=blastp-blocked "-DA
 add_test(NAME linclust COMMAND ${CMAKE_COMMAND} -DNAME=linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p4 --approx-id 0" ${SP})
 add_test(NAME linclust_reps COMMAND ${CMAKE_COMMAND} -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/linclust_reps.cmake)
 add_test(NAME realign COMMAND ${CMAKE_COMMAND} -DNAME=realign "-DARGS=realign -d ${TD}/nr_10k.faa -p1 --clusters ${TD}/linclust.out" ${SP})
+add_test(NAME unit COMMAND diamond test)
 add_test(NAME blastp-daa COMMAND ${CMAKE_COMMAND} -DNAME=blastp-daa "-DARGS=blastp -q ${TD}/nr_300.faa -d nr_10k.dmnd -p1 -f 100 -c1 --no-auto-append --daa-build-version 179" ${SP})
 add_test(NAME view COMMAND ${CMAKE_COMMAND} -DNAME=view "-DARGS=view -a ${TD}/test.daa -p4 -k0" ${SP})
 add_diamond_test(diamond-test-blastp-default "blastp -q ${TD}/data.faa -d ${TD}/data.faa -p1")
