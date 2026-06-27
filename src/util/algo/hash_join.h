@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <limits>
+#include <stdexcept>
 #include <utility>
 #include "basic/config.h"
 #include "radix_cluster.h"
@@ -25,19 +27,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../data_structures/double_array.h"
 #include "../math/integer.h"
 
+static inline uint32_t checked_double_array_count(size_t n) {
+	if (n > std::numeric_limits<uint32_t>::max())
+		throw std::overflow_error("Hash join bucket size exceeds DoubleArray count limit.");
+	return static_cast<uint32_t>(n);
+}
+
 struct RelPtr
 {
 	RelPtr()
 	{}
-	RelPtr(unsigned r):
+	RelPtr(size_t r):
 		r(r),
 		s(0)
 	{}
-	operator unsigned() const
+	operator size_t() const
 	{
 		return r;
 	}
-	unsigned r, s;
+	size_t r, s;
 };
 
 template<typename T>
@@ -73,14 +81,14 @@ void hash_table_join(
 
 	typename DoubleArray<typename T::Value>::Iterator it_r = dst_r.begin(), it_s = dst_s.begin();
 	
-	for (unsigned i = 0; i < table.size(); ++i) {
+	for (size_t i = 0; i < table.size(); ++i) {
 		p = &table.data()[i];
 		if (p->value.s) {
-			unsigned r = p->value.r, s = p->value.s;
-			it_r.count() = r;
-			it_s.count() = s;
-			p->value.r = dst_r.offset(it_r) + 4;
-			p->value.s = dst_s.offset(it_s) + 4;
+			size_t r = p->value.r, s = p->value.s;
+			it_r.count() = checked_double_array_count(r);
+			it_s.count() = checked_double_array_count(s);
+			p->value.r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
+			p->value.s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
 			it_s.next();
 		}
@@ -134,11 +142,11 @@ void table_join(
 	for (Key i = 0; i < keys; ++i) {
 		p = &table[i];
 		if (p->s) {
-			unsigned r = p->r, s = p->s;
-			it_r.count() = r;
-			it_s.count() = s;
-			p->r = dst_r.offset(it_r) + 4;
-			p->s = dst_s.offset(it_s) + 4;
+			size_t r = p->r, s = p->s;
+			it_r.count() = checked_double_array_count(r);
+			it_s.count() = checked_double_array_count(s);
+			p->r = dst_r.offset(it_r) + DoubleArray<typename T::Value>::header_size;
+			p->s = dst_s.offset(it_s) + DoubleArray<typename T::Value>::header_size;
 			it_r.next();
 			it_s.next();
 		}
@@ -188,7 +196,7 @@ void hash_join(
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		unsigned *hstR = new unsigned[clusters], *hstS = new unsigned[clusters];
+		size_t *hstR = new size_t[clusters], *hstS = new size_t[clusters];
 		radix_cluster<T, typename T::GetKey>(R, shift, dst_r, hstR);
 		radix_cluster<T, typename T::GetKey>(S, shift, dst_s, hstS);
 

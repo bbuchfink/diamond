@@ -60,19 +60,19 @@ struct ExtractBits
 };
 
 template<typename T, typename GetKey>
-void radix_cluster(const Relation<T> &in, unsigned shift, T *out, unsigned *hst)
+void radix_cluster(const Relation<T> &in, unsigned shift, T *out, size_t *hst)
 {
 	typedef typename T::Key Key;
 	static const size_t BUF_SIZE = 8;
 	const unsigned clusters = 1 << config.radix_bits;
 	ExtractBits<Key> radix(clusters, shift);
 
-	memset(hst, 0, clusters*sizeof(unsigned));
+	memset(hst, 0, clusters*sizeof(size_t));
 	for (const T *i = in.data; i < in.end(); ++i)
 		++hst[radix(GetKey()(*i))];
-	unsigned sum = 0;
+	size_t sum = 0;
 	for (unsigned i = 0; i < clusters; ++i) {
-		const unsigned c = hst[i];
+		const size_t c = hst[i];
 		hst[i] = sum;
 		sum += c;
 	}

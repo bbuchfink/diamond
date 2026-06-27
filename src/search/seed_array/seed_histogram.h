@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "flags.h"
 #include "basic/seed.h"
 
-using ShapeHistogram = std::vector<std::vector<unsigned>>;
+using ShapeHistogram = std::vector<std::vector<size_t>>;
 
 struct SeedPartitionRange
 {
@@ -57,7 +57,7 @@ extern SeedPartitionRange current_range;
 inline size_t partition_size(const ShapeHistogram &hst, size_t p)
 {
 	size_t s = 0;
-	for (unsigned i = 0; i < hst.size(); ++i)
+	for (size_t i = 0; i < hst.size(); ++i)
 		s += hst[i][p];
 	return s;
 }
