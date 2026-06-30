@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 #include <limits>
 #include "basic/value.h"
 
@@ -35,5 +36,7 @@ bool can_add_to_len_sorted_block(
 	uint64_t block_letter_limit,
 	uint64_t block_seq_limit = LEN_SORT_BLOCK_SEQ_LIMIT,
 	uint64_t block_raw_limit = LEN_SORT_BLOCK_RAW_LIMIT);
+
+double block_combo_chunk_size(size_t db_file_size, size_t query_file_size);
 
 } }

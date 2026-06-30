@@ -18,11 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <inttypes.h>
+#include <algorithm>
 #include "basic/statistics.h"
 #include "multinode.h"
+#include "len_sort.h"
 #include "../cluster.h"
 #include "run/workflow.h"
 #include "util/log_stream.h"
+#include "util/system/system.h"
 
 using std::vector;
 using std::string;
@@ -30,6 +33,19 @@ using std::unique_ptr;
 using std::tie;
 using std::runtime_error;
 using std::shared_ptr;
+
+double Cluster::Multinode::block_combo_chunk_size(size_t db_file_size, size_t query_file_size) {
+	const size_t max_file_size = std::max(db_file_size, query_file_size);
+	return (double)(max_file_size / 1000000000 + (max_file_size % 1000000000 != 0));
+}
+
+static double block_combo_chunk_size(const VolumedFile& volumes, int64_t r, int64_t i) {
+	const size_t db_size = file_size(volumes[r].path.c_str());
+	size_t query_size = db_size;
+	if (r != i)
+		query_size = file_size(volumes[i].path.c_str());
+	return Cluster::Multinode::block_combo_chunk_size(db_size, query_size);
+}
 
 static void run_all_vs_all(Job& job) {
 	job.log("Running all-vs-all search for round %d/%d", job.round() + 1, job.round_count());
@@ -66,7 +82,7 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 		config.query_file = { volumes[i].path };
 		config.self = false;
 	}
-	config.chunk_size = 1024;
+	config.chunk_size = block_combo_chunk_size(volumes, r, i);
 	config.database.clear();
 	config.fasta_index_file.clear();
 	if (config.db_size == 0)

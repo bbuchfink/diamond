@@ -43,8 +43,17 @@ static void len_sort_block_limits() {
 	require(!can_add_to_len_sorted_block(0, 0, 800, 1000, 10, 1000), "Expected an unrepresentable sequence to fail.");
 }
 
+static void block_combo_chunk_sizes() {
+	using Cluster::Multinode::block_combo_chunk_size;
+	require(block_combo_chunk_size(1, 1) == 1.0, "Expected tiny inputs to use a one GB chunk.");
+	require(block_combo_chunk_size(1000000000, 1) == 1.0, "Expected exact GB input to fit in one chunk.");
+	require(block_combo_chunk_size(1000000001, 1) == 2.0, "Expected chunk size to round up.");
+	require(block_combo_chunk_size(1024000000000, 1109673588218) == 1110.0, "Expected generated PSC block to fit without re-chunking.");
+}
+
 int run() {
 	len_sort_block_limits();
+	block_combo_chunk_sizes();
 	std::cerr << "Unit tests passed." << std::endl;
 	return 0;
 	//filestack();	
