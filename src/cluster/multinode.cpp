@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstdarg>
 #include <algorithm>
 #include <string>
-#include <unordered_set>
 #include "basic/config.h"
 #include "volume.h"
 #include "multinode.h"
@@ -32,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cluster/cluster.h"
 #include "tools/tools.h"
 #include "util/log_stream.h"
+#include "util/io/file.h"
 
 const char* const DEFAULT_MEMORY_LIMIT = "16G";
 const double CASCADED_ROUND_MAX_EVALUE = 0.001;
@@ -47,9 +47,6 @@ using std::endl;
 using std::ifstream;
 using std::tie;
 using std::shared_ptr;
-using std::unordered_set;
-
-static OId write_representative_ids(Job& job, const string& clusters_file);
 
 #ifdef WIN32
 static const char* const LOG_EOL = "\r\n";
@@ -95,7 +92,7 @@ void Job::log(const ClusterStats& stats) {
 	//log("Alignments passing all filters: %" PRIu64, stats.hits_filtered);
 }
 
-static void run_block_combos(Job& job, const VolumedFile& superblocks, const string& base_dir, const string& aln_path) {
+static void run_block_combos(Job& job, const VolumedFile& superblocks, const string& base_dir, const string& aln_volumes_path) {
 	int64_t r;
 	const bool lin_index = use_lin_index(job);
 	if (lin_index) {
@@ -126,33 +123,26 @@ static void run_block_combos(Job& job, const VolumedFile& superblocks, const str
 		return;
 	finished.await(n);
 
-	Atomic concat_lock(base_dir + "concat_lock", job);
-	Atomic concat_done(base_dir + "concat_done", job);
-	if (concat_lock.fetch_add() == 0) {
+	Atomic volumes_lock(base_dir + "volumes_lock", job);
+	Atomic volumes_done(base_dir + "volumes_done", job);
+	if (volumes_lock.fetch_add() == 0) {
 		if (lin_index)
 			remove_lin_indices(superblocks);
-		job.log("Concatenating alignment files");
-		ofstream out(aln_path);
+		job.log("Writing alignment volume list");
+		ofstream out;
+		out.exceptions(std::ios::failbit | std::ios::badbit);
+		out.open(aln_volumes_path);
 		for (uint64_t r = 0; r < superblocks.size(); ++r) {
 			for (uint64_t i = 0; i <= r; ++i) {
-				const string src = base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv";
-				std::ifstream in(src, std::ios::binary);
-				if (!in.good())
-					throw runtime_error("Error opening file " + src);
-				if (in.peek() != std::ifstream::traits_type::eof()) {
-					out << in.rdbuf();
-					if (!out) throw runtime_error("Error writing " + aln_path);
-				}
-				in.close();
-				remove_tmp_file(src);
+				out << base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv" << '\n';
 			}
 		}
 		out.close();
-		concat_done.fetch_add();
+		volumes_done.fetch_add();
 		job.finish_step();
 	}
 	else
-		concat_done.await(1);
+		volumes_done.await(1);
 }
 
 static pair<string, uint64_t> run_round(Job& job, const VolumedFile& superblocks, const string& round_minichunks) {
@@ -166,10 +156,11 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& superblocks
 	const int64_t BUF_SIZE = 4096;
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "alignments" + PATH_SEPARATOR;
 	const string aln_path = job.base_dir() + "alignments.tsv";
+	const string aln_volumes_path = base_dir + "volumes.tsv";
 	const bool mutual_cover = config.mutual_cover.present();
 	job.make_temp_dir(base_dir);
 	if (linear) {
-		run_block_combos(job, superblocks, base_dir, aln_path);
+		run_block_combos(job, superblocks, base_dir, aln_volumes_path);
 	}
 	else {
 		unique_ptr<vector<BitVector>> seed_hit_table;
@@ -181,26 +172,33 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& superblocks
 	if (job.last_round()) {
 		if (!config.fasta_index_file.empty())
 			remove_tmp_file(config.fasta_index_file);
-		if (config.reps_out.empty())
-			superblocks.remove(job.round() > 0, true, false);
+		superblocks.remove(job.round() > 0, true, false);
 	}	
 	Atomic gvc_lock(base_dir + "gvc_lock", job);
 	Atomic gvc_done(base_dir + "gvc_done", job);
+	GVC::Cfg cfg;
 	if (gvc_lock.fetch_add() == 0) {
 		job.log("Running greedy vertex cover");
 		config.max_oid = job.max_oid();
 		config.edges = aln_path;
 		config.edge_format = mutual_cover ? "triplet" : "";
 		config.symmetric = mutual_cover;
-		config.output_file = job.base_dir() + PATH_SEPARATOR + "clusters.tsv";
-		GVC::Cfg cfg;
+		config.output_file.clear();
 		cfg.tmp_dir = job.base_dir();
-		GVC::greedy_vertex_cover(cfg);
-		remove_tmp_file(aln_path);
-		if (!job.last_round() || !config.reps_out.empty()) {
-			job.log("Writing representative ids");
-			write_representative_ids(job, config.output_file);
+		if (linear) {
+			VolumedFile edges(aln_volumes_path);
+			cfg.edges = &edges;
+			GVC::greedy_vertex_cover(cfg);
+			cfg.edges = nullptr;
+			edges.remove(false);
 		}
+		else {
+			GVC::greedy_vertex_cover(cfg);
+			remove_tmp_file(aln_path);
+		}
+		File clusters(job.base_dir() + "clusters.bin", "wb");
+		clusters.write(cfg.clustering->data(), cfg.clustering->size() * sizeof(OId));
+		clusters.close();
 		gvc_done.fetch_add();
 		job.finish_step();
 	}
@@ -211,29 +209,7 @@ static pair<string, uint64_t> run_round(Job& job, const VolumedFile& superblocks
 	rmdir(base_dir.c_str());
 	if (!job.goon())
 		return pair<string, uint64_t>("", 0);
-	return get_reps(job, round_minichunks);
-}
-
-static OId write_representative_ids(Job& job, const string& clusters_file) {
-	unordered_set<OId> reps;
-	ifstream cl(clusters_file);
-	if (!cl)
-		throw runtime_error("Error opening clustering file: " + clusters_file);
-	ofstream out(job.base_dir() + "rep_ids");
-	if (!out)
-		throw runtime_error("Error opening representative id file");
-	OId rep, member;
-	while (cl >> rep >> member) {
-		if (rep != member)
-			continue;
-		if (reps.insert(rep).second)
-			out << rep << endl;
-	}
-	if (!cl.eof())
-		throw runtime_error("Format error in clustering file: " + clusters_file);
-	if (!out)
-		throw runtime_error("Error writing representative id file");
-	return (OId)reps.size();
+	return get_reps(job, round_minichunks, std::move(cfg.clustering));
 }
 
 void multinode() {
@@ -342,7 +318,7 @@ void multinode() {
 	config.output_file = output_file;
 	if (output_lock.fetch_add() == 0) {
 		VolumedFile acc_vols(input_minichunks_accs);
-		merge(job, acc_vols, hdr_format);
+		merge(job, acc_vols, volumes, hdr_format);
 		job.log(job.stats());
 		output_lock.close();
 		lock.close();
@@ -353,7 +329,6 @@ void multinode() {
 		remove_tmp_file(input_vols);
 		remove_tmp_file(job.root_dir() + "input_minichunks" + PATH_SEPARATOR + "seqs.tsv");
 		for (size_t i = 0; i < rounds.size(); ++i) {
-			remove_tmp_file(job.base_dir(i) + "rep_ids");
 			remove_tmp_file(job.base_dir(i) + PATH_SEPARATOR + "reps" + PATH_SEPARATOR + "reps.tsv");
 			remove_tmp_file(job.base_dir(i) + PATH_SEPARATOR + "rep_minichunks" + PATH_SEPARATOR + "reps.tsv");
 			remove_tmp_file(job.base_dir(i) + PATH_SEPARATOR + "input_superblocks" + PATH_SEPARATOR + "volumes.tsv");

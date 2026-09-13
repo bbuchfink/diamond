@@ -311,7 +311,7 @@ static vector<size_t> combine_blocks(Job& job, const uint64_t memory_limit, cons
 }
 
 string make_merged_blocks(Job& job, const string& minichunks, const string& merged_dir, uint64_t letter_count) {
-	static const double LETTER_OVERCOUNT = 0.004;
+	static const double LETTER_OVERCOUNT = 0.256;
 	const string vols_file = merged_dir + "volumes.tsv";
 	Atomic combine_lock(job.base_dir() + "combine_lock", job), combine_done(job.base_dir() + "combine_done", job);
 	if (combine_lock.fetch_add() == 0 && combine_done.get() == 0) {
@@ -331,7 +331,7 @@ string make_merged_blocks(Job& job, const string& minichunks, const string& merg
 		vector<uint64_t> letters;
 		std::tie(counters, letters) = count_distinct_seeds(job, vols_in, letter_count);
 		for (uint64_t& l : letters)
-			l += (l * LETTER_OVERCOUNT * config.threads_);
+			l += l * LETTER_OVERCOUNT;
 		const vector<size_t> superblocks = combine_blocks(job, job.mem_limit, counters, letters);
 		
 		// One line per superblock: its path followed by the estimated number of distinct

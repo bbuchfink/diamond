@@ -359,7 +359,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("round-coverage", 0, "Per-round coverage cutoffs for cascaded clustering", round_coverage)
 		("round-approx-id", 0, "Per-round approx-id cutoffs for cascaded clustering", round_approx_id)
 		("aln-out", 0, "Output file for clustering alignments", aln_out)
-		("reps", 0, "Output file for representative sequences in FASTA format. Only includes id and sequence (no additional header data).", reps_out)
+		("reps", 0, "Output file for representative sequences in FASTA format", reps_out)
 		("single-step", 0, "Perform one computational step of clustering then exit", single_step)
 		("linclust-minichunk", 0, "Minimal chunk size for linclust (default=auto)", linclust_minichunk);
 
@@ -413,7 +413,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
 		("hit-membuf", 0, "Buffer intermediate hits in memory", hit_membuf)
 		("fpu-compat", 0, "Floating point operations compatibility mode", fpu_compat)
-		("no-mempool", 0, "Disable per-thread memory pool", no_mem_pool);
+		("no-mempool", 0, "Disable per-thread memory pool", no_mem_pool)
+		("new-ext", 0, "Enable new extension pipeline", new_extension_pipeline);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
@@ -924,7 +925,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1788269526);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1789329080);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;

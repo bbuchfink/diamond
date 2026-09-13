@@ -96,7 +96,7 @@ struct InsertCallback {
 		seed_complexity_cut(seed_complexity_cut)
 	{}
 
-	bool operator()(const uint64_t key, const uint64_t pos, const uint32_t block_id, uint64_t) {		
+	bool operator()(const uint64_t key, const uint64_t pos, const uint32_t block_id, uint64_t) {
 		/*if (!seed_is_complex(seqs.data(pos), shape, seed_complexity_cut)) {
 			++low_complexity;
 			return true;
@@ -241,7 +241,8 @@ static LinIndex::ShapeIndex build_shape_index(Block& block, const int shape_id, 
 			low_complexity += v[i].low_complexity;
 		}
 	}
-	*message_stream << "Block size (sequences): " << block.seqs().mem_size() << ", block size (total): " << block.mem_size() << ", index size: " << table.mem_size() << ", slots used: " << (int64_t)inserted * BuildTable::SLOT_BYTES << ", low complexity seeds: " << low_complexity
+	*message_stream << "Block size (sequences): " << block.seqs().mem_size() << ", block size (total): " << block.mem_size() << ", index size: "
+		<< table.mem_size() << ", slots used: " << (int64_t)inserted * BuildTable::SLOT_BYTES << ", low complexity seeds: " << low_complexity
 		<< ", load: " << (double)inserted / build_table_size << endl;
 
 	timer.go("Extracting seed positions" + label);
@@ -384,7 +385,7 @@ static pair<uint64_t, uint64_t> scan_pivots(const PivotPositions& positions, con
 			});
 	for (auto& t : workers)
 		t.join();
-	return {looked_up, inserts.load(std::memory_order_relaxed)};
+	return { looked_up, inserts.load(std::memory_order_relaxed) };
 }
 
 void LinIndex::build_shape(const int shape_id, const BloomFilter* member_seeds) {

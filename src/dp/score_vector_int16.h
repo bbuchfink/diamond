@@ -286,6 +286,10 @@ struct ScoreVector<int16_t, DELTA>
 		return ScoreVector(vreinterpretq_s16_u16(vceqq_s16(data_, v.data_)));
 	}
 
+	ScoreVector operator>(const ScoreVector& v) const {
+		return ScoreVector(vreinterpretq_s16_u16(vcgtq_s16(data_, v.data_)));
+	}
+
 	friend uint32_t cmp_mask(const ScoreVector&v, const ScoreVector&w) {
 		return vmaskq_s8(vreinterpretq_s8_u16(vceqq_s16(v.data_, w.data_)));
 	}
@@ -527,9 +531,148 @@ static inline int16_t extract(ScoreVector<int16_t, DELTA> sv) {
 	return 0;
 }
 
-#endif
+#else
 
-#if defined(__SSE2__) | defined(__ARM_NEON)
+template<int DELTA>
+struct ScoreVector<int16_t, DELTA>
+{
+
+	typedef int16_t Register;
+
+	inline ScoreVector() :
+		data_(DELTA)
+	{}
+
+	explicit ScoreVector(int x) :
+		data_((int16_t)x)
+	{}
+
+	explicit ScoreVector(int16_t x) :
+		data_(x)
+	{}
+
+	explicit ScoreVector(const int16_t* x) :
+		data_(*x)
+	{}
+
+	explicit ScoreVector(const uint16_t* x) :
+		data_((int16_t)*x)
+	{}
+
+	ScoreVector operator+(const ScoreVector& rhs) const
+	{
+		return ScoreVector(saturate((int32_t)data_ + (int32_t)rhs.data_));
+	}
+
+	ScoreVector operator-(const ScoreVector& rhs) const
+	{
+		return ScoreVector(saturate((int32_t)data_ - (int32_t)rhs.data_));
+	}
+
+	ScoreVector& operator+=(const ScoreVector& rhs) {
+		data_ = saturate((int32_t)data_ + (int32_t)rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator-=(const ScoreVector& rhs)
+	{
+		data_ = saturate((int32_t)data_ - (int32_t)rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator&=(const ScoreVector& rhs) {
+		data_ = (int16_t)(data_ & rhs.data_);
+		return *this;
+	}
+
+	ScoreVector& operator++() {
+		data_ = saturate((int32_t)data_ + 1);
+		return *this;
+	}
+
+	ScoreVector operator==(const ScoreVector& v) const {
+		return ScoreVector((int16_t)(data_ == v.data_ ? -1 : 0));
+	}
+
+	ScoreVector operator>(const ScoreVector& v) const {
+		return ScoreVector((int16_t)(data_ > v.data_ ? -1 : 0));
+	}
+
+	template<int bytes>
+	ScoreVector shift_left() const {
+		return ScoreVector((int16_t)(bytes >= 2 ? 0 : data_));
+	}
+
+	ScoreVector& max(const ScoreVector& rhs)
+	{
+		data_ = std::max(data_, rhs.data_);
+		return *this;
+	}
+
+	friend ScoreVector max(const ScoreVector& lhs, const ScoreVector& rhs)
+	{
+		return ScoreVector(std::max(lhs.data_, rhs.data_));
+	}
+
+	void store(int16_t* ptr) const
+	{
+		*ptr = data_;
+	}
+
+	void store_aligned(int16_t* ptr) const
+	{
+		*ptr = data_;
+	}
+
+	int16_t operator[](int i) const {
+		return data_;
+	}
+
+	ScoreVector& set(int i, int16_t x) {
+		data_ = x;
+		return *this;
+	}
+
+	void expand_from_8bit() {
+		data_ = (int16_t)(int8_t)(data_ & 0xff);
+	}
+
+	friend std::ostream& operator<<(std::ostream& s, ScoreVector v)
+	{
+		printf("%3i ", (int)v.data_);
+		return s;
+	}
+
+	static ScoreVector load_aligned(const int16_t* x) {
+		return ScoreVector(*x);
+	}
+
+	int16_t data_;
+
+private:
+
+	static int16_t saturate(int32_t x) {
+		return (int16_t)std::min(std::max(x, (int32_t)SHRT_MIN), (int32_t)SHRT_MAX);
+	}
+
+};
+
+template<int DELTA>
+static inline uint32_t cmp_mask(const ScoreVector<int16_t, DELTA>& v, const ScoreVector<int16_t, DELTA>& w) {
+	return v.data_ == w.data_ ? 3u : 0u;
+}
+
+template<int DELTA>
+static inline ScoreVector<int16_t, DELTA> blend(const ScoreVector<int16_t, DELTA>& v, const ScoreVector<int16_t, DELTA>& w, const ScoreVector<int16_t, DELTA>& mask) {
+	return mask.data_ ? w : v;
+}
+
+template<int i, int DELTA>
+static inline int16_t extract(ScoreVector<int16_t, DELTA> sv) {
+	return 0;
+}
+
+#endif
 
 template<int DELTA>
 struct ScoreTraits<ScoreVector<int16_t, DELTA>>
@@ -552,7 +695,7 @@ struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 		}
 		static const uint32_t VMASK = 0xAAAAAAAAu, HMASK = 0x55555555u;
 	};
-#else
+#elif defined(__SSE2__) | defined(__ARM_NEON)
 	enum { CHANNELS = 8 };
 	typedef uint8_t Mask;
 	struct TraceMask {
@@ -568,6 +711,23 @@ struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 		uint16_t gap;
 		uint16_t open;
 		static const uint16_t VMASK = 0xAAAAu, HMASK = 0x5555u;
+	};
+#else
+	enum { CHANNELS = 1 };
+	typedef uint8_t Mask;
+	struct TraceMask {
+		static uint8_t make(uint8_t vmask, uint8_t hmask) {
+			return (vmask & VMASK) | (hmask & HMASK);
+		}
+		static uint8_t vmask(int channel) {
+			return 2;
+		}
+		static uint8_t hmask(int channel) {
+			return 1;
+		}
+		uint8_t gap;
+		uint8_t open;
+		static const uint8_t VMASK = 2, HMASK = 1;
 	};
 #endif
 	typedef int16_t Score;
@@ -596,11 +756,7 @@ struct ScoreTraits<ScoreVector<int16_t, DELTA>>
 	}
 };
 
-#endif
-
 }
-
-#if defined(__SSE2__) | defined(__ARM_NEON)
 
 template<int DELTA>
 static inline int16_t extract_channel(const DISPATCH_ARCH::ScoreVector<int16_t, DELTA>& v, int i) {
@@ -611,5 +767,3 @@ template<int DELTA>
 static inline void set_channel(DISPATCH_ARCH::ScoreVector<int16_t, DELTA>& v, const int i, const int16_t x) {
 	v.set(i, x);
 }
-
-#endif

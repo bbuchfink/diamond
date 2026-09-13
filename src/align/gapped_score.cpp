@@ -215,7 +215,7 @@ TargetList align(vector<WorkTarget>& targets, const Query& query, DP::Flags flag
 		};
 		DP::AnchoredSwipe::Config acfg{ query.sequence[frame],
 			query.composition_bias(frame),
-			0, stat, &tp, config.comp_based_stats_.get(Stats::DEFAULT_CBS) == Stats::CBS::COMP_BASED_STATS_AND_MATRIX_ADJUST, cfg.extension_mode, false };
+			0, stat, &tp, false, cfg.extension_mode, false };
 		list<Hsp> hsp = config.anchored_swipe
 			? DP::BandedSwipe::anchored_swipe(dp_targets[frame], acfg, pool) : DP::BandedSwipe::swipe(dp_targets[frame], params);
 		while (!hsp.empty())

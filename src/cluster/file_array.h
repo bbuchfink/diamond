@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <stdexcept>
+#include <string>
 #include "radixed_table.h"
 #include "util/io/compressed_buffer.h"
 #include "util/algo/degree_partition.h"
@@ -153,6 +155,7 @@ struct BufferArray {
 
 	template<typename T>
 	void write(uint64_t radix, const T* ptr, size_t n, int64_t record_count) {
+		check_radix(radix);
 		for (size_t i = 0; i < n; ++i)
 			serialize(ptr[i], data_[radix]);
 		records_[radix] += record_count;
@@ -160,12 +163,14 @@ struct BufferArray {
 	}
 
 	void write(uint64_t radix, const char* ptr, size_t n) {
+		check_radix(radix);
 		data_[radix].write(ptr, n);
 		records_[radix] += n;
 		flush(radix);
 	}
 
 	void flush(uint64_t radix) {
+		check_radix(radix);
 		if (data_[radix].size() >= BUF_SIZE) {
 			data_[radix].finish();
 			file_array_.write(radix, data_[radix].data(), data_[radix].size(), records_[radix]);
@@ -199,6 +204,12 @@ struct BufferArray {
 	}
 
 private:
+
+	void check_radix(uint64_t radix) const {
+		if (radix >= (uint64_t)data_.size())
+			throw std::out_of_range("BufferArray: radix out of range: " + std::to_string(radix)
+				+ " (buckets: " + std::to_string(data_.size()) + ")");
+	}
 
 	std::vector<CompressedBuffer> data_;
 	std::vector<int64_t> records_;

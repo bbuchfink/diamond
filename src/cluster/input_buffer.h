@@ -51,7 +51,9 @@ struct InputBuffer {
 		pool.join_all();
 	}
 
-	InputBuffer(const VolumedFile& f, std::pmr::memory_resource& mem_pool, int parts = config.threads_) :
+	/* Note that the memory resource is used by all reader threads, so a synchronized resource
+	   must be supplied unless the volumes are read single threaded (threads = 1). */
+	InputBuffer(const VolumedFile& f, std::pmr::memory_resource& mem_pool, int parts = config.threads_, int threads = config.threads_) :
 		size_(f.sparse_records()),
 		data_(&mem_pool),
 		part_(size_, parts)
@@ -76,7 +78,7 @@ struct InputBuffer {
 				}
 			}
 			};
-		for (int i = 0; i < std::min(config.threads_, (int)f.size()); ++i)
+		for (int i = 0; i < std::min(threads, (int)f.size()); ++i)
 			pool.spawn(worker);
 		pool.join_all();
 	}

@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <unordered_map>
-#include <unordered_set>
 #include <inttypes.h>
 #include "multinode.h"
 #include "volume.h"
@@ -26,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/parallel/simple_thread_pool.h"
 #include "util/data_structures/queue.h"
 #include "util/log_stream.h"
+#include "util/io/file.h"
 
 using std::ostringstream;
 using std::thread;
@@ -37,7 +37,6 @@ using std::ofstream;
 using std::ifstream;
 using std::runtime_error;
 using std::unordered_map;
-using std::unordered_set;
 using std::endl;
 using std::pair;
 using std::tuple;
@@ -55,8 +54,7 @@ struct RepChunk {
 struct RepWriteConfig {
 	string output_path;
 	bool single_out_file;
-	bool write_index;
-	FileStack* reps_list;
+	FileStack& reps_list;
 };
 
 // Wakes up all threads blocked on the queue. The stop flag of the thread pool is only polled in
@@ -72,10 +70,9 @@ struct QueueAbortGuard {
 };
 
 static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& volumes, size_t idx, const RepWriteConfig& cfg,
-	const unordered_set<OId>& rep_id_set, const std::pmr::unordered_map<OId, std::pmr::string>& oid2seqid,
+	const vector<OId>& clustering,
 	atomic<OId>& count_all, atomic<OId>& min_all, atomic<OId>& max_all) {
 	job.log("Writing representatives. Volume=%lli/%lli Records=%s", idx + 1, volumes.size(), Util::String::format(volumes[idx].record_count).c_str());
-	const bool final = job.last_round();
 
 	const SequenceFile::Flags flags = SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::NEED_LETTER_COUNT;
 	string out_file = cfg.single_out_file ? cfg.output_path : cfg.output_path + std::to_string(idx) + ".faa";
@@ -84,7 +81,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	if (!out)
 		throw runtime_error("Error opening file " + out_file);
 	unique_ptr<ofstream> offsets;
-	if (cfg.write_index && cfg.single_out_file) {
+	if (cfg.single_out_file) {
 		offsets.reset(new ofstream(offset_file, std::ios::out | std::ios::app | std::ios::binary));
 		if (!offsets || !*offsets)
 			throw runtime_error("Error opening file " + offset_file);
@@ -119,7 +116,7 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 			auto it = pending.find(next_expected);
 			while (it != pending.end()) {
 				out.write(it->second.data.data(), it->second.data.size());
-				if (cfg.write_index && cfg.single_out_file) {
+				if (cfg.single_out_file) {
 					for (const size_t record_offset : it->second.record_offsets)
 						(*offsets) << out_offset + record_offset << '\n';
 					out_offset += it->second.data.size();
@@ -163,7 +160,6 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		OId count = 0, min = std::numeric_limits<OId>::max(), max = 0;
 		uint64_t bytes = 0;
 		uint64_t letters = 0;
-		string seqid;
 		while (!stop.load(std::memory_order_relaxed) && (c = next.fetch_add(1, std::memory_order_relaxed), c < chunk_count)) {
 			TextBuffer buffer;
 			vector<size_t> record_offsets;
@@ -171,18 +167,10 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 			const size_t j_end = std::min(j_begin + chunk_size, seq_count);
 			for (size_t j = j_begin; j < j_end; ++j) {
 				const OId oid = std::atoll(b->ids()[j]);
-				if (rep_id_set.find(oid) == rep_id_set.end())
+				if (oid >= clustering.size() || clustering[oid] != oid)
 					continue;
 				record_offsets.push_back(buffer.size());
-				const char* id = b->ids()[j];
-				if (final) {
-					const auto it = oid2seqid.find(oid);
-					if (it == oid2seqid.end())
-						throw runtime_error("Missing sequence id mapping for OID " + std::to_string(oid));
-					seqid = it->second;
-					id = seqid.c_str();
-				}
-				Util::Seq::format(b->seqs()[j], id, nullptr, buffer, "fasta", amino_acid_traits);
+				Util::Seq::format(b->seqs()[j], b->ids()[j], nullptr, buffer, "fasta", amino_acid_traits);
 				++count;
 				letters += b->seqs()[j].length();
 				if(oid < min)
@@ -222,26 +210,25 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	pool.join(writer_thread);
 	if (!out)
 		throw runtime_error("Error writing representative block");
-	if (cfg.write_index && cfg.single_out_file && (!offsets || !*offsets))
+	if (cfg.single_out_file && (!offsets || !*offsets))
 		throw runtime_error("Error writing representative offset file");
 	file.reset();
 	remove_tmp_file(volumes[idx].path);
-	if (cfg.reps_list != nullptr && (!cfg.single_out_file || idx == volumes.size() - 1)) {
+	if (!cfg.single_out_file || idx == volumes.size() - 1) {
 		ostringstream ss;
 		ss << out_file << '\t' << count_all.load() << '\t' << min_all.load() << '\t' << max_all.load() + 1 << endl;
-		cfg.reps_list->push(ss.str());
+		cfg.reps_list.push(ss.str());
 	}
 	return std::make_tuple<OId, uint64_t, uint64_t>(count_this_volume, letters_all, bytes_all.load(std::memory_order_relaxed));
 }
 
-pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks) {
-	const bool final = job.last_round();
-	const bool single_out_file = final || !ends_with(job.steps().at(job.round() + 1), "_lin");
-	if (final && config.reps_out.empty()) {
+pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks, unique_ptr<vector<OId>> clustering) {
+	if (job.last_round()) {
 		VolumedFile volumes(round_minichunks);
 		volumes.remove(false, true, false);
 		return { string(), 0 };
 	}
+	const bool single_out_file = !ends_with(job.steps().at(job.round() + 1), "_lin");
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "rep_minichunks" + PATH_SEPARATOR, qpath = base_dir + "queue";
 	const string reps_list_name = base_dir + "reps.tsv";
 	job.make_temp_dir(base_dir);
@@ -251,24 +238,17 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks) {
 	Atomic q(qpath, job);
 
 	if ((!single_out_file || get_reps_lock.fetch_add() == 0) && get_reps_done.get() == 0) {
-		std::pmr::unsynchronized_pool_resource mem_pool;
-		const string id_file = job.base_dir() + "rep_ids";
-		ifstream rep_ids(id_file);
-		if (!rep_ids)
-			throw runtime_error("Error opening file " + id_file);
-		OId rep_id;
-		unordered_set<OId> rep_id_set;
-		while (rep_ids >> rep_id)
-			rep_id_set.insert(rep_id);
-		if (!rep_ids.eof())
-			throw runtime_error("Format error in representative id file " + id_file);
-		const std::pmr::unordered_map<OId, std::pmr::string> oid2seqid = final
-			? read_mapping_tables(job, rep_id_set, mem_pool)
-			: std::pmr::unordered_map<OId, std::pmr::string>(&mem_pool);
-
-		unique_ptr<FileStack> reps_list;
-		if (!final)
-			reps_list.reset(new FileStack(reps_list_name));
+		if (!clustering) {
+			const string path = job.base_dir() + "clusters.bin";
+			File in(path, "rb");
+			const size_t count = job.max_oid() + 1;
+			if (in.size() != count * sizeof(OId))
+				throw runtime_error("Invalid binary clustering file size: " + path);
+			clustering = std::make_unique<vector<OId>>(count);
+			in.read(clustering->data(), clustering->size() * sizeof(OId));
+			in.close();
+		}
+		unique_ptr<FileStack> reps_list(new FileStack(reps_list_name));
 		
 		OId cluster_count(0);
 		uint64_t bytes = 0;
@@ -276,10 +256,9 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks) {
 		TaskTimer timer;
 
 		const RepWriteConfig cfg{
-			single_out_file ? (final ? config.reps_out : base_dir + "reps_all.faa") : base_dir,
+			single_out_file ? base_dir + "reps_all.faa" : base_dir,
 			single_out_file,
-			single_out_file && !final,
-			reps_list.get()
+			*reps_list
 		};
 		atomic<OId> count_all(0);
 		atomic<OId> min_all(std::numeric_limits<OId>::max());
@@ -288,7 +267,7 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks) {
 		while (v = q.fetch_add(), v < (int64_t)volumes.size()) {
 			OId count;
 			uint64_t seq_letters, bytes_written;
-			std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, cfg, rep_id_set, oid2seqid, count_all, min_all, max_all);
+			std::tie(count, seq_letters, bytes_written) = write_reps(job, volumes, v, cfg, *clustering, count_all, min_all, max_all);
 			cluster_count += count;
 			bytes += bytes_written;
 			letter_count.fetch_add(seq_letters);

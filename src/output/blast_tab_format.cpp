@@ -644,7 +644,8 @@ TabularFormat::TabularFormat(bool json) :
     OutputFormat((json ? OutputFormat::json : OutputFormat::blast_tab), HspValues::NONE, Flags::NONE, json ? ',' : '\0'),
     is_json(json)
 {
-    static const FieldId stdf[] = { FieldId::QSeqId, FieldId::SSeqId, FieldId::PIdent, FieldId::Length, FieldId::Mismatch, FieldId::GapOpen, FieldId::QStart, FieldId::QEnd, FieldId::SStart, FieldId::SEnd, FieldId::EValue, FieldId::BitScore };
+    static const FieldId stdf[] = { FieldId::QSeqId, FieldId::SSeqId, FieldId::PIdent, FieldId::Length, FieldId::Mismatch, FieldId::GapOpen, FieldId::QStart, FieldId::QEnd,
+        FieldId::SStart, FieldId::SEnd, FieldId::EValue, FieldId::BitScore };
     const vector<string>& f = config.output_format;
     if (f.size() <= 1) {
         fields = vector<FieldId>(stdf, stdf + 12);

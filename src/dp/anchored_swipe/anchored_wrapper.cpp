@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 #include <numeric>
 #include "../dp.h"
-#include "config.h"
+#include "../swipe/config.h"
 #include "anchored.h"
 #include "../score_profile.h"
 #include "util/simd/dispatch.h"
@@ -34,7 +34,6 @@ using std::vector;
 using std::unique_ptr;
 using std::pair;
 using std::sort;
-using std::runtime_error;
 using std::accumulate;
 
 namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
@@ -128,9 +127,7 @@ static void swipe_threads(DP::AnchoredSwipe::Target<int16_t>* targets, int64_t c
 		size += accumulate(i1, i1 + n, (int64_t)0, [](int64_t n, const Target& t) { return n + t.gross_cells(); });
 		i1 += n;
 		if (size >= config.swipe_task_size) {
-#if ARCH_AVX2_KERNELS
 			task_set.enqueue(DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>, i0, i1 - i0, options);
-#endif
 			cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
 			cfg.stats.inc(Statistics::SWIPE_TASKS_ASYNC);
 			i0 = i1;
@@ -139,26 +136,19 @@ static void swipe_threads(DP::AnchoredSwipe::Target<int16_t>* targets, int64_t c
 	}
 	if (task_set.total() == 0) {
 		cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
-#if ARCH_AVX2_KERNELS
 		DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(i0, i1 - i0, options);
-#endif
 		return;
 	}
 	if (i1 - i0 > 0) {
 		cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
 		cfg.stats.inc(Statistics::SWIPE_TASKS_ASYNC);
-#if ARCH_AVX2_KERNELS
 		task_set.enqueue(DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>, i0, i1 - i0, options);
-#endif
 	}
 	task_set.run();
 }
 
 list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg, std::pmr::memory_resource& pool) {
 	MEM_SCOPE("dp/anchored-swipe");
-#if !ARCH_AVX2_KERNELS
-	throw runtime_error("Anchored SWIPE requires at least AVX2 support");
-#endif
 	TaskTimer total;
 
 	TargetVector target_vec;
@@ -213,13 +203,11 @@ list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg,
 	DP::AnchoredSwipe::Options options{ prof_pointers.empty() ? nullptr : prof_pointers.data(), prof_pointers_rev.empty() ? nullptr : prof_pointers_rev.data() };
 
 	timer.go();
-#ifdef __SSE4_1__
 	//DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int8_t, 0>>(target_vec.int8.data(), target_vec.int8.size());
 	//stats = DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(target_vec.int16.data(), target_vec.int16.size(), options);
 	swipe_threads(target_vec.int16.data(), target_vec.int16.size(), options, cfg);
 	//cfg.stats.inc(Statistics::GROSS_DP_CELLS, stats.gross_cells);
 	//cfg.stats.inc(Statistics::NET_DP_CELLS, stats.net_cells);
-#endif
 	cfg.stats.inc(Statistics::TIME_SW, timer.microseconds());
 
 	timer.go();

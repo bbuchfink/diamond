@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <chrono>
 #include <unordered_map>
-#include <unordered_set>
 #include "basic/config.h"
 #include "util/string/string.h"
 #include "util/parallel/filestack.h"
@@ -179,8 +178,8 @@ private:
 
 };
 
-std::pair<std::string, uint64_t> get_reps(Job& job, const std::string& round_minichunks);
-void merge(Job& job, const VolumedFile& volumes, Header hdr_format);
+std::pair<std::string, uint64_t> get_reps(Job& job, const std::string& round_minichunks, std::unique_ptr<std::vector<OId>> clustering);
+void merge(Job& job, const VolumedFile& volumes, const VolumedFile& input_volumes, Header hdr_format);
 std::vector<int> make_blocks(Job& job, VolumedFile& volumes, std::vector<std::unique_ptr<std::ofstream>>& out, std::vector<std::unique_ptr<std::ofstream>>& acc_out,
 	const std::string& seqs_vf, const std::string& accs_vf);
 std::pair<std::string, std::string> len_sort(Job& job, VolumedFile& volumes);
@@ -202,6 +201,5 @@ std::string seed_count_file(const std::string& volume_list_file);
 std::unordered_map<std::string, uint64_t> read_seed_counts(const std::string& file_name);
 void remove_lin_indices(const VolumedFile& volumes);
 std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& job, const Volume& vol, size_t v, std::pmr::memory_resource& pool, bool remove);
-std::pmr::unordered_map<OId, std::pmr::string> read_mapping_tables(Job& job, const std::unordered_set<OId>& wanted, std::pmr::memory_resource& pool);
 std::string make_merged_blocks(Job& job, const std::string& minichunks, const std::string& merged_dir, uint64_t letter_count);
 std::pair<std::vector<std::vector<HyperLogLog>>, std::vector<uint64_t>> count_distinct_seeds(Job& job, const VolumedFile& minichunks, const uint64_t letter_count);

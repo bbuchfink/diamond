@@ -64,7 +64,7 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, const Query& query
 	}
 }
 
-WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<SeedHit>::DataIterator end, const Query& query, uint32_t block_id,
+WorkTarget ungapped_stage(vector<SeedHit>::iterator begin, vector<SeedHit>::iterator end, const Query& query, uint32_t block_id,
 	Loc max_target_len, Statistics& stats, const Block& targets, const Mode mode, std::pmr::memory_resource& pool, const Search::Config& cfg)
 {
 	array<vector<DiagonalSegment>, MAX_CONTEXT> diagonal_segments;
@@ -77,7 +77,7 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 	WorkTarget target(block_id, masking ? ref_seqs[block_id] : ref_seqs_unmasked[block_id], query, max_target_len, stats, pool);
 	
 	if (mode == Mode::FULL) {
-		for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit)
+		for (vector<SeedHit>::const_iterator hit = begin; hit < end; ++hit)
 			target.ungapped_score[hit->frame] = std::max(target.ungapped_score[hit->frame], hit->score);
 		if (!with_diag_filter)
 			return target;
@@ -98,7 +98,7 @@ WorkTarget ungapped_stage(FlatArray<SeedHit>::DataIterator begin, FlatArray<Seed
 		end = reseek_hits.end();
 	}
 	std::sort(begin, end);
-	for (FlatArray<SeedHit>::DataIterator hit = begin; hit < end; ++hit) {
+	for (vector<SeedHit>::const_iterator hit = begin; hit < end; ++hit) {
 		const auto f = hit->frame;
 		target.ungapped_score[f] = std::max(target.ungapped_score[f], hit->score);
 		if (!diagonal_segments[f].empty() && diagonal_segments[f].back().diag() == hit->diag() && diagonal_segments[f].back().subject_end() >= hit->j)

@@ -1,3 +1,10 @@
+[2.2.7]
+- Improved the performance of the clustering workflows.
+- Improved the performance of the `greedy-vertex-cover` workflow.
+- Fixed a potential non-determinism in the clustering workflows depending on the number of threads.
+- Fixed the `--reps` option not working correctly.
+- The `--reps` option will now output full FASTA headers instead of just accessions.
+
 [2.2.6]
 - Improved the performance of the search and clustering workflows.
 - Improved the sensitivity of the `--very-sensitive` alignment mode.

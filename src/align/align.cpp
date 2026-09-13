@@ -42,6 +42,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/system/system.h"
 #include "search/hit_buffer.h"
 #include "util/memory/mem_profile.h"
+#include "new/extension_pipeline.h"
 
 using std::get;
 using std::tuple;
@@ -230,7 +231,7 @@ void align_queries(File* output_file, Search::Config& cfg)
 	if (!cfg.blocked_processing && !cfg.iterated())
 		cfg.db->init_random_access(cfg.current_query_block, 0, false);
 
-	const uint64_t res_size = cfg.query->mem_size() + cfg.target->mem_size();
+	const uint64_t res_size = cfg.query->mem_size() + (cfg.target.get() == cfg.query.get() ? 0 : cfg.target->mem_size());
 	const uint64_t avail = mem_limit > res_size ? mem_limit - res_size : 0;
 	cfg.seed_hit_buf->plan_bin_groups(std::min<uint64_t>(avail / 2, config.trace_pt_fetch_size));
 	cfg.seed_hit_buf->alloc_buffer();
@@ -259,32 +260,40 @@ void align_queries(File* output_file, Search::Config& cfg)
 #endif
 		}
 		statistics.inc(Statistics::TIME_SORT_SEED_HITS, timer.microseconds());
-
-		timer.go("Computing partition");
-		const vector<int64_t> partition = make_partition(hit_buf, hit_buf + hit_count);
-
-		timer.go("Computing alignments");
-		HitIterator hit_it(query_range.first, query_range.second, hit_buf, hit_buf + hit_count, partition.begin(), (int64_t)partition.size() - 1);
-        OutputWriter writer{output_file, cfg.blocked_processing ? '\0' : cfg.output_format->query_separator };
+		OutputWriter writer{ output_file, cfg.blocked_processing ? '\0' : cfg.output_format->query_separator };
 		{
 			MEM_SCOPE("output/reorder-queue");
 			output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer, !config.no_reorder));
 		}
-		unique_ptr<thread> heartbeat;
-		if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)
-			heartbeat.reset(new thread(heartbeat_worker, query_range.second, &cfg));
-		const int threads = config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())) ? 1
-			: (config.threads_align == 0 ? config.threads_ : config.threads_align);
-		auto task = [&hit_it, &cfg](ThreadPool& tp, int64_t i) { return align_worker(&hit_it, &cfg, i); };
-		{
-			MEM_SCOPE("align/thread-pool");
-			cfg.thread_pool.reset(config.swipe_all ? new ThreadPool(task, query_range.first, query_range.second) : new ThreadPool(task, 0, (int64_t)partition.size() - 1));
+
+		if (config.new_extension_pipeline) {
+			timer.go("Computing alignments");
+			ExtensionPipeline::run(hit_buf, hit_count, cfg);
 		}
-		cfg.thread_pool->run(threads);
-		cfg.thread_pool->join();
-		if (heartbeat)
-			heartbeat->join();
-		statistics.inc(Statistics::TIME_EXT, timer.microseconds());
+		else {
+
+			timer.go("Computing partition");
+			const vector<int64_t> partition = make_partition(hit_buf, hit_buf + hit_count);
+
+			timer.go("Computing alignments");
+			HitIterator hit_it(query_range.first, query_range.second, hit_buf, hit_buf + hit_count, partition.begin(), (int64_t)partition.size() - 1);						
+			unique_ptr<thread> heartbeat;
+			if (config.verbosity >= 3 && config.load_balancing == Config::query_parallel && !config.swipe_all && config.heartbeat)
+				heartbeat.reset(new thread(heartbeat_worker, query_range.second, &cfg));
+			const int threads = config.load_balancing == Config::target_parallel || (config.swipe_all && (cfg.target->seqs().size() >= cfg.query->seqs().size())) ? 1
+				: (config.threads_align == 0 ? config.threads_ : config.threads_align);
+			auto task = [&hit_it, &cfg](ThreadPool& tp, int64_t i) { return align_worker(&hit_it, &cfg, i); };
+			{
+				MEM_SCOPE("align/thread-pool");
+				cfg.thread_pool.reset(config.swipe_all ? new ThreadPool(task, query_range.first, query_range.second) : new ThreadPool(task, 0, (int64_t)partition.size() - 1));
+			}
+			cfg.thread_pool->run(threads);
+			cfg.thread_pool->join();
+			if (heartbeat)
+				heartbeat->join();
+			statistics.inc(Statistics::TIME_EXT, timer.microseconds());
+
+		}
 		
 		timer.go("Deallocating buffers");
 		cfg.thread_pool.reset();

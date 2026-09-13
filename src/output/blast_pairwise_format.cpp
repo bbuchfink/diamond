@@ -33,7 +33,8 @@ void PairwiseFormat::print_match(const HspContext& r, Output::Info &info)
     out << " Score = " << r.bit_score() << " bits (" << r.score() << "),  Expect = ";
     out.print_e(r.evalue());
     out << '\n';
-    out << " Identities = " << r.identities() << '/' << r.length() << " (" << percentage<unsigned,unsigned>(r.identities(), r.length()) << "%), Positives = " << r.positives() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.positives(), r.length())
+    out << " Identities = " << r.identities() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.identities(), r.length()) << "%), Positives = "
+        << r.positives() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.positives(), r.length())
         << "%), Gaps = " << r.gaps() << '/' << r.length() << " (" << percentage<unsigned, unsigned>(r.gaps(), r.length()) << "%)\n";
     if (align_mode.query_translated)
         out << " Frame = " << r.blast_query_frame() << '\n';

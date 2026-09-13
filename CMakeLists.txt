@@ -235,7 +235,7 @@ set(DISPATCH_OBJECTS
         "src/masking/tantan.cpp"
         "src/dp/scan_diags.cpp"
         "src/dp/ungapped_simd.cpp"
-        "src/dp/swipe/anchored_wrapper.cpp"
+        "src/dp/anchored_swipe/anchored_wrapper.cpp"
         "src/dp/score_profile.cpp"
         "src/stats/matrix_adjust/matrix_adjust.cpp"
         "src/stats/matrix_adjust/matrix_adjust_scalar.cpp"
@@ -488,6 +488,7 @@ set(OBJECTS
         src/search/lin_index/lin_index.cpp
         src/util/io/zlib_bridge.cpp
         src/util/sequence/seqindex.cpp
+        src/align/new/extension_pipeline.cpp
 )
 
 if(WITH_DNA)

@@ -216,6 +216,105 @@ static inline void transpose(const signed char **data, size_t n, signed char *ou
 }
 
 #endif
+
+/* 8x8 transposes of int16_t values: the 128 bit counterparts of the 16x16 AVX2
+   transpose_offset below, for the 8 channel int16_t score vectors of SSE2 and NEON.
+   Like that one they read one vector (8 values) from each of the 8 input pointers at
+   vector index `offset`, and write the transposed block to `out`, which has to be
+   16 byte aligned. `n` is accepted for signature compatibility and ignored; all 8
+   pointers have to be valid. */
+
+#ifdef __SSE2__
+
+static inline void transpose_offset(const int16_t** data, size_t n, ptrdiff_t offset, int16_t* out, __m128i) {
+	__m128i r0, r1, r2, r3, r4, r5, r6, r7, t;
+
+	r0 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r1 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r2 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r3 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r4 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r5 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r6 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+	r7 = _mm_loadu_si128((const __m128i*) * (data++) + offset);
+
+	UNPACK128_LO_HI_EPI16(0, 1)
+	UNPACK128_LO_HI_EPI16(2, 3)
+	UNPACK128_LO_HI_EPI16(4, 5)
+	UNPACK128_LO_HI_EPI16(6, 7)
+
+	UNPACK128_LO_HI_EPI32(0, 2)
+	UNPACK128_LO_HI_EPI32(1, 3)
+	UNPACK128_LO_HI_EPI32(4, 6)
+	UNPACK128_LO_HI_EPI32(5, 7)
+
+	UNPACK128_LO_HI_EPI64(0, 4)
+	UNPACK128_LO_HI_EPI64(2, 6)
+	UNPACK128_LO_HI_EPI64(1, 5)
+	UNPACK128_LO_HI_EPI64(3, 7)
+
+	__m128i* ptr = (__m128i*)out;
+	_mm_store_si128(ptr++, r0);
+	_mm_store_si128(ptr++, r4);
+	_mm_store_si128(ptr++, r2);
+	_mm_store_si128(ptr++, r6);
+	_mm_store_si128(ptr++, r1);
+	_mm_store_si128(ptr++, r5);
+	_mm_store_si128(ptr++, r3);
+	_mm_store_si128(ptr, r7);
+}
+
+#endif
+
+#ifdef __ARM_NEON
+
+#define TRN_S16(a, b) { int16x8x2_t t_ = vtrnq_s16(r##a, r##b); r##a = t_.val[0]; r##b = t_.val[1]; }
+#define TRN_S32(a, b) { int32x4x2_t t_ = vtrnq_s32(vreinterpretq_s32_s16(r##a), vreinterpretq_s32_s16(r##b)); 	r##a = vreinterpretq_s16_s32(t_.val[0]); r##b = vreinterpretq_s16_s32(t_.val[1]); }
+#define TRN_S64(a, b) { int16x8_t t_ = r##a; 	r##a = vcombine_s16(vget_low_s16(t_), vget_low_s16(r##b)); 	r##b = vcombine_s16(vget_high_s16(t_), vget_high_s16(r##b)); }
+
+static inline void transpose_offset(const int16_t** data, size_t n, ptrdiff_t offset, int16_t* out, int16x8_t) {
+	int16x8_t r0, r1, r2, r3, r4, r5, r6, r7;
+
+	r0 = vld1q_s16(*(data++) + offset * 8);
+	r1 = vld1q_s16(*(data++) + offset * 8);
+	r2 = vld1q_s16(*(data++) + offset * 8);
+	r3 = vld1q_s16(*(data++) + offset * 8);
+	r4 = vld1q_s16(*(data++) + offset * 8);
+	r5 = vld1q_s16(*(data++) + offset * 8);
+	r6 = vld1q_s16(*(data++) + offset * 8);
+	r7 = vld1q_s16(*(data++) + offset * 8);
+
+	TRN_S16(0, 1)
+	TRN_S16(2, 3)
+	TRN_S16(4, 5)
+	TRN_S16(6, 7)
+
+	TRN_S32(0, 2)
+	TRN_S32(1, 3)
+	TRN_S32(4, 6)
+	TRN_S32(5, 7)
+
+	TRN_S64(0, 4)
+	TRN_S64(1, 5)
+	TRN_S64(2, 6)
+	TRN_S64(3, 7)
+
+	vst1q_s16(out, r0);
+	vst1q_s16(out + 8, r1);
+	vst1q_s16(out + 16, r2);
+	vst1q_s16(out + 24, r3);
+	vst1q_s16(out + 32, r4);
+	vst1q_s16(out + 40, r5);
+	vst1q_s16(out + 48, r6);
+	vst1q_s16(out + 56, r7);
+}
+
+#undef TRN_S16
+#undef TRN_S32
+#undef TRN_S64
+
+#endif
+
 #ifdef __AVX2__
 
 static inline void transpose_offset(const int16_t** data, size_t n, ptrdiff_t offset, int16_t* out, __m256i) {

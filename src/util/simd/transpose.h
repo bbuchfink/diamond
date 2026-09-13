@@ -27,3 +27,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #if ARCH_AVX2_KERNELS
 #include "transpose32x32.h"
 #endif
+
+#if !defined(__SSE2__) && !defined(__ARM_NEON)
+
+#include <stddef.h>
+#include <stdint.h>
+
+static inline void transpose_offset(const int16_t** data, size_t n, ptrdiff_t offset, int16_t* out, int16_t) {
+	*out = (*data)[offset];
+}
+
+#endif

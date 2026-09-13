@@ -379,6 +379,7 @@ struct Config
 	int double_hit_window;
 	uint64_t oid_title_max;
 	string linclust_minichunk;
+	bool new_extension_pipeline;
 
 	// TODO
 	double cbs_angle;

@@ -18,21 +18,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "multinode.h"
+#include "util/io/file.h"
 
 using std::vector;
-using std::ifstream;
 using std::string;
 using std::runtime_error;
 
 static vector<OId> read_clusters(const string& path, OId max_oid) {
-	constexpr OId NIL = std::numeric_limits<OId>::max();
-	vector<OId> v(max_oid + 1, NIL);
-	ifstream in(path);
-	if (!in.good())
-		throw runtime_error("Error opening clustering file: " + path);
-	OId rep, member;
-	while (in >> rep >> member)
-		v[member] = rep;
+	File in(path, "rb");
+	const size_t count = max_oid + 1;
+	if (in.size() != count * sizeof(OId))
+		throw runtime_error("Invalid binary clustering file size: " + path);
+	vector<OId> v(count);
+	in.read(v.data(), v.size() * sizeof(OId));
 	in.close();
 	remove_tmp_file(path);
 	return v;
@@ -46,10 +44,10 @@ static void chain_round(vector<OId>& mapping, const string& path, OId max_oid) {
 }
 
 vector<OId> build_merged(Job& job) {
-	vector<OId> mapping = read_clusters(job.base_dir(0) + PATH_SEPARATOR + "clusters.tsv", job.max_oid());
+	vector<OId> mapping = read_clusters(job.base_dir(0) + "clusters.bin", job.max_oid());
 	rmdir(job.base_dir(0));
 	for (int r = 1; r <= job.round(); ++r) {
-		chain_round(mapping, job.base_dir(r) + PATH_SEPARATOR + "clusters.tsv", job.max_oid());
+		chain_round(mapping, job.base_dir(r) + "clusters.bin", job.max_oid());
 		rmdir(job.base_dir(r));
 	}
 	return mapping;

@@ -48,7 +48,6 @@ void heartbeat_worker(size_t qend, const Search::Config* cfg)
 				<< " max_size=" << megabytes(output_sink->max_size())
 				<< " next=" << title.substr(0, title.find(' '))
 				<< " queue=" << cfg->thread_pool->queue_len(0) << "/" << cfg->thread_pool->queue_len(1)
-				//<< " ETA=" << (double)duration_cast<seconds>(high_resolution_clock::now() - t0).count() / (next - OutputSink::get().begin()) * (qend - next) << "s"
 				<< endl;
 			n = 0;
 		}

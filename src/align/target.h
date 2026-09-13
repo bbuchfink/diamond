@@ -77,6 +77,8 @@ struct WorkTarget {
 	bool done;
 };
 
+WorkTarget ungapped_stage(std::vector<SeedHit>::iterator begin, std::vector<SeedHit>::iterator end, const Query& query, uint32_t block_id,
+	Loc max_target_len, Statistics& stats, const Block& targets, const Mode mode, std::pmr::memory_resource& pool, const Search::Config& cfg);
 std::vector<WorkTarget> ungapped_stage(const Query& query, FlatArray<SeedHit>::Iterator seed_hits, FlatArray<SeedHit>::Iterator seed_hits_end,
 	std::vector<uint32_t>::const_iterator target_block_ids, DP::Flags flags, Statistics& stat, const Block& target_block, const Mode mode,
 	std::pmr::memory_resource& pool, const Search::Config& cfg);

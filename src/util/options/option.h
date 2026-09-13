@@ -147,6 +147,11 @@ struct Option<int64_t> {
 	void unset() {
 		present_ = false;
 	}
+	int64_t get_present() const {
+		if (!present_)
+			throw std::runtime_error("Option::get_present");
+		return value_;
+	}
 	operator int64_t() const {
 		if (!present_)
 			throw std::runtime_error("Option::present");

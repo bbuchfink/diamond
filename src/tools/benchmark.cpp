@@ -32,7 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
 #include "dp/swipe/cell_update.h"
-#include "dp/swipe/anchored.h"
+#include "dp/anchored_swipe/anchored.h"
 #include "dp/swipe/config.h"
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
@@ -395,8 +395,6 @@ void banded_swipe(const Sequence &s1, const Sequence &s2) {
 	*message_stream << "Banded SWIPE (int16_t, CBS, TB):" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * s1.length() * 65 * 16) * 1000 << " ps/Cell" << endl;
 }
 
-#if ARCH_AVX2_KERNELS
-
 void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	static const size_t n = 10000llu;
 	const auto s1_ = s1.subseq(0, 128);
@@ -454,7 +452,6 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 }
 
 //#endif
-#endif
 
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 void diag_scores(const Sequence& s1, const Sequence& s2) {
@@ -590,12 +587,8 @@ void benchmark() {
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	//mt_swipe(s3, s4);
 #endif
-#if ARCH_AVX2_KERNELS
-//#ifdef __SSE4_1__
 	anchored_swipe(s1, s2);
 	//minimal_sw(s1, s2);
-//#endif
-#endif
 	
 #if defined(__SSE4_1__) | defined(__ARM_NEON)
 	swipe(s3, s4);

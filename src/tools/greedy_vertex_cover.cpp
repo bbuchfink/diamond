@@ -35,6 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "cluster/file_array.h"
 #include "cluster/input_buffer.h"
 #include "util/memory/memory_resource.h"
+#include "util/parallel/simple_thread_pool.h"
 #include "tools.h"
 #include "data/fasta/parser.h"
 
@@ -148,7 +149,7 @@ static void greedy_vertex_cover(vector<OId>& clustering, vector<double>& weights
 	}
 }
 
-static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, bool triplets, bool symmetric, double cov, const unordered_map<Acc, OId>* acc2oid) {
+static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, bool triplets, bool symmetric, double cov, const unordered_map<Acc, OId>* acc2oid, const VolumedFile* edges) {
 	mkdir(base_dir);
 	FileArray file_array(base_dir, RADIX_COUNT, 0, true);
 	const int shift = std::max(bit_length(max_oid) - RADIX_BITS, 0);
@@ -208,8 +209,16 @@ static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, boo
 		}
 		total_lines.fetch_add(line_count, std::memory_order_relaxed);
 		});
-	File in(config.edges, "rb");
-	in.read_text_mt(INT64_MAX, config.threads_, fn2);
+	if (edges) {
+		for (const Volume& volume : *edges) {
+			File in(volume.path, "rb");
+			in.read_text_mt(INT64_MAX, config.threads_, fn2);
+		}
+	}
+	else {
+		File in(config.edges, "rb");
+		in.read_text_mt(INT64_MAX, config.threads_, fn2);
+	}
 	timer.finish();
 	log_rss();
 	*message_stream << "#Input lines: " << total_lines.load(std::memory_order_relaxed) << endl;
@@ -228,6 +237,7 @@ static OId node_degree(vector<Edge>::const_iterator begin, vector<Edge>::const_i
 }
 
 static DegreePartition edge_pass_two(const RadixedTable& rep_sorted) {
+	TaskTimer timer;
 	unordered_map<OId, OId> degrees;
 	for (RadixedTable::const_iterator it = rep_sorted.begin(); it != rep_sorted.end(); ++it) {
 		VolumedFile f(*it);
@@ -238,21 +248,36 @@ static DegreePartition edge_pass_two(const RadixedTable& rep_sorted) {
 #else
 		std::sort(data.begin(), data.end());
 #endif
-		auto i = merge_keys(data.begin(), data.end(), Edge::GetKey());
-		while (i.good()) {
-			const OId d = node_degree(i.begin(), i.end());
-			degrees[d] += d;
-			++i;
+		const auto parts = Util::Algo::partition_table(data.cbegin(), data.cend(), config.threads_, Edge::GetKey());
+		if (parts.empty())
+			continue;
+		vector<unordered_map<OId, OId>> local_degrees(parts.size() - 1);
+		SimpleThreadPool pool;
+		for (size_t part = 0; part < local_degrees.size(); ++part) {
+			pool.spawn([&, part](const atomic<bool>& stop) {
+				auto i = merge_keys(parts[part], parts[part + 1], Edge::GetKey());
+				while (i.good() && !stop.load(std::memory_order_relaxed)) {
+					const OId d = node_degree(i.begin(), i.end());
+					local_degrees[part][d] += d;
+					++i;
+				}
+				});
 		}
+		pool.join_all();
+		for (const auto& local : local_degrees)
+			for (const auto& degree : local)
+				degrees[degree.first] += degree.second;
 	}
-	return DegreePartition(degrees, RADIX_COUNT);
+	DegreePartition r(degrees, RADIX_COUNT);
+	*message_stream << "Time (finding neighbor counts): " << timer.seconds() << 's' << endl;
+	return r;
 }
 
 static RadixedTable edge_pass_three(const RadixedTable& rep_sorted, const DegreePartition& p, Cfg& cfg) {
+	TaskTimer timer;
 	const string base_dir = cfg.tmp_dir + "degree_sorted";
 	mkdir(base_dir);
 	FileArray file_array(base_dir, p.size(), 0, true);
-	BufferArray buffers(file_array, p.size());
 	for (RadixedTable::const_iterator it = rep_sorted.begin(); it != rep_sorted.end(); ++it) {
 		VolumedFile f(*it);
 		InputBuffer<Edge> data(f);
@@ -262,25 +287,35 @@ static RadixedTable edge_pass_three(const RadixedTable& rep_sorted, const Degree
 #else
 		std::sort(data.begin(), data.end());
 #endif
-		auto i = merge_keys(data.begin(), data.end(), Edge::GetKey());
-		while (i.good()) {
-			const int bucket = p.bucket_index(node_degree(i.begin(), i.end()));
-			for (auto j = i.begin(); j != i.end(); ++j) {
-				if (j->node2 != j->node1 && (j == i.begin() || j->node2 != (j - 1)->node2))
-					buffers.write(bucket, *j);
-			}
-			++i;
+		const auto parts = Util::Algo::partition_table(data.cbegin(), data.cend(), config.threads_, Edge::GetKey());
+		SimpleThreadPool pool;
+		for (size_t part = 0; part + 1 < parts.size(); ++part) {
+			pool.spawn([&, part](const atomic<bool>& stop) {
+				BufferArray buffers(file_array, p.size());
+				auto i = merge_keys(parts[part], parts[part + 1], Edge::GetKey());
+				while (i.good() && !stop.load(std::memory_order_relaxed)) {
+					const int bucket = p.bucket_index(node_degree(i.begin(), i.end()));
+					for (auto j = i.begin(); j != i.end(); ++j) {
+						if (j->node2 != j->node1 && (j == i.begin() || j->node2 != (j - 1)->node2))
+							buffers.write(bucket, *j);
+					}
+					++i;
+				}
+				buffers.finish();
+				});
 		}
+		pool.join_all();
 		f.remove();
 	}
-	buffers.finish();
 	file_array.close();
 	rmdir(cfg.tmp_dir + "rep_sorted");
+	*message_stream << "Time (writing degree sorted edges): " << timer.seconds() << 's' << endl;
 	return file_array.buckets(p);
 }
 
-static vector<OId> edge_pass_four(const RadixedTable& degree_sorted, OId db_size, Cfg& cfg) {
-	vector<OId> clustering(db_size, numeric_limits<OId>::max());
+static void edge_pass_four(const RadixedTable& degree_sorted, OId db_size, Cfg& cfg) {
+	TaskTimer timer;
+	cfg.clustering = std::make_unique<vector<OId>>(db_size, numeric_limits<OId>::max());
 	vector<double> weights(db_size);
 	RepQueue queue;
 	uint64_t edges_queued = 0;
@@ -299,14 +334,14 @@ static vector<OId> edge_pass_four(const RadixedTable& degree_sorted, OId db_size
 #endif
 		auto it = merge_keys(data.begin(), data.end(), Edge::GetKey());
 		while (it.good()) {
-			if (clustering[it.key()] != numeric_limits<OId>::max()) {
+			if (cfg.clustering->at(it.key()) != numeric_limits<OId>::max()) {
 				++it;
 				continue;
 			}
 			PotentialRep r(it.key());
 			r.members.reserve(it.count());
 			for (auto j = it.begin(); j != it.end(); ++j) {
-				const bool unassigned = clustering[j->node2] == numeric_limits<OId>::max();
+				const bool unassigned = cfg.clustering->at(j->node2) == numeric_limits<OId>::max();
 				if (!config.no_gvc_reassign || unassigned) {
 					r.members.emplace_back(j->node2, j->weight);
 					if (unassigned)
@@ -317,10 +352,10 @@ static vector<OId> edge_pass_four(const RadixedTable& degree_sorted, OId db_size
 			queue.push(std::move(r));
 			++it;
 		}
-		greedy_vertex_cover(clustering, weights, queue, edges_queued, next_degree);
+		greedy_vertex_cover(*cfg.clustering, weights, queue, edges_queued, next_degree);
 	}
 	rmdir(cfg.tmp_dir + "degree_sorted");
-	return clustering;
+	*message_stream << "Time (computing vertex cover): " << timer.seconds() << 's' << endl;
 }
 
 void greedy_vertex_cover(Cfg& cfg) {
@@ -373,21 +408,26 @@ void greedy_vertex_cover(Cfg& cfg) {
 		cfg.tmp_dir = config.tmpdir = create_temp_directory(config.tmpdir, "diamond-tmp-") + PATH_SEPARATOR;
 	const string base_dir = cfg.tmp_dir;
 	//mkdir(base_dir);
-	RadixedTable rep_sorted = edge_pass_one(base_dir + "rep_sorted" + PATH_SEPARATOR, max_oid, triplets, symmetric, cov, numeric_ids ? nullptr : &acc2oid);
+	RadixedTable rep_sorted = edge_pass_one(base_dir + "rep_sorted" + PATH_SEPARATOR, max_oid, triplets, symmetric, cov, numeric_ids ? nullptr : &acc2oid, cfg.edges);
 	const DegreePartition p = edge_pass_two(rep_sorted);
 	RadixedTable degree_sorted = edge_pass_three(rep_sorted, p, cfg);
-	vector<OId> clustering = edge_pass_four(degree_sorted, db_size, cfg);
+	edge_pass_four(degree_sorted, db_size, cfg);
 	rmdir(cfg.tmp_dir);
 
 	if (merge_recursive) {
 		timer.go("Computing transitive closure");
-		for (OId i = 0; i < clustering.size();) {
-			if (clustering[i] != numeric_limits<OId>::max() && clustering[clustering[i]] != clustering[i])
-				clustering[i] = clustering[clustering[i]];
+		for (OId i = 0; i < cfg.clustering->size();) {
+			if (cfg.clustering->at(i) != numeric_limits<OId>::max() && cfg.clustering->at(cfg.clustering->at(i)) != cfg.clustering->at(i))
+				cfg.clustering->at(i) = cfg.clustering->at(cfg.clustering->at(i));
 			else
 				++i;
 		}
+		timer.finish();
 	}
+
+	for (size_t i = 0; i < cfg.clustering->size(); ++i)
+		if (cfg.clustering->at(i) == numeric_limits<OId>::max())
+			cfg.clustering->at(i) = (OId)i;
 
 	std::pmr::monotonic_buffer_resource pool;
 	std::pmr::vector<std::pmr::string> acc(&pool);
@@ -399,39 +439,39 @@ void greedy_vertex_cover(Cfg& cfg) {
 	}
 	acc2oid.clear();
 
-	timer.go("Generating output");
-	OId reps = 0;
-	unique_ptr<ofstream> centroid_out;
-	if (!config.centroid_out.empty())
-		centroid_out.reset(new ofstream(config.centroid_out));
-	unique_ptr<ofstream> out;
-	if (!config.output_file.empty())
-		out.reset(new ofstream(config.output_file));
-	for (size_t i = 0; i < clustering.size(); ++i) {
-		if (clustering[i] == numeric_limits<OId>::max())
-			clustering[i] = i;
-		if (clustering[i] == i) {
-			++reps;
-			if (!config.centroid_out.empty()) {
+	if (!config.centroid_out.empty() || !config.output_file.empty()) {
+		timer.go("Generating output");
+		OId reps = 0;
+		unique_ptr<ofstream> centroid_out;
+		if (!config.centroid_out.empty())
+			centroid_out.reset(new ofstream(config.centroid_out));
+		unique_ptr<ofstream> out;
+		if (!config.output_file.empty())
+			out.reset(new ofstream(config.output_file));
+		for (size_t i = 0; i < cfg.clustering->size(); ++i) {
+			if (cfg.clustering->at(i) == i) {
+				++reps;
+				if (!config.centroid_out.empty()) {
+					if (numeric_ids)
+						*centroid_out << i << endl;
+					else
+						*centroid_out << acc[i] << endl;
+				}
+			}
+			if (!config.output_file.empty()) {
 				if (numeric_ids)
-					*centroid_out << i << endl;
+					*out << cfg.clustering->at(i) << '\t' << i << endl;
 				else
-					*centroid_out << acc[i] << endl;
+					*out << acc[cfg.clustering->at(i)] << '\t' << acc[i] << endl;
 			}
 		}
-		if (!config.output_file.empty()) {
-			if (numeric_ids)
-				*out << clustering[i] << '\t' << i << endl;
-			else
-				*out << acc[clustering[i]] << '\t' << acc[i] << endl;
-		}
+		if (centroid_out)
+			centroid_out->close();
+		if (out)
+			out->close();
+		timer.finish();
+		*message_stream << "#Clusters: " << reps << endl;
 	}
-	if (centroid_out)
-		centroid_out->close();
-	if (out)
-		out->close();
-	timer.finish();
-	*message_stream << "#Clusters: " << reps << endl;
 }
 
 void greedy_vertex_cover() {

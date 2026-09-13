@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/sequence.h"
 #include "../score_vector.h"
 #include "util/simd/transpose.h"
-#include "banded_matrix.h"
-#include "config.h"
+#include "../swipe/banded_matrix.h"
+#include "../swipe/config.h"
 #include "util/geo/geo.h"
 #include "util/util.h"
 #include "util/data_structures/array.h"
@@ -39,11 +39,12 @@ using std::tie;
 
 namespace DP { namespace AnchoredSwipe {
 
-#if ARCH_AVX2_KERNELS
+/* The kernel runs on the 16 bit score vector of whatever architecture variant this
+   translation unit is compiled into: 16 channels on AVX2/AVX512, 8 on SSE2/SSE4.1
+   and NEON, and the scalar single lane fallback everywhere else. */
 	
 namespace DISPATCH_ARCH {
 
-static char blank[64] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static constexpr Loc L = 13;
 
 template<typename ScoreVector>
@@ -56,7 +57,8 @@ struct TargetIterator {
 		next(targets),
 		end(targets + target_count),
 		active(0),
-		band(0)
+		band(0),
+		blank_profile(std::max(matrix.band(), (int)CHANNELS), (Score)0)
 	{
 		while (active < CHANNELS && next < end) {
 			int i = active;
@@ -108,7 +110,7 @@ struct TargetIterator {
 	inline void reset_channel(int channel) {
 		if (options.profile == nullptr) {
 			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
-				profile_ptrs[channel][j] = (const Score*)blank;
+				profile_ptrs[channel][j] = blank_profile.data();
 		}
 		else
 			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
@@ -152,7 +154,7 @@ struct TargetIterator {
 			}
 			copy(target_seqs[i].data() + loc[i], target_seqs[i].data() + loc[i] + L, letters[i].data());
 			loc[i] += L;
-			if (profile_ptrs[i][0] != (const Score*)blank)
+			if (profile_ptrs[i][0] != blank_profile.data())
 				for (int j = 0; j < AMINO_ACID_COUNT; ++j)
 					profile_ptrs[i][j] += L;
 		}
@@ -160,8 +162,8 @@ struct TargetIterator {
 	inline array<const Score*, CHANNELS> column_ptrs(int k) {
 		array<const Score*, CHANNELS> prof_ptr;
 		for (int i = 0; i < CHANNELS; ++i) {
-			if(profile_ptrs[i][0] == (const Score*)blank) {
-				prof_ptr[i] = (const Score*)blank;
+			if(profile_ptrs[i][0] == blank_profile.data()) {
+				prof_ptr[i] = blank_profile.data();
 				continue;
 			}
 			const Letter l = letter_mask(letters[i][k + L]);
@@ -191,6 +193,7 @@ struct TargetIterator {
 	array<char, 8192> padding;
 	array<int, CHANNELS> target_idx;
 	Loc band;
+	vector<Score> blank_profile;
 };
 
 template<typename ScoreVector>
@@ -214,6 +217,7 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 
 	while(target_it.next_block(matrix, max_score, max_i, max_j, col_counter), target_it.active > 0) {
 		const int band = target_it.band;
+		assert(band <= (int)target_it.blank_profile.size());
 		for (int k = -L; k < 0; ++k) {
 #ifdef DP_STAT
 			stats.gross_cells += (size_t)band * CHANNELS;
@@ -225,7 +229,7 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 			ScoreVector vgap = ScoreVector(SCORE_MIN), hgap = ScoreVector(), col_best = ScoreVector(SCORE_MIN), row_counter(0), col_max_i(0);
 
 			for (int i = 0; i < band;) {
-				transpose_offset(prof_ptr.data(), CHANNELS, i / CHANNELS, scores, __m256i());
+				transpose_offset(prof_ptr.data(), CHANNELS, i / CHANNELS, scores, typename ScoreVector::Register());
 				const Score* score_ptr = scores;
 
 				do {
@@ -261,7 +265,5 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 }
 
 }
-
-#endif
 
 }}
