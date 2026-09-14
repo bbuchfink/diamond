@@ -64,7 +64,7 @@ static void run_all_vs_all(Job& job) {
 	config.query_bins.unset();
 	config.lin_stage1_query = false;
 	config.gapped_filter_evalue_ = -1.0;
-	config.anchored_swipe = false;
+	//config.anchored_swipe = false;
 	//config.comp_based_stats = 1;
 	config.database = job.round() == 0 ? job.root_dir() + "input_minichunks" + PATH_SEPARATOR + "0.faa" :
 		job.base_dir(job.round() - 1) + PATH_SEPARATOR + "rep_minichunks" + PATH_SEPARATOR + "reps_all.faa";
@@ -95,7 +95,7 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 	config.gapped_filter_evalue_ = 0.0;
 	config.chunk_size = 65536;
 	config.query_bins.set_if_blank(LINCLUST_QUERY_BINS);
-	config.anchored_swipe = config.comp_based_stats_.get_present() == 0;
+	//config.anchored_swipe = config.comp_based_stats_.get_present() == 0;
 	config.database.clear();
 	config.fasta_index_file.clear();
 	if (config.db_size == 0)
@@ -143,10 +143,10 @@ void configure_round(Job& job, uint64_t letter_count) {
 	config.toppercent.unset();
 	config.iterate = vector<string>();
 	if (config.comp_based_stats_.blank()) {
-		if (config.approx_min_id.present() && config.approx_min_id.get_present() >= MATRIX_ADJUST_MAX_ID || config.min_id >= MATRIX_ADJUST_MAX_ID)
+		/*if (config.approx_min_id.present() && config.approx_min_id.get_present() >= MATRIX_ADJUST_MAX_ID || config.min_id >= MATRIX_ADJUST_MAX_ID)
 			config.comp_based_stats_ = 0;
-		else
-			config.comp_based_stats_ = 6;
+		else*/
+		config.comp_based_stats_ = 6;
 	}
 	// The input is hard masked when the length sorted minichunks are written
 	// (see input_masking_algo), so the alignment workflow does not mask again.

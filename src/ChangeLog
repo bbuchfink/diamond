@@ -4,6 +4,7 @@
 - Fixed a potential non-determinism in the clustering workflows depending on the number of threads.
 - Fixed the `--reps` option not working correctly.
 - The `--reps` option will now output full FASTA headers instead of just accessions.
+- Enabled using the `--anchored-swipe` option on platforms without support for AVX2.
 
 [2.2.6]
 - Improved the performance of the search and clustering workflows.
