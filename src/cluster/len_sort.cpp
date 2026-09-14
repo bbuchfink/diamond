@@ -83,7 +83,6 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 		for (;;) {
 			TaskTimer timer;
 			Block* b = file->load_seqs(limit);
-			*message_stream << std::setprecision(2) << std::fixed << file->rel_file_ptr() * 100 << "%" << endl;
 			ms += timer.microseconds();
 			bytes += b->raw_bytes();
 			if (b->empty()) {
@@ -185,6 +184,8 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 			pool.join(writer_threads.begin(), writer_threads.end());
 			oid += (OId)seq_count;
 			delete b;
+			*message_stream << "Processed " << oid << " / " << block_mapping.size() << " sequences (" << std::setprecision(2) << std::fixed
+				<< (double)oid / std::max<size_t>(block_mapping.size(), 1) * 100 << "%)" << endl;
 		}
 		};
 
