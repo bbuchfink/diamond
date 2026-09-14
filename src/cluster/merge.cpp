@@ -27,7 +27,7 @@ using std::runtime_error;
 static vector<OId> read_clusters(const string& path, OId max_oid) {
 	File in(path, "rb");
 	const size_t count = max_oid + 1;
-	if (in.size() != count * sizeof(OId))
+	if ((size_t)in.size() != count * sizeof(OId))
 		throw runtime_error("Invalid binary clustering file size: " + path);
 	vector<OId> v(count);
 	in.read(v.data(), v.size() * sizeof(OId));

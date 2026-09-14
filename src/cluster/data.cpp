@@ -242,7 +242,7 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks, unique
 			const string path = job.base_dir() + "clusters.bin";
 			File in(path, "rb");
 			const size_t count = job.max_oid() + 1;
-			if (in.size() != count * sizeof(OId))
+			if ((size_t)in.size() != count * sizeof(OId))
 				throw runtime_error("Invalid binary clustering file size: " + path);
 			clustering = std::make_unique<vector<OId>>(count);
 			in.read(clustering->data(), clustering->size() * sizeof(OId));

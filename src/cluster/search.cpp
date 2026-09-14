@@ -143,7 +143,7 @@ void configure_round(Job& job, uint64_t letter_count) {
 	config.toppercent.unset();
 	config.iterate = vector<string>();
 	if (config.comp_based_stats_.blank()) {
-		/*if (config.approx_min_id.present() && config.approx_min_id.get_present() >= MATRIX_ADJUST_MAX_ID || config.min_id >= MATRIX_ADJUST_MAX_ID)
+		/*if ((config.approx_min_id.present() && config.approx_min_id.get_present() >= MATRIX_ADJUST_MAX_ID) || config.min_id >= MATRIX_ADJUST_MAX_ID)
 			config.comp_based_stats_ = 0;
 		else*/
 		config.comp_based_stats_ = 6;

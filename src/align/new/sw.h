@@ -142,12 +142,12 @@ static bool smith_waterman(const Sequence& query, const Sequence& target, Hsp& h
 			break;
 		case INSERTION:
 			transcript.push_back({ op_insertion, Letter() });
-			state = insertion_trace[current] == GAP_OPEN ? score_trace[cell(i - 1, j, columns)] : INSERTION;
+			state = insertion_trace[current] == GAP_OPEN ? score_trace[cell(i - 1, j, columns)] : (uint8_t)INSERTION;
 			--i;
 			break;
 		case DELETION:
 			transcript.push_back({ op_deletion, target[j - 1] });
-			state = deletion_trace[current] == GAP_OPEN ? score_trace[cell(i, j - 1, columns)] : DELETION;
+			state = deletion_trace[current] == GAP_OPEN ? score_trace[cell(i, j - 1, columns)] : (uint8_t)DELETION;
 			--j;
 			break;
 		default:
