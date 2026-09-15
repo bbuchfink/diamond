@@ -32,10 +32,23 @@ using std::vector;
 struct HitField {
     
     void init(size_t query_count, size_t max_target) {
-        shift_ = std::max(bit_length(max_target), 8);
+        // Targets are 0..max_target-1, so max_target-1 is the largest index a row has to hold.
+        shift_ = std::max(max_target > 1 ? bit_length(max_target - 1) : 0, 8);
         word_shift_ = shift_ - 6;
         words_per_query_ = size_t(1) << word_shift_;
+        words_used_ = (max_target + 63) >> 6;
         data_.assign(query_count * words_per_query_, 0ULL);
+    }
+
+    /* The words of one query row, bit t of word t/64 standing for target t. A kernel
+       that produces every bit of a row can write whole words here instead of setting
+       the bits one pair at a time; only the first words_used() words are ever read. */
+    uint64_t* row(uint_fast32_t query) noexcept {
+        return data_.data() + (size_t(query) << word_shift_);
+    }
+
+    size_t words_used() const noexcept {
+        return words_used_;
     }
 
     void set(uint_fast32_t query, uint_fast32_t target, bool v) noexcept {
@@ -53,7 +66,7 @@ struct HitField {
     const vector<uint_fast32_t>& hits(size_t query) {
         hits_.clear();
         const size_t base_w = query << word_shift_;
-        for (size_t off = 0; off < words_per_query_; ++off) {
+        for (size_t off = 0; off < words_used_; ++off) {
             uint64_t w = data_[base_w + off];
             while (w) {
                 const unsigned tz = ctz64(w);
@@ -85,6 +98,7 @@ private:
     int shift_ = 0;
     int word_shift_ = 0;
     size_t words_per_query_ = 0;
+    size_t words_used_ = 0;
     vector<uint64_t> data_;
     vector<uint_fast32_t> hits_;
 
