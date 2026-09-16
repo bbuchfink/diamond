@@ -511,6 +511,61 @@ const map<Sensitivity, vector<string>> shape_codes ={
 }
 };
 
+// Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
+// of each group is the representative, and the rest are skipped during seed enumeration; their hits
+// are replayed from the representative in stage 2.
+void build_frame_dups(Search::Config& cfg) {
+	TaskTimer timer("Building frame duplicate map");
+	const SequenceSet& seqs = cfg.query->seqs();
+	const BlockId n = seqs.size();
+	const size_t table_bits = std::max<size_t>(16, bit_length((int64_t)n) + 1), table_size = (size_t)1 << table_bits;
+	std::vector<uint32_t> table(table_size, UINT32_MAX);
+	std::vector<uint32_t> rep(n, UINT32_MAX);
+	cfg.frame_skip.reset(new std::vector<bool>(n, false));
+	std::vector<uint32_t> dup_count(n, 0);
+	int64_t dups = 0, dup_letters = 0;
+
+	for (BlockId i = 0; i < n; ++i) {
+		const Sequence seq = seqs[i];
+		uint64_t h = 1469598103934665603ull;
+		for (Loc j = 0; j < seq.length(); ++j) {
+			h ^= (unsigned char)letter_mask(seq[j]);
+			h *= 1099511628211ull;
+		}
+		size_t slot = (size_t)(h >> (64 - table_bits));
+		while (true) {
+			const uint32_t e = table[slot];
+			if (e == UINT32_MAX) {
+				table[slot] = i;
+				break;
+			}
+			const Sequence other = seqs[e];
+			if (other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data())) {
+				rep[i] = e;
+				(*cfg.frame_skip)[i] = true;
+				++dup_count[e];
+				++dups;
+				dup_letters += seq.length();
+				break;
+			}
+			slot = (slot + 1) & (table_size - 1);
+		}
+	}
+
+	cfg.frame_dup_begin.assign(n + 1, 0);
+	for (BlockId i = 0; i < n; ++i)
+		cfg.frame_dup_begin[i + 1] = cfg.frame_dup_begin[i] + dup_count[i];
+	cfg.frame_dup_ids.resize(cfg.frame_dup_begin[n]);
+	std::vector<uint32_t> pos(cfg.frame_dup_begin.begin(), cfg.frame_dup_begin.end() - 1);
+	for (BlockId i = 0; i < n; ++i)
+		if (rep[i] != UINT32_MAX)
+			cfg.frame_dup_ids[pos[rep[i]]++] = i;
+
+	timer.finish();
+	*log_stream << "Duplicate frames = " << dups << '/' << n << " (" << (n ? 100.0 * dups / n : 0.0) << " %), letters = "
+		<< dup_letters << '/' << seqs.letters() << std::endl;
+}
+
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
 	return max(max(bit_length(power((int64_t)Reduction::get_reduction().size(), (int64_t)shape_weight) - 1) - (int)sizeof(SeedOffset) * 8,
 		bit_length((int64_t)threads * 4 * index_chunks - 1)), 8);

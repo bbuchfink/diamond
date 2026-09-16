@@ -87,6 +87,7 @@ extern const std::map<Sensitivity, std::vector<Round>> iterated_sens;
 void search_shape(unsigned sid, int query_block, unsigned query_iteration, char* query_buffer, char* ref_buffer, Config& cfg, const HashedSeedSet* target_seeds);
 bool use_single_indexed(double coverage, size_t query_letters, size_t ref_letters);
 void setup_search(Sensitivity sens, Search::Config& cfg);
+void build_frame_dups(Search::Config& cfg);
 MaskingAlgo soft_masking_algo(const SensitivityTraits& traits);
 int seedp_bits(int shape_weight, int threads, int index_chunks);
 
@@ -115,6 +116,8 @@ struct WorkSet {
 	Container vq, vs;
 #endif
 	HitField hits;
+	// Hits of one query offset, replayed for the frames that were skipped as duplicates.
+	std::vector<std::pair<uint64_t, uint16_t>> dup_hits;
 	KmerRanking* kmer_ranking;
 };
 
