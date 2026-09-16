@@ -431,7 +431,7 @@ struct HspContext
 	{ return hsp_.oriented_range(); }
 	int blast_query_frame() const
 	{ return hsp_.blast_query_frame(); }
-	PackedTranscript transcript() const
+	const PackedTranscript& transcript() const
 	{ return hsp_.transcript; }
 	bool operator<(const HspContext& h) const {
 		return query_oid < h.query_oid;
@@ -447,7 +447,7 @@ struct HspContext
 		return hsp_.reserved2;
 	}
 #endif
-	Hsp hsp() const {
+	const Hsp& hsp() const {
 		return hsp_;
 	}
 	HspContext& parse(const OutputFormat* output_format);
