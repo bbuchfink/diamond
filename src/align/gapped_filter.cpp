@@ -31,7 +31,7 @@ using std::pair;
 
 namespace Extension {
 
-static int gapped_filter(const SeedHit &hit, const LongScoreProfile<int8_t> *query_profile, const Sequence &target, int band, int window, std::function<decltype(DP::scan_diags128)> f) {	
+static int gapped_filter(const SeedHit &hit, const LongScoreProfile<int8_t> *query_profile, const Sequence &target, int band, int window, const std::function<decltype(DP::scan_diags128)>& f) {	
 	const int slen = (int)target.length();
 	const int d = std::max(hit.diag() - band / 2, -(slen - 1)),
 		j0 = std::max(hit.j - window, 0),
