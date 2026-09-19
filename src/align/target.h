@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/flags.h"
 #include "data/block/block.h"
 #include "util/parallel/thread_pool.h"
-#include "dp/score_profile.h"
+#include "dp/long_profile/score_profile.h"
 
 struct SequenceSet;
 

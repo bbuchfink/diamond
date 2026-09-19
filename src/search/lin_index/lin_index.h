@@ -30,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/intrin.h"
 
 struct Block;
-struct BloomFilter;
 enum class SeedEncoding;
 
 namespace Search {
@@ -392,12 +391,6 @@ struct LinIndex {
 		return table_size(pivots) * (uint64_t)Table::SLOT_BYTES;
 	}
 
-	/* Diagnostic only: report how many of the index entries the member block is going
-	   to look up. This costs an additional pass over the seeds of the member block to
-	   fill a Bloom filter with them plus one filter query per index entry, so it is
-	   compiled out by default. */
-	static constexpr bool COUNT_LOOKUPS = false;
-
 	struct Header {
 		uint64_t magic;
 		uint32_t version;
@@ -436,13 +429,8 @@ struct LinIndex {
 	~LinIndex();
 
 	// Rebuilds the hash table of one seed shape, discarding the table of the shape
-	// that was built before. If COUNT_LOOKUPS is enabled and member_seeds is given, it
-	// is expected to hold the seeds of the block that will be scanned against this
-	// shape, and the number of index entries that this block is going to look up is
-	// counted and reported. Since the seeds of the entries are recomputed anyway while
-	// the table is built, this only costs one filter query per entry. The argument is
-	// ignored if COUNT_LOOKUPS is disabled.
-	void build_shape(int shape_id, const BloomFilter* member_seeds = nullptr);
+	// that was built before.
+	void build_shape(int shape_id);
 	void free_shape();
 
 	// Position of the pivot occurrence of the seed in the raw sequence data of

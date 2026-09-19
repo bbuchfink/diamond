@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/shape_config.h"
 #include "align/def.h"
 #include "align/extend.h"
+#include "output/output_format.h"
+#include "stats/cbs.h"
 
 using std::vector;
 using std::endl;
@@ -612,8 +614,17 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 	if (cfg.extension_mode == Extension::Mode::FULL) {
 		if (config.frame_shift > 0)
 			throw runtime_error("Frameshift alignment does not support full matrix extension.");
-		if (config.anchored_swipe)
-			throw runtime_error("Anchored swipe does not support full matrix extension.");
+	}
+
+	// The new extension pipeline computes the extensions using the anchored swipe, which
+	// computes no traceback and uses the unadjusted scoring matrix.
+	if (config.new_extension_pipeline) {
+		if (config.comp_based_stats_.get(Stats::DEFAULT_CBS) != Stats::CBS::DISABLED)
+			throw runtime_error("The new extension pipeline requires --comp-based-stats 0.");
+		if (!flag_only(cfg.output_format->hsp_values, HspValues::COORDS))
+			throw runtime_error("The new extension pipeline only supports output fields that do not require a traceback.");
+		if (cfg.extension_mode == Extension::Mode::FULL)
+			throw runtime_error("The new extension pipeline does not support full matrix extension.");
 	}
 
 	if(!config.aln_out.empty() && config.parallel_tmpdir.empty())

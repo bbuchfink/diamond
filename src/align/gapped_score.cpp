@@ -111,6 +111,7 @@ static void add_dp_targets(const WorkTarget& target,
 			const unsigned b = DP::BandedSwipe::bin(hsp_values, qlen, 0, target.ungapped_score[frame], (int64_t)qlen * (int64_t)slen, score_width, 0);
 			//dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, Interval(), 0, target_idx, qlen, matrix);
 			dp_targets[frame][b].emplace_back(target.seq, slen, 0, 0, target_idx, qlen, matrix);
+			dp_targets[frame][b].back().query = &query_seq[frame];
 			continue;
 		}
 		if (target.hsp[frame].empty())
@@ -129,7 +130,7 @@ static void add_dp_targets(const WorkTarget& target,
 			const int b0 = std::max(hsp.d_min - b, -(slen - 1)),
 				b1 = std::min(hsp.d_max + 1 + b, qlen);
 			const double overlap = intersect(Interval(d0, d1), Interval(b0, b1)).length();
-			if ((overlap / (d1 - d0) > config.min_band_overlap || overlap / (b1 - b0) > config.min_band_overlap) && !config.anchored_swipe) {
+			if (overlap / (d1 - d0) > config.min_band_overlap || overlap / (b1 - b0) > config.min_band_overlap) {
 				d0 = std::min(d0, b0);
 				d1 = std::max(d1, b1);
 				score = std::max(score, hsp.score);
@@ -145,6 +146,7 @@ static void add_dp_targets(const WorkTarget& target,
 					dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
 					dp_targets[frame][bin].back().prof = &target.profile;
 					dp_targets[frame][bin].back().prof_reverse = &target.profile_rev;
+					dp_targets[frame][bin].back().query = &query_seq[frame];
 				}
 				d0 = b0;
 				d1 = b1;
@@ -161,6 +163,7 @@ static void add_dp_targets(const WorkTarget& target,
 		dp_targets[frame][bin].emplace_back(target.seq, slen, d0, d1, target_idx, qlen, matrix, DpTarget::CarryOver(), anchor);
 		dp_targets[frame][bin].back().prof = &target.profile;
 		dp_targets[frame][bin].back().prof_reverse = &target.profile_rev;
+		dp_targets[frame][bin].back().query = &query_seq[frame];
 	}
 }
 
@@ -213,11 +216,7 @@ TargetList align(vector<WorkTarget>& targets, const Query& query, DP::Flags flag
 			&tp,
 			&pool
 		};
-		DP::AnchoredSwipe::Config acfg{ query.sequence[frame],
-			query.composition_bias(frame),
-			0, stat, &tp, false, cfg.extension_mode, false };
-		list<Hsp> hsp = config.anchored_swipe
-			? DP::BandedSwipe::anchored_swipe(dp_targets[frame], acfg, pool) : DP::BandedSwipe::swipe(dp_targets[frame], params);
+		list<Hsp> hsp = DP::BandedSwipe::swipe(dp_targets[frame], params);
 		while (!hsp.empty())
 			r[hsp.front().swipe_target].add_hit(hsp, hsp.begin());
 	}

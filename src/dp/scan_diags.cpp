@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "basic/config.h"
-#include "score_profile.h"
+#include "long_profile/score_profile.h"
 #include "score_vector_int8.h"
 #include "util/simd/dispatch.h"
 #include "stats/score_matrix.h"

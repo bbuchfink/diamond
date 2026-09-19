@@ -233,7 +233,7 @@ void multinode() {
 	}
 	const double evalue_cutoff = config.max_evalue,
 		target_approx_id = config.approx_min_id.present() ? config.approx_min_id.get_present() : 0.0;
-	const bool anchored_swipe = config.anchored_swipe, is_linclust = Cluster::is_linclust(rounds);
+	const bool is_linclust = Cluster::is_linclust(rounds);
 	// TODO
 	config.hamming_ext = config.approx_min_id.present() ? config.approx_min_id.get_present() >= 50.0 : false;
 	//config.freq_masking = true;
@@ -293,9 +293,6 @@ void multinode() {
 			job.log("Approximate sequence id cutoff (round) = %f", config.approx_min_id.get_present());
 		}
 		config.max_evalue = i == rounds.size() - 1 ? evalue_cutoff : std::min(evalue_cutoff, CASCADED_ROUND_MAX_EVALUE);
-		config.anchored_swipe = anchored_swipe && (linclust || !config.lin_stage1_query);
-		if (anchored_swipe)
-			config.extension_mode = "banded-fast";
 		const int ccd = Cluster::round_ccd(ccd_arg, i, rounds.size(), linear_round);
 		config.connected_component_depth.clear();
 		config.connected_component_depth.push_back(std::to_string(ccd));

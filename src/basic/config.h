@@ -307,6 +307,7 @@ struct Config
 	bool hamming_ext;
 	Option<double> diag_filter_id;
 	Option<double> diag_filter_cov;
+	double kmer_prefilter;
 	string edge_format;
 	bool no_block_size_limit;
 	string edges;
@@ -319,7 +320,6 @@ struct Config
 	double anchor_score;
 	bool classic_band;
 	bool no_8bit_extension;
-	bool anchored_swipe;
 	bool no_chaining_merge_hsps;
 	bool pipeline_short;
 	string graph_algo;

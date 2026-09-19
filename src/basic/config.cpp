@@ -361,7 +361,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("aln-out", 0, "Output file for clustering alignments", aln_out)
 		("reps", 0, "Output file for representative sequences in FASTA format", reps_out)
 		("single-step", 0, "Perform one computational step of clustering then exit", single_step)
-		("linclust-minichunk", 0, "Minimal chunk size for linclust (default=auto)", linclust_minichunk);
+		("linclust-minichunk", 0, "Minimal chunk size for linclust (default=auto)", linclust_minichunk)
+		("kmer-prefilter", 0, "Aggressiveness of the 3-mer prefilter of linear rounds at approx-id >= 70 (default=1.0)", kmer_prefilter, 1.0);
 
 	auto& memory_opt = parser.add_group("Memory options", { cluster, RECLUSTER, CLUSTER_REASSIGN, GREEDY_VERTEX_COVER, DEEPCLUST, LINCLUST, CLUSTER_REALIGN, COUNT_DISTINCT });
 	memory_opt.add()
@@ -407,7 +408,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("tantan-minMaskProb", 0, "minimum repeat probability for masking (default=0.9)", tantan_minMaskProb, 0.9)
 		("oid-output", 0, "Output OIDs instead of accessions (clustering)", oid_output)
 		("swipe-task-size", 0, "task size for DP parallelism (100000000)", swipe_task_size, INT64_C(100000000))
-		("anchored-swipe", 0, "Enable anchored SWIPE extension", anchored_swipe)
 		("query-match-distance-threshold", 0, "Matrix adjust threshold", query_match_distance_threshold, -1.0)
 		("length-ratio-threshold", 0, "Matrix adjust threshold", length_ratio_threshold, -1.0)
 		("cbs-angle", 0, "Matrix adjust threshold", cbs_angle, -1.0)
@@ -925,7 +925,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1789329080);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1789842843);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;

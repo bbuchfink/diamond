@@ -27,9 +27,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/sequence_file.h"
 #include "output/output.h"
 #include "align/target.h"
-#include "sw.h"
+#include "dp/dp.h"
 #include "thread_pool.h"
 #include "extension_pipeline.h"
+
+using std::list;
 
 namespace ExtensionPipeline {
 
@@ -51,17 +53,26 @@ Run::Run(Search::Hit* hits, uint64_t hit_count, const Search::Config& cfg):
 	output_format(cfg.output_format->clone()),
 	queries_pending(1),
 	all_queries_submitted(false),
-	pool(config.threads_, [this](Extension& e) { this->process_extension(e); })
+	output_callback([this](std::vector<Extension>& extensions) { this->output_extensions(extensions); }),
+	pool(config.threads_, [this](ExtensionQueue& queue) { this->process_extensions(queue); })
 {
 }
 
-static void extend(QueryState* state, BlockId target_id, const Search::Config& cfg, OutputFormat* format) {
-	const BlockId query_id = state->query_id;
-	const Sequence& query = cfg.query->seqs()[query_id];
-	const Sequence& target = cfg.target->seqs()[target_id];
+// Prints an alignment computed by the anchored swipe. It carries no traceback, only the
+// score, e-value and the query/target ranges.
+static void print_extension(const Extension& e, const Search::Config& cfg, OutputFormat* format, Statistics& stats) {
+	QueryState* const state = e.state;
+	const BlockId query_id = state->query_id, target_id = e.target_id;
+	const Sequence& query = e.query;
+	const Sequence& target = e.target;
 	Hsp hsp;
-	if (!smith_waterman(query, target, hsp))
-		return;
+	hsp.score = e.score;
+	hsp.evalue = e.evalue;
+	hsp.bit_score = score_matrix.bitscore(e.score);
+	hsp.corrected_bit_score = score_matrix.bitscore_corrected(e.score, query.length(), target.length());
+	hsp.query_range = hsp.query_source_range = e.query_range;
+	hsp.subject_range = hsp.subject_source_range = e.target_range;
+	hsp.approx_id = hsp.approx_id_percent(query, target);
 
 	const OId target_oid = cfg.target->block_id2oid(target_id);
 	const bool all_seqids = flag_any(format->flags, Output::Flags::ALL_SEQIDS);
@@ -89,8 +100,8 @@ static void extend(QueryState* state, BlockId target_id, const Search::Config& c
 		0,
 		query_self_score,
 		target_self_score), info);
-	statistics.inc(Statistics::MATCHES);
-	statistics.inc(Statistics::PAIRWISE);
+	stats.inc(Statistics::MATCHES);
+	stats.inc(Statistics::PAIRWISE);
 }
 
 static void print_query_intro(BlockId query_id, const Search::Config& cfg, const OutputFormat& format, TextBuffer& out) {
@@ -108,8 +119,11 @@ static void print_query_epilog(BlockId query_id, const Search::Config& cfg, cons
 // it over to the output sink.
 void Run::finalize_query(QueryState* state) {
 	print_query_epilog(state->query_id, cfg, *output_format, *state->out);
-	if (state->hit_num != 0)
-		statistics.inc(Statistics::ALIGNED);
+	if (state->hit_num != 0) {
+		Statistics stats;
+		stats.inc(Statistics::ALIGNED);
+		statistics += stats;
+	}
 	output_sink->push(state->query_id, state->out);
 	delete state;
 
@@ -127,9 +141,44 @@ void Run::release(QueryState* state) {
 		finalize_query(state);
 }
 
-void Run::process_extension(Extension& e) {
-	extend(e.state, e.target, cfg, output_format.get());
-	release(e.state);
+// Band of diagonals the anchored swipe adds on either side of the diagonal range of an anchor.
+static Loc anchored_swipe_band() {
+	return config.sensitivity >= Sensitivity::ULTRA_SENSITIVE ? 160 : (config.sensitivity >= Sensitivity::MORE_SENSITIVE ? 96 : 32);
+}
+
+// Computes all extensions in the queue, possibly belonging to different queries, in one
+// call of the anchored swipe, which passes them to the output callback when done. The
+// queue is popped here so that the band limits of the anchored swipe can be chosen for
+// exactly the extensions of the batch.
+void Run::process_extensions(ExtensionQueue& queue) {
+	ExtensionQueue batch;
+	{
+		std::lock_guard<std::mutex> lock(queue.mtx);
+		batch.extensions.swap(queue.extensions);
+	}
+	if (batch.extensions.empty())
+		return;
+	Loc max_diag_spread = 0;
+	for (const Extension& e : batch.extensions)
+		max_diag_spread = std::max(max_diag_spread, e.diag_spread());
+
+	Statistics stats;
+	const DP::AnchoredSwipe::Config swipe_cfg{ 0, stats, cfg.extension_mode, anchored_swipe_band(), max_diag_spread };
+	DP::BandedSwipe::anchored_swipe(batch, swipe_cfg, output_callback);
+	statistics += stats;
+}
+
+// Output callback of the anchored swipe. Every extension holds a reference to its query
+// state, which is released after its output has been printed.
+void Run::output_extensions(std::vector<Extension>& extensions) {
+	Statistics stats;
+	for (const Extension& e : extensions)
+		if (e.score > 0)
+			print_extension(e, cfg, output_format.get(), stats);
+	statistics += stats;
+
+	for (const Extension& e : extensions)
+		release(e.state);
 }
 
 // Task handling one target of a query, starting at the first hit of the target. Chains the
@@ -154,11 +203,13 @@ void Run::process_target(QueryState* state, Search::Hit* begin) {
 	for (const Search::Hit* hit = begin; hit < end; ++hit)
 		seed_hits.push_back({ (int)hit->seed_offset_, (int)((uint64_t)hit->subject_ - target_begin), hit->score_, hit->frame() });
 	Statistics stats;
-	::Extension::ungapped_stage(seed_hits.begin(), seed_hits.end(), state->query, target, 0, stats, *cfg.target, cfg.extension_mode,
-		*std::pmr::get_default_resource(), cfg);
+	const list<ApproxHsp> hsps = ::Extension::ungapped_stage(seed_hits.begin(), seed_hits.end(), state->query, target, 0, stats, *cfg.target, cfg.extension_mode,
+		*std::pmr::get_default_resource(), cfg).hsp[0];
 	statistics += stats;
+	if (hsps.empty())
+		return;
 
-	pool.submit_extension(Extension(state, target));
+	pool.submit_extension(Extension(state, target, state->query.sequence.front(), targets[target], hsps.front().max_diag));
 }
 
 // Task handling one query, starting at the first hit of the query. Chains the task for the

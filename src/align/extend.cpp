@@ -283,8 +283,8 @@ vector<Match> extend(
 		while (i1 < l.target_scores.cend() && score_matrix.evalue(i1->score, query_len, UNIFIED_TARGET_LEN) <= config.max_evalue) i1 += min((ptrdiff_t)16, l.target_scores.cend() - i1);
 #endif
 	
-	const HspValues first_round_hspv = config.anchored_swipe ||
-		(config.sensitivity <= Sensitivity::SHAPES30x10 && flag_only(cfg.output_format->hsp_values, HspValues::COORDS) && config.toppercent.blank() && (size_t)cfg.max_target_seqs >= l.target_scores.size())
+	const HspValues first_round_hspv = (config.sensitivity <= Sensitivity::SHAPES30x10 && flag_only(cfg.output_format->hsp_values, HspValues::COORDS) && config.toppercent.blank()
+		&& (size_t)cfg.max_target_seqs >= l.target_scores.size())
 		? HspValues::COORDS : HspValues::NONE;
 	const bool first_round_culling = !have_filters(cfg) || config.toppercent.present();
 	bool new_hits_ev = false;

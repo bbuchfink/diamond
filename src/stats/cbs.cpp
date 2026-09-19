@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "cbs.h"
+#include <algorithm>
 #include "basic/config.h"
 #include "score_matrix.h"
 #include "util/log_stream.h"
@@ -151,18 +152,16 @@ TargetMatrix::TargetMatrix(const Composition& query_comp, int query_len, unsigne
     for (size_t i = 0; i < AMINO_ACID_COUNT; ++i) {
         for (size_t j = 0; j < AMINO_ACID_COUNT; ++j)
             if ((i < 20 || i == MASK_LETTER) && (j < 20 || j == MASK_LETTER)) {
-                scores[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
-                if (s[j * AMINO_ACID_COUNT + i] > SCHAR_MAX)
-                    s[j * AMINO_ACID_COUNT + i] = SCHAR_MAX;
-                else if (s[j * AMINO_ACID_COUNT + i] < SCHAR_MIN)
-                    s[j * AMINO_ACID_COUNT + i] = SCHAR_MIN;
+                // Adjusted matrices are only supported with 8 bit scores, so clamp before narrowing.
+                const int score = std::clamp(s[j * AMINO_ACID_COUNT + i], SCHAR_MIN, SCHAR_MAX);
+                scores[i * 32 + j] = (int8_t)score;
                 //scores32[i * 32 + j] = s[j * AMINO_ACID_COUNT + i];
-                score_min = std::min(score_min, s[j * AMINO_ACID_COUNT + i]);
-                score_max = std::max(score_max, s[j * AMINO_ACID_COUNT + i]);
+                score_min = std::min(score_min, score);
+                score_max = std::max(score_max, score);
                 //std::cerr << s[j * AMINO_ACID_COUNT + i] << ' ';
             }
             else {
-                scores[i * 32 + j] = std::max(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN);
+                scores[i * 32 + j] = (int8_t)std::clamp(score_matrix(i, j) * config.cbs_matrix_scale, SCHAR_MIN, SCHAR_MAX);
                 //scores32[i * 32 + j] = score_matrix(i, j) * config.cbs_matrix_scale;
                 //score_min = std::min(score_min, scores32[i * 32 + j]);
                 //score_max = std::max(score_max, scores32[i * 32 + j]);

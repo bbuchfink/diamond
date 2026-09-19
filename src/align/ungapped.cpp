@@ -52,7 +52,7 @@ WorkTarget::WorkTarget(BlockId block_id, const Sequence& seq, const Query& query
 	ungapped_score.fill(0);
 	Stats::EMatrixAdjustRule rule;
 	const unsigned cbs = static_cast<unsigned>(config.comp_based_stats_.get(Stats::DEFAULT_CBS));
-	if (!config.anchored_swipe && (rule = ::Stats::adjust_matrix(query.composition, query.true_aa_length, cbs, seq)) != Stats::eDontAdjustMatrix) {
+	if ((rule = ::Stats::adjust_matrix(query.composition, query.true_aa_length, cbs, seq)) != Stats::eDontAdjustMatrix) {
 		MEM_SCOPE("extend/target-matrix");
 		matrix.reset(new ::Stats::TargetMatrix(query.composition, query.true_aa_length, cbs, seq, stats, pool, rule));
 		/*if (config.anchored_swipe) {

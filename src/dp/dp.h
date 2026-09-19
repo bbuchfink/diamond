@@ -30,7 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/memory/memory_resource.h"
 #include "util/parallel/thread_pool.h"
 #include "align/def.h"
-#include "dp/score_profile.h"
+#include "dp/long_profile/score_profile.h"
+#include "align/new/extension.h"
 
 struct DpTarget
 {
@@ -144,6 +145,7 @@ struct DpTarget
 	const Stats::TargetMatrix* matrix;
 	Anchor anchor;
 	const LongScoreProfile<int16_t>* prof, *prof_reverse;
+	const Sequence* query = nullptr;
 };
 
 struct DpStat
@@ -266,14 +268,14 @@ struct NoCBS {
 namespace AnchoredSwipe {
 
 struct Config {
-	Sequence query;
-	const int8_t* query_cbs;
 	Score score_hint;
 	Statistics& stats;
-	ThreadPool* thread_pool;
-	bool recompute_adjusted;
 	Extension::Mode extension_mode;
-	bool target_profiles;
+	// The extensions are computed in the band of the anchor's diagonal range widened by band diagonals on either side.
+	// max_diag_spread has to be at least the widest diagonal range (ExtensionPipeline::Extension::diag_spread) of all
+	// extensions passed. Together they bound the band of every target to max_diag_spread + 2 * band, which the
+	// anchored swipe sizes its data structures and profile paddings for.
+	Loc band, max_diag_spread;
 };
 
 }
@@ -289,7 +291,7 @@ namespace BandedSwipe {
 std::list<Hsp> swipe(const Targets& targets, Params& params);
 std::list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params);
 int bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est);
-std::list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg, std::pmr::memory_resource& pool);
+void anchored_swipe(ExtensionPipeline::ExtensionQueue& queue, const DP::AnchoredSwipe::Config& cfg, const ExtensionPipeline::ExtensionCallback& callback);
 
 }
 

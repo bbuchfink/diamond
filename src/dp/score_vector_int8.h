@@ -54,10 +54,31 @@ struct ScoreVector<int8_t, DELTA>
 		data_(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(s)))
 	{ }
 
-	ScoreVector(unsigned a, __m256i seq, const int8_t* matrix_low, const int8_t* matrix_high)
+	/* One row of a 32x32 score table, prepared for looking up scores by letter.
+	   pshufb only indexes 16 entries per 128 bit lane, so the row is split in
+	   halves and each half is repeated across both lanes. */
+	struct Table {
+		explicit Table(const int8_t* row) :
+			low(_mm256_broadcastsi128_si256(_mm_loadu_si128(reinterpret_cast<const __m128i*>(row)))),
+			high(_mm256_broadcastsi128_si256(_mm_loadu_si128(reinterpret_cast<const __m128i*>(row + 16))))
+		{}
+		__m256i low, high;
+	};
+
+	// Channel k is set to row[letter_mask(seq[k])].
+	ScoreVector(const Table& row, const Letter* seq)
 	{
-		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&matrix_low[a << 5]);
-		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&matrix_high[a << 5]);
+		const __m256i s = letter_mask(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(seq)));
+		const __m256i high_mask = _mm256_slli_epi16(_mm256_and_si256(s, _mm256_set1_epi8('\x10')), 3);
+		const __m256i s1 = _mm256_shuffle_epi8(row.low, _mm256_or_si256(s, high_mask));
+		const __m256i s2 = _mm256_shuffle_epi8(row.high, _mm256_or_si256(s, _mm256_xor_si256(high_mask, _mm256_set1_epi8('\x80'))));
+		data_ = _mm256_or_si256(s1, s2);
+	}
+
+	ScoreVector(unsigned a, __m256i seq)
+	{
+		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8_low()[a << 5]);
+		const __m256i* row_hi = reinterpret_cast<const __m256i*>(&score_matrix.matrix8_high()[a << 5]);
 
 		seq = letter_mask(seq);
 
@@ -72,10 +93,6 @@ struct ScoreVector<int8_t, DELTA>
 		__m256i s2 = _mm256_shuffle_epi8(r2, seq_high);
 		data_ = _mm256_or_si256(s1, s2);
 	}
-
-	ScoreVector(unsigned a, __m256i seq):
-		ScoreVector(a, seq, score_matrix.matrix8_low(), score_matrix.matrix8_high())
-	{}
 
 	ScoreVector operator+(const ScoreVector& rhs) const
 	{
@@ -196,22 +213,11 @@ static inline int8_t extract(ScoreVector<int8_t, DELTA> sv) {
 	return (int8_t)_mm256_extract_epi8(sv.data_, i);
 }
 
+// Stores the channels sign extended to 16 bit (unaligned, 32 values).
 template<int DELTA>
 static inline void store_expanded(ScoreVector<int8_t, DELTA> sv, int16_t* dst) {
-	const __m256i z = _mm256_setzero_si256();
-	const __m256i a = _mm256_permute4x64_epi64(sv.data_, 216);
-	__m256i b = _mm256_unpacklo_epi8(a, z);
-	__m256i c = _mm256_slli_si256(_mm256_cmpgt_epi8(z, b), 1);
-	_mm256_store_si256((__m256i*)dst, _mm256_or_si256(b, c));
-
-	b = _mm256_unpackhi_epi8(a, z);
-	c = _mm256_slli_si256(_mm256_cmpgt_epi8(z, b), 1);
-	_mm256_store_si256((__m256i*)(dst + 16), _mm256_or_si256(b, c));
-}
-
-template<int DELTA>
-static inline void store_expanded(ScoreVector<int8_t, DELTA> sv, int8_t* dst) {
-	_mm256_store_si256((__m256i*)dst, sv.data_);
+	_mm256_storeu_si256((__m256i*)dst, _mm256_cvtepi8_epi16(_mm256_castsi256_si128(sv.data_)));
+	_mm256_storeu_si256((__m256i*)(dst + 16), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(sv.data_, 1)));
 }
 
 template<int DELTA>
@@ -283,6 +289,36 @@ struct ScoreVector<int8_t, DELTA>
 	explicit ScoreVector(const uint8_t* s) :
 		data_(vreinterpretq_s8_u8(vld1q_u8(s)))
 	{ }
+
+#ifdef __aarch64__
+	// One row of a 32x32 score table, prepared for looking up scores by letter.
+	struct Table {
+		explicit Table(const int8_t* row) {
+			t.val[0] = vld1q_s8(row);
+			t.val[1] = vld1q_s8(row + 16);
+		}
+		int8x16x2_t t;
+	};
+
+	// Channel k is set to row[letter_mask(seq[k])].
+	ScoreVector(const Table& row, const Letter* seq) :
+		data_(vqtbl2q_s8(row.t, vreinterpretq_u8_s8(letter_mask(vld1q_s8(seq)))))
+	{}
+#else
+	struct Table {
+		explicit Table(const int8_t* row) {
+			for (int i = 0; i < 4; ++i)
+				t.val[i] = vld1_s8(row + 8 * i);
+		}
+		int8x8x4_t t;
+	};
+
+	ScoreVector(const Table& row, const Letter* seq)
+	{
+		const int8x16_t s = letter_mask(vld1q_s8(seq));
+		data_ = vcombine_s8(vtbl4_s8(row.t, vget_low_s8(s)), vtbl4_s8(row.t, vget_high_s8(s)));
+	}
+#endif
 
 #ifdef __aarch64__
 	ScoreVector(unsigned a, int8x16_t seq)
@@ -407,6 +443,13 @@ struct ScoreVector<int8_t, DELTA>
 
 };
 
+// Stores the channels sign extended to 16 bit (16 values).
+template<int DELTA>
+static inline void store_expanded(ScoreVector<int8_t, DELTA> sv, int16_t* dst) {
+	vst1q_s16(dst, vmovl_s8(vget_low_s8(sv.data_)));
+	vst1q_s16(dst + 8, vmovl_s8(vget_high_s8(sv.data_)));
+}
+
 template<int DELTA>
 struct ScoreTraits<ScoreVector<int8_t, DELTA>>
 {
@@ -476,6 +519,25 @@ struct ScoreVector<int8_t, DELTA>
 	explicit ScoreVector(const uint8_t* s) :
 		data_(_mm_loadu_si128(reinterpret_cast<const __m128i*>(s)))
 	{ }
+
+	// One row of a 32x32 score table, prepared for looking up scores by letter.
+	struct Table {
+		explicit Table(const int8_t* row) :
+			low(_mm_loadu_si128(reinterpret_cast<const __m128i*>(row))),
+			high(_mm_loadu_si128(reinterpret_cast<const __m128i*>(row + 16)))
+		{}
+		__m128i low, high;
+	};
+
+	// Channel k is set to row[letter_mask(seq[k])].
+	ScoreVector(const Table& row, const Letter* seq)
+	{
+		const __m128i s = letter_mask(_mm_loadu_si128(reinterpret_cast<const __m128i*>(seq)));
+		const __m128i high_mask = _mm_slli_epi16(_mm_and_si128(s, _mm_set1_epi8('\x10')), 3);
+		const __m128i s1 = _mm_shuffle_epi8(row.low, _mm_or_si128(s, high_mask));
+		const __m128i s2 = _mm_shuffle_epi8(row.high, _mm_or_si128(s, _mm_xor_si128(high_mask, _mm_set1_epi8('\x80'))));
+		data_ = _mm_or_si128(s1, s2);
+	}
 
 #ifdef __SSSE3__
 	ScoreVector(unsigned a, __m128i seq)
@@ -608,6 +670,13 @@ struct ScoreVector<int8_t, DELTA>
 template<int i, int DELTA>
 static inline int8_t extract(ScoreVector<int8_t, DELTA> sv) {
 	return 0;
+}
+
+// Stores the channels sign extended to 16 bit (unaligned, 16 values).
+template<int DELTA>
+static inline void store_expanded(ScoreVector<int8_t, DELTA> sv, int16_t* dst) {
+	_mm_storeu_si128((__m128i*)dst, _mm_cvtepi8_epi16(sv.data_));
+	_mm_storeu_si128((__m128i*)(dst + 8), _mm_cvtepi8_epi16(_mm_srli_si128(sv.data_, 8)));
 }
 
 template<int DELTA>

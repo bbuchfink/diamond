@@ -21,10 +21,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>
 #include <mutex>
 #include <memory>
+#include <vector>
 #include "search/hit.h"
 #include "run/config.h"
 #include "util/text_buffer.h"
 #include "align/extend.h"
+#include "extension.h"
 #include "thread_pool.h"
 
 namespace ExtensionPipeline {
@@ -48,25 +50,13 @@ struct QueryState {
 	TextBuffer* out;              // receives the output of the computed extensions
 };
 
-struct Extension {
-	Extension() :
-		state(nullptr),
-		target(0)
-	{}
-	Extension(QueryState* state, BlockId target) :
-		state(state),
-		target(target)
-	{}
-	QueryState* state;
-	BlockId target;
-};
-
 struct Run {
 
 	Run(Search::Hit* hits, uint64_t hit_count, const Search::Config& cfg);
 	void process_query(Search::Hit* begin);
 	void process_target(QueryState* state, Search::Hit* begin);
-	void process_extension(Extension& e);
+	void process_extensions(ExtensionQueue& queue);
+	void output_extensions(std::vector<Extension>& extensions);
 	void release(QueryState* state);
 	void finalize_query(QueryState* state);
 
@@ -79,7 +69,8 @@ struct Run {
 	int64_t queries_pending;      // query tasks submitted but whose query is not yet finalized
 	bool all_queries_submitted;
 
-	ThreadPool<Extension> pool;   // has to be the last member (joins the workers in its destructor)
+	const ExtensionCallback output_callback;
+	ThreadPool pool;              // has to be the last member (joins the workers in its destructor)
 
 };
 

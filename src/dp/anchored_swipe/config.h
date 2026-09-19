@@ -20,12 +20,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "basic/sequence.h"
 #include "util/geo/geo.h"
-#include "../score_profile.h"
+#include "../long_profile/score_profile.h"
 
 namespace DP { namespace AnchoredSwipe {
 
+/* If true, the kernel does not read the match scores from query profiles. Instead, it gets the scores of a
+   target letter along the query by loading the letter's row of the score matrix and looking up the query
+   letters in it with shuffle instructions, so that no profiles have to be built. */
+static constexpr bool MATRIX_ROW_SCORES = true;
+
+/* In MATRIX_ROW_SCORES mode, the query letters are framed by this letter, which scores PADDING_SCORE against
+   every target letter in the score table (like the padding of the profiles). */
+static constexpr Letter PADDING_LETTER = 30;
+static constexpr int8_t PADDING_SCORE = -1;
+
 struct Options {
 	const int16_t* const* profile, * const* profile_rev;
+	// Score matrix for MATRIX_ROW_SCORES mode: 32x32, row-wise by target letter, with the PADDING_LETTER column set.
+	const int8_t* score_table;
 };
 
 struct Stats {
@@ -62,6 +74,8 @@ struct Target {
 	Score score;
 	Loc query_end, target_end;
 	const LongScoreProfile<int16_t>* profile, *profile_rev;
+	// MATRIX_ROW_SCORES mode: first letter of the padded query and of the padded reversed query.
+	const Letter* query, *query_rev;
 	bool blank() const {
 		return seq.length() == 0;
 	}
@@ -92,16 +106,5 @@ struct Target {
 		return int64_t(d_end - d_begin) * seq.length();
 	}
 };
-
-template<typename Score>
-std::pair<Loc, Loc> limits(const Target<Score>* targets, size_t count) {
-	int band = 0, target_len = 0;
-	for (const Target<Score>* i = targets; i < targets + count; ++i) {
-		assert(i->band() > 0);
-		band = std::max(band, i->band());
-		target_len = std::max(target_len, i->seq.length());
-	}
-	return { band,target_len };
-}
 
 }}

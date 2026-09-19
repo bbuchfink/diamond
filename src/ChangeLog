@@ -1,3 +1,8 @@
+[2.2.8]
+- Improved the performance of the clustering workflows.
+- Reduced the temporary disk space use of the clustering workflows.
+- Added the `--kmer-prefilter` option to tune k-mer prefilter in linear clustering rounds.
+
 [2.2.7]
 - Improved the performance of the clustering workflows.
 - Improved the performance of the `greedy-vertex-cover` workflow.

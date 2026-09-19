@@ -26,14 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "dp/swipe/swipe.h"
 #include "dp/dp.h"
 #include "dp/score_vector_int8.h"
-#include "dp/score_profile.h"
+#include "dp/long_profile/score_profile.h"
 #include "dp/ungapped.h"
 #include "util/simd/transpose.h"
 #include "dp/scan_diags.h"
 #include "stats/cbs.h"
 #include "dp/swipe/cell_update.h"
 #include "dp/anchored_swipe/anchored.h"
-#include "dp/swipe/config.h"
+#include "dp/anchored_swipe/config.h"
 #include "util/simd/dispatch.h"
 #include "dp/score_vector_int16.h"
 #include "search/hit_buffer.h"
@@ -431,24 +431,28 @@ void anchored_swipe(const Sequence& s1, const Sequence& s2) {
 	}
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
-		DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<ScoreVector<int16_t, 0>>(targets16.data(), 16, options);
+		DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<ScoreVector<int16_t, 0>>(targets16.data(), 16, 64, options);
 		volatile auto x = targets[0].score;
 	}
 	*message_stream << "Anchored Swipe (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * cols * 64 * 16) * 1000 << " ps/Cell" << endl;
 
-	DP::Targets dp_targets;
+	// The anchored swipe now takes the extension queue of the new extension pipeline.
+	/*DP::Targets dp_targets;
 	Anchor a(DiagonalSegment(0, 0, 0, 0), 0, 0, 0, 0, 0);
 	for (int i = 0; i < 16; ++i)
 		//dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, Interval(), 0, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
+	{
 		dp_targets[0].emplace_back(s2_, s2_.length(), -32, 32, 0, s1_.length(), nullptr, DpTarget::CarryOver(), a);
-	DP::AnchoredSwipe::Config cfg{ s1_, nullptr, 0, stats, nullptr, false, Extension::Mode::BANDED_FAST, false };
+		dp_targets[0].back().query = &s1_;
+	}
+	DP::AnchoredSwipe::Config cfg{ 0, stats, Extension::Mode::BANDED_FAST, false };
 
 	t1 = high_resolution_clock::now();
 	for (size_t i = 0; i < n; ++i) {
 		DP::BandedSwipe::anchored_swipe(dp_targets, cfg, pool);
 		volatile auto x = targets[0].score;
 	}
-	*message_stream << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;
+	*message_stream << "Anchored Swipe2 (int16_t):\t" << (double)duration_cast<std::chrono::nanoseconds>(high_resolution_clock::now() - t1).count() / (n * 128 * 64 * 16) * 1000 << " ps/Cell" << endl;*/
 }
 
 //#endif

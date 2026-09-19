@@ -236,7 +236,7 @@ set(DISPATCH_OBJECTS
         "src/dp/scan_diags.cpp"
         "src/dp/ungapped_simd.cpp"
         "src/dp/anchored_swipe/anchored_wrapper.cpp"
-        "src/dp/score_profile.cpp"
+        "src/dp/long_profile/score_profile.cpp"
         "src/stats/matrix_adjust/matrix_adjust.cpp"
         "src/stats/matrix_adjust/matrix_adjust_scalar.cpp"
         "src/align/reseek.cpp"
@@ -486,6 +486,7 @@ set(OBJECTS
         src/cluster/combine_blocks.cpp
         src/cluster/count_seeds.cpp
         src/search/lin_index/lin_index.cpp
+        src/search/lin_index/web_graph.cpp
         src/util/io/zlib_bridge.cpp
         src/util/sequence/seqindex.cpp
         src/align/new/extension_pipeline.cpp
@@ -590,6 +591,7 @@ endfunction()
 
 add_diamond_test_exit_code(makedb-nr_10k "makedb --in ${TD}/nr_10k.faa -d nr_10k --taxonmap ${TD}/nr_10k.taxids.tsv --taxonnames ${TD}/mini_names.dmp --taxonnodes ${TD}/mini_nodes.dmp")
 
+add_test(NAME new-ext COMMAND ${CMAKE_COMMAND} -DNAME=new-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p1 -k0 --new-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp_nr10k COMMAND ${CMAKE_COMMAND} -DNAME=blastp_nr10k "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -p4 -f 6 qseqid sseqid evalue staxids skingdoms sphylums" ${SP})
 add_test(NAME blastp-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -k0 --comp-based-stats 6 --fpu-compat" ${SP})

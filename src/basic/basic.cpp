@@ -32,7 +32,7 @@ using std::vector;
 using std::count;
 using std::runtime_error;
 
-const char* Const::version_string = "2.2.7";
+const char* Const::version_string = "2.2.8";
 const char* Const::program_name = "diamond";
 
 AlignMode::AlignMode(unsigned mode) :
@@ -189,6 +189,7 @@ void Statistics::print() const
 	*log_stream << "Hits (filter stage 1) = " << data_[TENTATIVE_MATCHES1] << " (" << data_[TENTATIVE_MATCHES1] * 100.0 / data_[SEED_HITS] << " %)" << endl;
 	*log_stream << "Hits (filter stage 2) = " << data_[TENTATIVE_MATCHES2] << " (" << data_[TENTATIVE_MATCHES2] * 100.0 / data_[TENTATIVE_MATCHES1] << " %)" << endl;
 	*log_stream << "Hits (filter stage 3) = " << data_[TENTATIVE_MATCHES3] << " (" << data_[TENTATIVE_MATCHES3] * 100.0 / data_[TENTATIVE_MATCHES2] << " %)" << endl;
+	*log_stream << "Hits (filter stage 3B) = " << data_[TENTATIVE_MATCHES3B] << " (" << data_[TENTATIVE_MATCHES3B] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 	//log_stream << "Hits (filter stage 4) = " << data_[TENTATIVE_MATCHES4] << " (" << data_[TENTATIVE_MATCHES4] * 100.0 / data_[TENTATIVE_MATCHES3] << " %)" << endl;
 	*log_stream << "Target hits (stage 0) = " << data_[TARGET_HITS0] << endl;
 	*log_stream << "Target hits (stage 1) = " << data_[TARGET_HITS1] << endl;

@@ -59,6 +59,11 @@ struct ScoreVector<int16_t, DELTA>
 		data_(_mm256_loadu_si256((const __m256i*)x))
 	{}
 
+	// Loads CHANNELS 8 bit values, sign extended.
+	static ScoreVector load_expanded(const int8_t* x) {
+		return ScoreVector(_mm256_cvtepi8_epi16(_mm_loadu_si128((const __m128i*)x)));
+	}
+
 	ScoreVector(unsigned a, Register seq)
 	{
 		const __m256i* row_lo = reinterpret_cast<const __m256i*>(&score_matrix.matrix8u_low()[a << 5]);
@@ -230,6 +235,11 @@ struct ScoreVector<int16_t, DELTA>
 		data_(vreinterpretq_s16_u16(vld1q_u16(x)))
 	{}
 
+	// Loads CHANNELS 8 bit values, sign extended.
+	static ScoreVector load_expanded(const int8_t* x) {
+		return ScoreVector(vmovl_s8(vld1_s8(x)));
+	}
+
 #ifdef __aarch64__
 	ScoreVector(unsigned a, Register seq)
 	{
@@ -389,6 +399,16 @@ struct ScoreVector<int16_t, DELTA>
 	explicit ScoreVector(const uint16_t *x) :
 		data_(_mm_loadu_si128((const __m128i*)x))
 	{}
+
+	// Loads CHANNELS 8 bit values, sign extended.
+	static ScoreVector load_expanded(const int8_t* x) {
+		const __m128i v = _mm_loadl_epi64((const __m128i*)x);
+#ifdef __SSE4_1__
+		return ScoreVector(_mm_cvtepi8_epi16(v));
+#else
+		return ScoreVector(_mm_unpacklo_epi8(v, _mm_cmpgt_epi8(_mm_setzero_si128(), v)));
+#endif
+	}
 
 #ifdef __SSSE3__
 	ScoreVector(unsigned a, Register seq)
@@ -558,6 +578,10 @@ struct ScoreVector<int16_t, DELTA>
 	explicit ScoreVector(const uint16_t* x) :
 		data_((int16_t)*x)
 	{}
+
+	static ScoreVector load_expanded(const int8_t* x) {
+		return ScoreVector((int16_t)*x);
+	}
 
 	ScoreVector operator+(const ScoreVector& rhs) const
 	{

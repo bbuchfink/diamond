@@ -33,7 +33,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search/seed_array/enum_seeds.h"
 #include "search/seed_complexity.h"
 #include "util/algo/varint.h"
-#include "util/data_structures/bloom_filter.h"
 #include "util/io/file.h"
 #include "util/log_stream.h"
 #include "util/ptr_vector.h"
@@ -341,21 +340,17 @@ struct PivotPositions {
 
 /* Decodes the pivot positions in parallel and recomputes the seed at each of them.
    Every chunk starts with an absolute position, so the chunks can be handed out to the
-   threads independently. If table is given, the seeds are inserted into it. If
-   member_seeds is given (only possible with LinIndex::COUNT_LOOKUPS enabled), the seeds
-   are queried against it and the number of hits is returned, which approximates the
-   number of index entries the member block is going to look up: entries whose seed the
-   member block does not contain are only counted if the filter yields a false
-   positive. */
-static pair<uint64_t, uint64_t> scan_pivots(const PivotPositions& positions, const SequenceSet& seqs, const Shape& shape, const uint64_t raw_len,
-	const SeedEncoding code, LinIndex::Table* const table, const BloomFilter* const member_seeds, const string& file_name, const int threads)
+   threads independently. The seeds are inserted into the table and their number is
+   returned. */
+static uint64_t scan_pivots(const PivotPositions& positions, const SequenceSet& seqs, const Shape& shape, const uint64_t raw_len,
+	const SeedEncoding code, LinIndex::Table& table, const string& file_name, const int threads)
 {
 	const uint64_t chunk_count = (uint64_t)positions.chunk_offset.size(), entry_count = positions.entry_count;
-	atomic<uint64_t> next(0), looked_up(0), inserts(0);
+	atomic<uint64_t> next(0), inserts(0);
 	vector<std::thread> workers;
 	for (int i = 0; i < threads; ++i)
 		workers.emplace_back([&] {
-			uint64_t key, hits = 0, ins = 0;
+			uint64_t key, ins = 0;
 			for (uint64_t c = next++; c < chunk_count; c = next++) {
 				const uint64_t begin = c * LinIndex::CHUNK_ENTRIES, n = std::min(LinIndex::CHUNK_ENTRIES, entry_count - begin);
 				const char* p = positions.data.data() + positions.chunk_offset[c];
@@ -368,31 +363,21 @@ static pair<uint64_t, uint64_t> scan_pivots(const PivotPositions& positions, con
 						throw runtime_error("Invalid seed position in file " + file_name);
 					if (!seed_at(seqs.data(pos), shape, code, key))
 						continue;
-					if (table) {
-						// The file holds nothing but pivots, so no sequence length is
-						// needed to select one.
-						table->insert(key, pos, 0);
-						++ins;
-					}
-					// The leading constant compiles the filter query out of the loop
-					// unless the diagnostic is enabled.
-					if (LinIndex::COUNT_LOOKUPS && member_seeds && member_seeds->contains(key))
-						++hits;
+					// The file holds nothing but pivots, so no sequence length is
+					// needed to select one.
+					table.insert(key, pos, 0);
+					++ins;
 				}
 			}
-			looked_up += hits;
 			inserts.fetch_add(ins, std::memory_order_relaxed);
 			});
 	for (auto& t : workers)
 		t.join();
-	return { looked_up, inserts.load(std::memory_order_relaxed) };
+	return inserts.load(std::memory_order_relaxed);
 }
 
-void LinIndex::build_shape(const int shape_id, const BloomFilter* member_seeds) {
-	if (!COUNT_LOOKUPS)
-		member_seeds = nullptr;
-	const bool rebuild = shape_id != current_shape_;
-	if (!rebuild && !member_seeds)
+void LinIndex::build_shape(const int shape_id) {
+	if (shape_id == current_shape_)
 		return;
 	const ShapeIndex& shape_index = shape_index_[shape_id];
 	const string label = " (shape " + to_string(shape_id) + ")";
@@ -400,26 +385,18 @@ void LinIndex::build_shape(const int shape_id, const BloomFilter* member_seeds) 
 	TaskTimer timer;
 	// The table of the previous shape is released before the positions of the new one
 	// are read, so that only one shape occupies memory at a time.
-	if (rebuild)
-		free_shape();
+	free_shape();
 	timer.go("Loading seed positions" + label);
 	const PivotPositions positions(file_name_, shape_index);
 
-	if (rebuild) {
-		timer.go("Allocating seed index" + label);
-		table_.init(shape_index.table_size, threads_);
-	}
+	timer.go("Allocating seed index" + label);
+	table_.init(shape_index.table_size, threads_);
 
-	timer.go((rebuild ? "Rebuilding seed index" : "Counting seed index lookups") + label);
-	const auto [looked_up, inserts] = scan_pivots(positions, block_.seqs(), shapes[shape_id], header_.raw_len,
-		seed_encoding(), rebuild ? &table_ : nullptr, member_seeds, file_name_, threads_);
+	timer.go("Rebuilding seed index" + label);
+	insert_count_ = scan_pivots(positions, block_.seqs(), shapes[shape_id], header_.raw_len,
+		seed_encoding(), table_, file_name_, threads_);
 	current_shape_ = shape_id;
-	insert_count_ = inserts;
 	timer.finish();
-
-	if (member_seeds)
-		*message_stream << "Seed index entries looked up = " << looked_up << '/' << shape_index.entry_count
-			<< " (" << (shape_index.entry_count ? (100.0 * looked_up) / shape_index.entry_count : 0.0) << "%, approximate)" << endl;
 }
 
 LinIndex::~LinIndex() {

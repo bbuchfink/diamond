@@ -19,10 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <memory>
 #include <numeric>
+#include <cfloat>
+#include <mutex>
 #include "../dp.h"
-#include "../swipe/config.h"
+#include "config.h"
 #include "anchored.h"
-#include "../score_profile.h"
+#include "../long_profile/score_profile.h"
 #include "util/simd/dispatch.h"
 #include "stats/score_matrix.h"
 #include "align/def.h"
@@ -43,34 +45,26 @@ struct TargetVector {
 	vector<DP::AnchoredSwipe::Target<int16_t>> int16;
 };
 
+// Score profiles (MATRIX_ROW_SCORES off) or padded query letters (on) of an extension, for the directions that are extended.
 struct Profiles {
-	struct Reverse {};
-	Profiles(Sequence seq, const int8_t* cbs, int64_t padding, const ScoreMatrix& matrix)
-	{
-		int16 = make_profile16(seq, cbs, padding, &matrix);
-	}
-	Profiles(const Profiles& p, Reverse):
-		int16(p.int16.reverse())
-	{}
-	//LongScoreProfile<int8_t> int8;
-	LongScoreProfile<int16_t> int16;
+	const LongScoreProfile<int16_t>* forward, *reverse;
+	const Letter* query, *query_rev;
 };
 
-static Loc get_band(Loc qlen, Extension::Mode extension_mode) {
-	//return (Extension::band(qlen, extension_mode) + 15) / 16 * 16;
-	return config.sensitivity >= Sensitivity::ULTRA_SENSITIVE ? 160 : (config.sensitivity >= Sensitivity::MORE_SENSITIVE ? 96 : 32);
+static Loc band_max(const DP::AnchoredSwipe::Config& cfg) {
+	return cfg.max_diag_spread + 2 * cfg.band;
 }
 
-static void align_right(Sequence target_seq, bool reverse, Loc i, Loc j, Loc d_begin, Loc d_end, Score prefix_score, TargetVector& targets,
+static void align_right(Loc query_len, Sequence target_seq, bool reverse, Loc i, Loc j, Loc d_begin, Loc d_end, Score prefix_score, TargetVector& targets,
 	int64_t target_idx,
-	const LongScoreProfile<int16_t>* profile, const LongScoreProfile<int16_t>* profile_rev,
+	const Profiles& profiles,
 	const DP::AnchoredSwipe::Config& cfg)
 {
-	Loc qlen = cfg.query.length() - i, tlen = target_seq.length();
+	Loc qlen = query_len - i, tlen = target_seq.length();
 	//const int band_cap = std::max(std::min(qlen / 2, tlen / 2), 1);
 	//const int band = std::min(std::max(get_band(cfg.query.length()), Loc((d_end - d_begin) * 0.15)), band_cap);
 	//const int band = std::max(get_band(cfg.query.length()), Loc((d_end - d_begin) * 0.15));
-	const int band = get_band(cfg.query.length(), cfg.extension_mode);
+	const int band = cfg.band; // query_len?
 	d_begin -= band;
 	d_end += band - 1;
 	const Loc d0 = Geo::clip_diag(Geo::diag_sub_matrix(d_begin, i, j), qlen, tlen),
@@ -78,240 +72,214 @@ static void align_right(Sequence target_seq, bool reverse, Loc i, Loc j, Loc d_b
 	tlen = std::min(tlen, Geo::j(qlen - 1, d0) + 1);
 	assert(tlen > 0);
 	assert(d1 >= d0);
+	assert(d1 >= 0 && d1 + 1 - d0 <= band_max(cfg));
 	
 	const Sequence clipped_target = reverse ? target_seq.subseq(target_seq.length() - tlen, target_seq.length()) : target_seq.subseq(0, tlen);
 
 	auto& t = targets.int16;
 	t.emplace_back(clipped_target, d0, d1 + 1, i, qlen, target_idx, reverse);
-	t.back().profile = profile;
-	t.back().profile_rev = profile_rev;
+	t.back().profile = profiles.forward;
+	t.back().profile_rev = profiles.reverse;
+	t.back().query = profiles.query;
+	t.back().query_rev = profiles.query_rev;
 }
 
-static void align_left(Sequence target_seq, Loc i, Loc j, Loc d_begin, Loc d_end, Score suffix_score, TargetVector& targets,
+static void align_left(Loc query_len, Sequence target_seq, Loc i, Loc j, Loc d_begin, Loc d_end, Score suffix_score, TargetVector& targets,
 	int64_t target_idx,
-	const LongScoreProfile<int16_t>* profile, const LongScoreProfile<int16_t>* profile_rev,
+	const Profiles& profiles,
 	const DP::AnchoredSwipe::Config& cfg)
 {
-	const Loc qlen = cfg.query.length(), tlen = target_seq.length();
+	const Loc qlen = query_len, tlen = target_seq.length();
 	const Loc ir = qlen - 1 - i, jr = tlen - 1 - j;
-	align_right(target_seq.subseq(0, j + 1), true, ir, jr, Geo::rev_diag(d_end, qlen, tlen), Geo::rev_diag(d_begin, qlen, tlen), suffix_score, targets, target_idx, profile, profile_rev, cfg);
+	align_right(qlen, target_seq.subseq(0, j + 1), true, ir, jr, Geo::rev_diag(d_end, qlen, tlen), Geo::rev_diag(d_begin, qlen, tlen), suffix_score, targets, target_idx, profiles, cfg);
 }
 
-static void add_target(DpTarget& t, TargetVector& targets,
+static bool extend_right(const ExtensionPipeline::Extension& e) {
+	return std::min(e.query.length() - e.anchor.query_end(), e.target.length() - e.anchor.subject_end()) >= DpTarget::MIN_LETTERS;
+}
+
+static bool extend_left(const ExtensionPipeline::Extension& e) {
+	return std::min(e.anchor.query_begin(), e.anchor.subject_begin()) >= DpTarget::MIN_LETTERS;
+}
+
+static void add_target(const ExtensionPipeline::Extension& e, const Profiles& profiles, TargetVector& targets,
 	int64_t& target_idx,
 	const DP::AnchoredSwipe::Config& cfg)
 {
-	//t.anchor = make_clipped_anchor(t.anchor, cfg.query, cfg.query_cbs, t.seq);
-	//if (t.anchor.score == 0)
-		//return;
-	if (t.extend_right(cfg.query.length())) {
-		const Loc i = t.anchor.query_end(), j = t.anchor.subject_end();
-		align_right(t.seq.subseq(j), false, i, j, t.anchor.d_min_right, t.anchor.d_max_right, t.anchor.prefix_score, targets, target_idx, t.prof, t.prof_reverse, cfg);
+	const Loc qlen = e.query.length();
+	const Anchor& anchor = e.anchor;
+	if (extend_right(e)) {
+		const Loc i = anchor.query_end(), j = anchor.subject_end();
+		align_right(qlen, e.target.subseq(j), false, i, j, anchor.d_min_right, anchor.d_max_right, anchor.prefix_score, targets, target_idx, profiles, cfg);
 		++target_idx;
 	}
-	if (t.extend_left()) {
-		const Score suffix_score = cfg.score_hint - t.anchor.prefix_score + t.anchor.score;
-		align_left(t.seq, t.anchor.query_begin() - 1, t.anchor.subject_begin() - 1, t.anchor.d_min_left, t.anchor.d_max_left, suffix_score,
-			targets, target_idx, t.prof, t.prof_reverse, cfg);
+	if (extend_left(e)) {
+		const Score suffix_score = cfg.score_hint - anchor.prefix_score + anchor.score;
+		align_left(qlen, e.target, anchor.query_begin() - 1, anchor.subject_begin() - 1, anchor.d_min_left, anchor.d_max_left, suffix_score,
+			targets, target_idx, profiles, cfg);
 		++target_idx;
 	}
 }
 
-static void swipe_threads(DP::AnchoredSwipe::Target<int16_t>* targets, int64_t count, const DP::AnchoredSwipe::Options& options, const DP::AnchoredSwipe::Config& cfg) {
-	using Target = DP::AnchoredSwipe::Target<int16_t>;
-	ThreadPool::TaskSet task_set(*cfg.thread_pool, 0);
-	int64_t size = 0;
-	Target* i0 = targets, *i1 = targets, *end = targets + count;
-	while (i1 < end) {
-		const auto n = std::min((ptrdiff_t)16, end - i1);
-		size += accumulate(i1, i1 + n, (int64_t)0, [](int64_t n, const Target& t) { return n + t.gross_cells(); });
-		i1 += n;
-		if (size >= config.swipe_task_size) {
-			task_set.enqueue(DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>, i0, i1 - i0, options);
-			cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
-			cfg.stats.inc(Statistics::SWIPE_TASKS_ASYNC);
-			i0 = i1;
-			size = 0;
-		}
-	}
-	if (task_set.total() == 0) {
-		cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
-		DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(i0, i1 - i0, options);
-		return;
-	}
-	if (i1 - i0 > 0) {
-		cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
-		cfg.stats.inc(Statistics::SWIPE_TASKS_ASYNC);
-		task_set.enqueue(DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>, i0, i1 - i0, options);
-	}
-	task_set.run();
+// Writes seq framed by `padding` padding letters on each side to out, reversed if reverse is set, and returns the pointer to its first letter.
+static const Letter* pad_query(Sequence seq, bool reverse, int64_t padding, Letter* out) {
+	std::fill(out, out + padding, DP::AnchoredSwipe::PADDING_LETTER);
+	Letter* begin = out + padding;
+	if (reverse)
+		std::reverse_copy(seq.data(), seq.end(), begin);
+	else
+		std::copy(seq.data(), seq.end(), begin);
+	std::fill(begin + seq.length(), begin + seq.length() + padding, DP::AnchoredSwipe::PADDING_LETTER);
+	return begin;
 }
 
-list<Hsp> anchored_swipe(Targets& targets, const DP::AnchoredSwipe::Config& cfg, std::pmr::memory_resource& pool) {
+void anchored_swipe(ExtensionPipeline::ExtensionQueue& queue, const DP::AnchoredSwipe::Config& cfg, const ExtensionPipeline::ExtensionCallback& callback) {
 	MEM_SCOPE("dp/anchored-swipe");
 	TaskTimer total;
 
+	vector<ExtensionPipeline::Extension> extensions;
+	{
+		std::lock_guard<std::mutex> lock(queue.mtx);
+		extensions.swap(queue.extensions);
+	}
+	if (extensions.empty())
+		return;
+
 	TargetVector target_vec;
-	int64_t target_count = 0, target_len = 0;
-	Loc max_target_len = 0;
-	if(!cfg.target_profiles)
-		for (int bin = 0; bin < DP::BINS; ++bin)
-			for (const DpTarget& t : targets[bin]) {
-				++target_count;
-				target_len += t.seq.length();
-				max_target_len = std::max(max_target_len, t.seq.length());
-			}
-	else
-		for (int bin = 0; bin < DP::BINS; ++bin)
-			target_count += targets[bin].size();
 
 	TaskTimer timer;
-	//target_vec.int8.reserve(target_count * 2);
-	target_vec.int16.reserve(target_count * 2); // check for 16 bit overflow
+	target_vec.int16.reserve(extensions.size() * 2); // check for 16 bit overflow
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ALLOC, timer.microseconds());
 
 	timer.go();
-	unique_ptr<Profiles> profiles, profiles_rev;
-	vector<const int16_t*> prof_pointers, prof_pointers_rev;
+	// Each extension carries its own query, so the score profiles are built per extension, and only for
+	// the directions that are extended. The padding covers every target within the band limits of the call.
+	list<LongScoreProfile<int16_t>> profile_storage;
+	vector<Letter> query_storage;
+	vector<Profiles> profiles(extensions.size(), Profiles{ nullptr, nullptr, nullptr, nullptr });
 	const ScoreMatrix& matrix = score_matrix;
-
-	if (!cfg.target_profiles) {
+	alignas(32) int8_t score_table[32 * 32];
+	if (DP::AnchoredSwipe::MATRIX_ROW_SCORES) {
 		MEM_SCOPE("dp/query-profile");
-		profiles.reset(new Profiles(cfg.query, cfg.query_cbs, cfg.query.length() + max_target_len + 32, matrix));
-		profiles_rev.reset(new Profiles(*profiles, Profiles::Reverse()));
-		prof_pointers = profiles->int16.pointers(0);
-		prof_pointers_rev = profiles_rev->int16.pointers(0);
+		std::copy(matrix.matrix8(), matrix.matrix8() + 32 * 32, score_table);
+		for (int l = 0; l < 32; ++l)
+			score_table[(l << 5) + DP::AnchoredSwipe::PADDING_LETTER] = DP::AnchoredSwipe::PADDING_SCORE;
+		const int64_t padding = std::max(DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(band_max(cfg)),
+			(int64_t)LongScoreProfile<int16_t>::DEFAULT_PADDING);
+		size_t size = 0;
+		for (const ExtensionPipeline::Extension& e : extensions)
+			if (e.anchor.score > 0)
+				size += (size_t(extend_right(e)) + size_t(extend_left(e))) * (e.query.length() + 2 * padding);
+		query_storage.resize(size);
+		Letter* out = query_storage.data();
+		for (size_t k = 0; k < extensions.size(); ++k) {
+			const ExtensionPipeline::Extension& e = extensions[k];
+			if (e.anchor.score <= 0)
+				continue;
+			assert(e.diag_spread() <= cfg.max_diag_spread);
+			if (extend_right(e)) {
+				profiles[k].query = pad_query(e.query, false, padding, out);
+				out += e.query.length() + 2 * padding;
+			}
+			if (extend_left(e)) {
+				profiles[k].query_rev = pad_query(e.query, true, padding, out);
+				out += e.query.length() + 2 * padding;
+			}
+		}
 	}
-	cfg.stats.inc(Statistics::TIME_PROFILE, timer.microseconds());	
+	else {
+		MEM_SCOPE("dp/query-profile");
+		const int64_t padding = DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(band_max(cfg));
+		for (size_t k = 0; k < extensions.size(); ++k) {
+			const ExtensionPipeline::Extension& e = extensions[k];
+			const bool right = extend_right(e), left = extend_left(e);
+			if (e.anchor.score <= 0 || (!right && !left))
+				continue;
+			assert(e.diag_spread() <= cfg.max_diag_spread);
+			profile_storage.push_back(make_profile16(e.query, nullptr, padding, &matrix));
+			if (right)
+				profiles[k].forward = &profile_storage.back();
+			if (left) {
+				if (right)
+					profile_storage.push_back(profile_storage.back().reverse());
+				else
+					for (int l = 0; l < AMINO_ACID_COUNT; ++l)
+						std::reverse(profile_storage.back().data[l].begin(), profile_storage.back().data[l].end());
+				profiles[k].reverse = &profile_storage.back();
+			}
+		}
+	}
+	cfg.stats.inc(Statistics::TIME_PROFILE, timer.microseconds());
 
 	timer.go();
 	int64_t target_idx = 0;
-	for (int bin = 0; bin < DP::BINS; ++bin)
-		for (DpTarget& t : targets[bin]) {
-			add_target(t, target_vec, target_idx, cfg);
-		}
+	for (size_t k = 0; k < extensions.size(); ++k)
+		if (extensions[k].anchor.score > 0)
+			add_target(extensions[k], profiles[k], target_vec, target_idx, cfg);
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ADD, timer.microseconds());
 
-	auto& t = target_vec.int16;
-	
 	timer.go();
-	//sort(target_vec.int8.begin(), target_vec.int8.end());
 	sort(target_vec.int16.begin(), target_vec.int16.end());
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_SORT, timer.microseconds());
 
 	DP::AnchoredSwipe::Stats stats;
-	DP::AnchoredSwipe::Options options{ prof_pointers.empty() ? nullptr : prof_pointers.data(), prof_pointers_rev.empty() ? nullptr : prof_pointers_rev.data() };
+	DP::AnchoredSwipe::Options options{ nullptr, nullptr, score_table };
 
 	timer.go();
-	//DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int8_t, 0>>(target_vec.int8.data(), target_vec.int8.size());
-	//stats = DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(target_vec.int16.data(), target_vec.int16.size(), options);
-	swipe_threads(target_vec.int16.data(), target_vec.int16.size(), options, cfg);
-	//cfg.stats.inc(Statistics::GROSS_DP_CELLS, stats.gross_cells);
-	//cfg.stats.inc(Statistics::NET_DP_CELLS, stats.net_cells);
+	stats = DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(target_vec.int16.data(), target_vec.int16.size(), band_max(cfg), options);
+	cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
 	cfg.stats.inc(Statistics::TIME_SW, timer.microseconds());
 
 	timer.go();
-	//sort(target_vec.int8.begin(), target_vec.int8.end(), DP::AnchoredSwipe::Target<int8_t>::cmp_target_idx);
 	sort(target_vec.int16.begin(), target_vec.int16.end(), DP::AnchoredSwipe::Target<int16_t>::cmp_target_idx);
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_SORT, timer.microseconds());
 
 	timer.go();
 	auto target_it = target_vec.int16.cbegin();
-	list<Hsp> out;
-	DP::Targets recompute;
-	std::pmr::list<Stats::TargetMatrix> matrices(&pool);
-	Stats::Composition query_comp(Stats::composition(cfg.query));
-	for (int bin = 0; bin < DP::BINS; ++bin)
-		for (const DpTarget& t : targets[bin]) {
-			if (t.anchor.score == 0)
-				continue;
-			int score = t.anchor.score, i0 = t.anchor.query_begin(), i1 = t.anchor.query_end(), j0 = t.anchor.subject_begin(), j1 = t.anchor.subject_end();
-#ifdef DP_STAT
-			int64_t gross_cells = 0, net_cells = 0;
-#endif
-			if (t.extend_right(cfg.query.length())) {
-				score += target_it->score;
-				i1 += target_it->query_end;
-				j1 += target_it->target_end;
-#ifdef DP_STAT
-				auto c = target_it->cells();
-				gross_cells += c.first;
-				net_cells += c.second;
-#endif
-				++target_it;
-			}
-			if (t.extend_left()) {
-				score += target_it->score;
-				i0 -= target_it->query_end;
-				j0 -= target_it->target_end;
-#ifdef DP_STAT
-				auto c = target_it->cells();
-				gross_cells += c.first;
-				net_cells += c.second;
-#endif
-				++target_it;
-			}
-			// filter for cover
-			cfg.stats.inc(Statistics::EXT16);
-			const double qcov = double(i1 - i0) / cfg.query.length() * 100.0, tcov = double(j1 - j0) / t.seq.length() * 100.0;
-			bool cov_filtered = false;
-			if (config.query_or_target_cover > 0 || config.query_cover > 0 || config.subject_cover > 0) {
-				cov_filtered = std::max(qcov, tcov) < config.query_or_target_cover
-					|| qcov < config.query_cover || tcov < config.subject_cover;
-			}
-
-			if (!cfg.recompute_adjusted && cov_filtered)
-				continue;
-
-			/*if (std::max(i0, cfg.query.length() - i1) > config.uncov_cap || std::max(j0, t.seq.length() - j1) > config.uncov_cap)
-				continue;*/
-			
-			const double evalue = matrix.evalue(score, cfg.query.length(), t.seq.length()); // consider adjusted matrix
-			if(!cfg.recompute_adjusted && evalue > config.max_evalue)
-				continue;
-
-			if(cfg.recompute_adjusted && (qcov < 70.0 || tcov < 70.0))
-				continue;
-
-			const double approx_id = Stats::approx_id(score, i1 - i0, j1 - j0);
-			
-			if (cfg.recompute_adjusted && approx_id < 70) {
-				matrices.emplace_back(query_comp, cfg.query.length(), Stats::CBS::MATRIX_ADJUST, t.seq, cfg.stats, pool, Stats::eUserSpecifiedRelEntropy);
-				// redecide bin here
-				recompute[bin].push_back(DpTarget(t.seq, t.true_target_len, t.d_begin, t.d_end, t.target_idx,
-					cfg.query.length(), &matrices.back(), DpTarget::CarryOver(), t.anchor));
-				cfg.stats.inc(Statistics::EXTENSIONS_RECOMPUTE);
-			}
-			else if (!cov_filtered) {
-				out.emplace_back();
-				out.back().score = score;
-				out.back().evalue = evalue;
-				out.back().bit_score = matrix.bitscore(score);
-				out.back().swipe_target = t.target_idx;
-				out.back().query_range = { i0, i1 };
-				out.back().query_source_range = out.back().query_range;
-				out.back().subject_range = { j0, j1 };
-				out.back().subject_source_range = out.back().subject_range;
-#ifdef DP_STAT
-				out.back().reserved1 = (int)gross_cells; // stats.gross_cells;
-				out.back().reserved2 = (int)net_cells; // stats.net_cells;
-#endif
-				out.back().approx_id = out.back().approx_id_percent(cfg.query, t.seq);
-			}
+	for (ExtensionPipeline::Extension& e : extensions) {
+		e.score = 0;
+		e.evalue = DBL_MAX;
+		if (e.anchor.score <= 0)
+			continue;
+		const Sequence query = e.query;
+		int score = e.anchor.score, i0 = e.anchor.query_begin(), i1 = e.anchor.query_end(), j0 = e.anchor.subject_begin(), j1 = e.anchor.subject_end();
+		if (extend_right(e)) {
+			score += target_it->score;
+			i1 += target_it->query_end;
+			j1 += target_it->target_end;
+			++target_it;
 		}
+		if (extend_left(e)) {
+			score += target_it->score;
+			i0 -= target_it->query_end;
+			j0 -= target_it->target_end;
+			++target_it;
+		}
+		// filter for cover
+		cfg.stats.inc(Statistics::EXT16);
+		const double qcov = double(i1 - i0) / query.length() * 100.0, tcov = double(j1 - j0) / e.target.length() * 100.0;
+		if (config.query_or_target_cover > 0 || config.query_cover > 0 || config.subject_cover > 0) {
+			if (std::max(qcov, tcov) < config.query_or_target_cover || qcov < config.query_cover || tcov < config.subject_cover)
+				continue;
+		}
+
+		const double evalue = matrix.evalue(score, query.length(), e.target.length()); // consider adjusted matrix
+		if (evalue > config.max_evalue)
+			continue;
+
+		e.score = score;
+		e.evalue = evalue;
+		e.query_range = { i0, i1 };
+		e.target_range = { j0, j1 };
+	}
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_OUTPUT, timer.microseconds());
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE, total.microseconds());
-	if (cfg.recompute_adjusted) {
-		DP::Params params{ cfg.query, nullptr, Frame(0), cfg.query.length(), nullptr, DP::Flags::NONE, false,
-		0, 0, HspValues::COORDS, cfg.stats, cfg.thread_pool, &pool };
-		out.splice(out.end(), DP::BandedSwipe::swipe(recompute, params));
-		return out;
-	}
-	return out;
+
+	callback(extensions);
 }
 
 }
 
-DISPATCH_3(std::list<Hsp>, anchored_swipe, Targets&, targets, const DP::AnchoredSwipe::Config&, cfg, std::pmr::memory_resource&, pool)
+DISPATCH_3V(anchored_swipe, ExtensionPipeline::ExtensionQueue&, queue, const DP::AnchoredSwipe::Config&, cfg, const ExtensionPipeline::ExtensionCallback&, callback)
 
 }}
