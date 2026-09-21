@@ -111,7 +111,7 @@ void serialize(File& file, const SequenceFile::SeqInfo& r) {
 
 SequenceFile::SeqInfo DatabaseFile::read_seqinfo() {
 	SeqInfo r;
-	file_.read(r);
+	file_ >> r;
 	pos_array_offset += SeqInfo::SIZE;
 	return r;
 }
@@ -407,6 +407,7 @@ bool DatabaseFile::is_diamond_db(const string &file_name) {
 	File db_file(file_name, "rb");
 	uint64_t magic_number = 0;
 	db_file.read_max(&magic_number, sizeof(uint64_t));
+	magic_number = big_endian_byteswap(magic_number);
 	bool r = (magic_number == ReferenceHeader::MAGIC_NUMBER);
 	db_file.close();
 	return r;
