@@ -214,7 +214,45 @@ bool DatabaseFile::has_taxon_scientific_names() const {
 	return header2.taxon_names_offset != 0;
 }
 
-static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<SequenceFile::SeqInfo> &pos_array, File &out, size_t &letters, size_t &n_seqs)
+static void copy_bytes(File& src, File& dst, uint64_t n);
+
+// Spill the offset table to disk while building instead of holding it in RAM. The table is written
+// once, sequentially, at the end of the build, so it never needs random access. For NCBI nr
+// (1.15 billion sequences, 16 bytes per entry) the vector doubled its capacity at 2^30 entries and
+// briefly needed about 51 GB, which ended the build in the OOM killer. Same format, same order.
+struct PosSpill {
+	static const size_t BUF = 1 << 20;
+	PosSpill(const string& path) : path(path), file(new File(path, "wb")) { buf.reserve(BUF); }
+	void emplace_back(uint64_t pos, size_t len) {
+		buf.emplace_back(pos, len);
+		if (buf.size() == BUF)
+			flush();
+	}
+	void flush() {
+		for (const SequenceFile::SeqInfo& r : buf)
+			serialize(*file, r);
+		n += buf.size();
+		buf.clear();
+	}
+	void copy_to(File& out) {
+		flush();
+		file->close();
+		File in(path, "rb");
+		copy_bytes(in, out, n * SequenceFile::SeqInfo::SIZE);
+		in.close();
+		remove(path.c_str());
+	}
+	void discard() {
+		file->close();
+		remove(path.c_str());
+	}
+	const string path;
+	unique_ptr<File> file;
+	vector<SequenceFile::SeqInfo> buf;
+	uint64_t n = 0;
+};
+
+static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, PosSpill &pos_array, File &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
@@ -224,6 +262,17 @@ static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_
 	letters += seq.length();
 	++n_seqs;
 	offset += seq.length() + id_len + 3;
+}
+
+static void copy_bytes(File& src, File& dst, uint64_t n)
+{
+	vector<char> buf(64 * MEGABYTES);
+	while (n > 0) {
+		const size_t k = (size_t)std::min<uint64_t>(n, buf.size());
+		src.read(buf.data(), k);
+		dst.write(buf.data(), k);
+		n -= k;
+	}
 }
 
 void DatabaseFile::make_db()
@@ -260,7 +309,7 @@ void DatabaseFile::make_db()
     }
 
     Block* block;
-	vector<SeqInfo> pos_array;
+	PosSpill pos_array(config.database + ".pos_tmp");
 	ExternalSorter<pair<string, OId>> accessions;
 	Util::Seq::AccessionParsing acc_stats;
 	try {
@@ -305,6 +354,7 @@ void DatabaseFile::make_db()
 	}
 	catch (std::exception&) {
 		out->close();
+		pos_array.discard();
 		remove(out->name().c_str());
 		throw;
 	}
@@ -313,11 +363,8 @@ void DatabaseFile::make_db()
 
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
-	pos_array.emplace_back(offset, 0);
-	for (const SeqInfo& r : pos_array)
-		serialize(*out, r);
-	pos_array.clear();
-	pos_array.shrink_to_fit();
+	pos_array.copy_to(*out);
+	serialize(*out, SeqInfo(offset, 0));      // terminating entry, as before
 	timer.finish();
 
 	if (!config.prot_accession2taxid.empty() && !config.no_parse_seqids)
