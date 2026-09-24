@@ -56,8 +56,8 @@ static CompressionLib detect_compressor(const char* b) {
 
 struct TempFileData {
 	std::string name;
-	int fd;
-	bool unlinked;
+	int fd = -1;
+	bool unlinked = false;
 };
 
 static TempFileData open_tmp_file(bool unlink)
