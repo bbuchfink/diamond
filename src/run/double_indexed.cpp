@@ -131,6 +131,12 @@ static void run_ref_chunk(SequenceFile &db_file, const unsigned query_iteration,
 		cfg.target->compute_self_aln();
 	}
 
+	timer.go("Building position indexes");
+	query_seqs.build_position_index();
+	if (cfg.target.get() != cfg.query.get())
+		cfg.target->seqs().build_position_index();
+	timer.finish();
+
 	const bool daa = *cfg.output_format == OutputFormat::daa;
 	const bool persist_dict = daa || cfg.iterated();
 	if(((cfg.blocked_processing || daa) && !config.global_ranking_targets) || cfg.iterated()) {
