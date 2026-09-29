@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <cstddef>
+#include <cstdint>
 #include <assert.h>
 #include <vector>
 #include <algorithm>
@@ -33,7 +34,7 @@ struct StringSetBase
 	using Id = BlockId;
 	using Pos = int64_t;
 
-	enum { PERIMETER_PADDING = 256 };	
+	enum { PERIMETER_PADDING = 256, POSITION_INDEX_SHIFT = 8, POSITION_INDEX_MIN_LIMITS = 1 << 16 };
 	enum : size_t { HUGE_PAGE_THRESHOLD = size_t(16) << 20 };
 	static const char DELIMITER = padding_char;
 
@@ -56,6 +57,7 @@ struct StringSetBase
 
 	void reserve(size_t n)
 	{
+		position_index_.clear();
 		limits_.push_back(raw_len() + n + padding_len);
 	}
 
@@ -70,6 +72,7 @@ struct StringSetBase
 	}
 
 	void clear() {
+		position_index_.clear();
 		limits_.resize(1);
 		data_.resize(PERIMETER_PADDING);
 	}
@@ -83,6 +86,7 @@ struct StringSetBase
 	void push_back(It begin, It end)
 	{
 		assert(begin <= end);
+		position_index_.clear();
 		limits_.push_back(raw_len() + (end - begin) + padding_len);
 		data_.append(begin, end);
 		data_.append(padding_len, padding_char);
@@ -95,6 +99,7 @@ struct StringSetBase
 		auto it = s.limits_.cbegin() + 1;
 		assert(raw_len() >= s.limits_.front());
 		const Pos offset = raw_len() - s.limits_.front();
+		position_index_.clear();
 		for (Id i = 0; i < n; ++i)
 			limits_.push_back(*it++ + offset);
 		if (remove_padding) {
@@ -113,6 +118,7 @@ struct StringSetBase
 
 	void fill(size_t n, T v)
 	{
+		position_index_.clear();
 		limits_.push_back(raw_len() + n + padding_len);
 		data_.append(n, v);
 		data_.append(padding_len, padding_char);
@@ -169,9 +175,35 @@ struct StringSetBase
 	Pos position(Id i, Length j) const
 	{ return limits_[i] + j; }
 
+	// position_index_[b] is the number of limits <= b << POSITION_INDEX_SHIFT, so it narrows the
+	// search in local_position to the few limits inside one sample interval. Mutators clear it.
+	void build_position_index()
+	{
+		position_index_.clear();
+		// Below this the limits stay in cache and the plain binary search is cheaper than a
+		// lookup in an index sized by the letter count.
+		if (limits_.size() < POSITION_INDEX_MIN_LIMITS || limits_.size() > UINT32_MAX)
+			return;
+		const size_t n = size_t(raw_len() >> POSITION_INDEX_SHIFT) + 2;
+		position_index_.resize(n);
+		size_t c = 0;
+		for (size_t b = 0; b < n; ++b) {
+			const Pos p = Pos(b) << POSITION_INDEX_SHIFT;
+			while (c < limits_.size() && limits_[c] <= p)
+				++c;
+			position_index_[b] = uint32_t(c);
+		}
+	}
+
 	std::pair<Id, Length> local_position(int64_t p) const
 	{
-		auto i = std::upper_bound(limits_.begin(), limits_.end(), p) - limits_.begin() - 1;
+		auto lo = limits_.begin(), hi = limits_.end();
+		const size_t b = size_t(p >> POSITION_INDEX_SHIFT);
+		if (p >= 0 && b + 1 < position_index_.size()) {
+			lo = limits_.begin() + position_index_[b];
+			hi = limits_.begin() + position_index_[b + 1];
+		}
+		auto i = std::upper_bound(lo, hi, p) - limits_.begin() - 1;
 		return std::pair<Id, Length>(Id(i), Length(p - limits_[i]));
 	}
 
@@ -282,6 +314,7 @@ private:
 
 	VmVector<T> data_;
 	std::vector<Pos> limits_;
+	std::vector<uint32_t> position_index_;
 
 };
 
