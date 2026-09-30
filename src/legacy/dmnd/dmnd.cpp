@@ -33,6 +33,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "data/fasta/fasta_file.h"
 #include "util/sequence/sequence.h"
 #include "legacy/dmnd/io.h"
+#include <filesystem>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 using std::tuple;
 using std::string;
@@ -214,7 +218,45 @@ bool DatabaseFile::has_taxon_scientific_names() const {
 	return header2.taxon_names_offset != 0;
 }
 
-static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, vector<SequenceFile::SeqInfo> &pos_array, File &out, size_t &letters, size_t &n_seqs)
+static void copy_bytes(File& src, File& dst, uint64_t n);
+
+// Spill the offset table to disk while building instead of holding it in RAM. The table is written
+// once, sequentially, at the end of the build, so it never needs random access. For NCBI nr
+// (1.15 billion sequences, 16 bytes per entry) the vector doubled its capacity at 2^30 entries and
+// briefly needed about 51 GB, which ended the build in the OOM killer. Same format, same order.
+struct PosSpill {
+	static const size_t BUF = 1 << 20;
+	PosSpill(const string& path) : path(path), file(new File(path, "wb")) { buf.reserve(BUF); }
+	void emplace_back(uint64_t pos, size_t len) {
+		buf.emplace_back(pos, len);
+		if (buf.size() == BUF)
+			flush();
+	}
+	void flush() {
+		for (const SequenceFile::SeqInfo& r : buf)
+			serialize(*file, r);
+		n += buf.size();
+		buf.clear();
+	}
+	void copy_to(File& out) {
+		flush();
+		file->close();
+		File in(path, "rb");
+		copy_bytes(in, out, n * SequenceFile::SeqInfo::SIZE);
+		in.close();
+		remove(path.c_str());
+	}
+	void discard() {
+		file->close();
+		remove(path.c_str());
+	}
+	const string path;
+	unique_ptr<File> file;
+	vector<SequenceFile::SeqInfo> buf;
+	uint64_t n = 0;
+};
+
+static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_t &offset, PosSpill &pos_array, File &out, size_t &letters, size_t &n_seqs)
 {
 	pos_array.emplace_back(offset, seq.length());
 	out.write("\xff", 1);
@@ -224,6 +266,86 @@ static void push_seq(const Sequence &seq, const char *id, size_t id_len, uint64_
 	letters += seq.length();
 	++n_seqs;
 	offset += seq.length() + id_len + 3;
+}
+
+static void copy_bytes(File& src, File& dst, uint64_t n)
+{
+	vector<char> buf(64 * MEGABYTES);
+	while (n > 0) {
+		const size_t k = (size_t)std::min<uint64_t>(n, buf.size());
+		src.read(buf.data(), k);
+		dst.write(buf.data(), k);
+		n -= k;
+	}
+}
+
+static void truncate_file(const string& name, uint64_t size)
+{
+#ifndef _WIN32
+	if (::truncate(name.c_str(), (off_t)size) != 0)
+		throw runtime_error("Error truncating file " + name + ". " + strerror(errno));
+#else
+	std::filesystem::resize_file(name, size);
+#endif
+}
+
+// Backup layout: [u64 header_len][u64 tail_start][u64 tail_len][header bytes][tail bytes]
+// tail = everything from pos_array_offset to EOF (pos array, taxon lists, nodes, names).
+static void append_restore(const string& db, const string& backup)
+{
+	File b(backup, "rb");
+	uint64_t header_len, tail_start, tail_len;
+	b.read(header_len);
+	b.read(tail_start);
+	b.read(tail_len);
+	truncate_file(db, tail_start);
+	File o(db, "r+b");
+	o.seek(0);
+	copy_bytes(b, o, header_len);
+	o.seek(tail_start);
+	copy_bytes(b, o, tail_len);
+	o.close();
+	b.close();
+	remove(backup.c_str());
+	*message_stream << "Append failed, database restored to its previous state." << endl;
+}
+
+static uint64_t append_prepare(const string& db, const string& backup, ReferenceHeader& header, ReferenceHeader2& header2,
+	uint64_t& old_tax_rel, uint64_t& old_tax_size, uint64_t& backup_tail_pos)
+{
+	if (std::filesystem::exists(backup))
+		throw runtime_error("Backup file " + backup + " exists: a previous append did not finish. Restore or remove it first.");
+	File in(db, "rb");
+	deserialize(in, header);
+	if (header.magic_number != ReferenceHeader::MAGIC_NUMBER)
+		throw DatabaseFormatException();
+	if (header.db_version != ReferenceHeader::current_db_version_prot)
+		throw runtime_error("--append: unsupported database version.");
+	deserialize(in, header2);
+	const uint64_t header_len = in.tell();
+	if ((header2.taxon_array_offset != 0) != !config.prot_accession2taxid.empty())
+		throw runtime_error("--append: --taxonmap must be given if and only if the database contains taxon id lists.");
+	if ((header2.taxon_nodes_offset != 0) != !config.nodesdmp.empty())
+		throw runtime_error("--append: --taxonnodes must be given if and only if the database contains taxonomy nodes.");
+	if ((header2.taxon_names_offset != 0) != !config.namesdmp.empty())
+		throw runtime_error("--append: --taxonnames must be given if and only if the database contains taxon names.");
+	const uint64_t size = std::filesystem::file_size(db), tail_start = header.pos_array_offset, tail_len = size - tail_start;
+	old_tax_rel = header2.taxon_array_offset ? header2.taxon_array_offset - tail_start : 0;
+	old_tax_size = header2.taxon_array_size;
+	backup_tail_pos = 3 * sizeof(uint64_t) + header_len;
+
+	File b(backup, "wb");
+	b.write(header_len);
+	b.write(tail_start);
+	b.write(tail_len);
+	in.seek(0);
+	copy_bytes(in, b, header_len);
+	in.seek(tail_start);
+	copy_bytes(in, b, tail_len);
+	b.close();
+	in.close();
+	truncate_file(db, tail_start);
+	return header.sequences;
 }
 
 void DatabaseFile::make_db()
@@ -243,15 +365,31 @@ void DatabaseFile::make_db()
 	value_traits = (config.dbtype == SequenceType::amino_acid) ? amino_acid_traits : nucleotide_traits;
     FastaFile db_file({ input_file_name }, Flags::NONE, value_traits);
 
-    unique_ptr<File> out(new File(config.database, "wb"));
 	ReferenceHeader header;
-    ReferenceHeader2 header2;
-
-	serialize(*out, header);
-	serialize(*out, header2);
-
+	ReferenceHeader2 header2;
+	unique_ptr<File> out;
 	size_t letters = 0, n = 0, n_seqs = 0, total_seqs = 0;
-	uint64_t offset = out->tell();
+	uint64_t offset = 0, old_seqs = 0, old_tax_rel = 0, old_tax_size = 0, backup_tail_pos = 0;
+	const string backup_file = config.database + ".append_backup";
+	bool out_open = true;
+	if (config.makedb_append) {
+		if (config.dbtype != SequenceType::amino_acid)
+			throw runtime_error("--append is only supported for protein databases.");
+		timer.go("Backing up database trailer");
+		old_seqs = append_prepare(config.database, backup_file, header, header2, old_tax_rel, old_tax_size, backup_tail_pos);
+		letters = header.letters;
+		n_seqs = old_seqs;
+		offset = header.pos_array_offset;
+		header.build = Const::build_version;
+		out.reset(new File(config.database, "r+b"));
+		out->seek(offset);
+	}
+	else {
+		out.reset(new File(config.database, "wb"));
+		serialize(*out, header);
+		serialize(*out, header2);
+		offset = out->tell();
+	}
 
 	db_file.flags() |= SequenceFile::Flags::ALL;
     if (config.dbtype == SequenceType::nucleotide){
@@ -260,7 +398,7 @@ void DatabaseFile::make_db()
     }
 
     Block* block;
-	vector<SeqInfo> pos_array;
+	PosSpill pos_array(config.database + ".pos_tmp");
 	ExternalSorter<pair<string, OId>> accessions;
 	Util::Seq::AccessionParsing acc_stats;
 	try {
@@ -305,32 +443,46 @@ void DatabaseFile::make_db()
 	}
 	catch (std::exception&) {
 		out->close();
-		remove(out->name().c_str());
+		pos_array.discard();
+		if (config.makedb_append)
+			append_restore(config.database, backup_file);
+		else
+			remove(out->name().c_str());
 		throw;
 	}
 
 	timer.finish();
 
+	Util::Table stats;
+	try {
 	timer.go("Writing trailer");
 	header.pos_array_offset = offset;
-	pos_array.emplace_back(offset, 0);
-	for (const SeqInfo& r : pos_array)
-		serialize(*out, r);
-	pos_array.clear();
-	pos_array.shrink_to_fit();
+	if (config.makedb_append) {
+		File b(backup_file, "rb");
+		b.seek(backup_tail_pos);
+		copy_bytes(b, *out, old_seqs * SeqInfo::SIZE);
+		b.close();
+	}
+	pos_array.copy_to(*out);                  // the newly added entries
+	serialize(*out, SeqInfo(offset, 0));      // terminating entry, as before
 	timer.finish();
 
 	if (!config.prot_accession2taxid.empty() && !config.no_parse_seqids)
 		*message_stream << endl << "Accession parsing rules triggered for database seqids (use --no-parse-seqids to disable):" << endl << acc_stats << endl;
 
-	Util::Table stats;
 	stats("Database sequences", n_seqs);
 	stats("Database letters", letters);
 
 	taxonomy.init();
 	if (!config.prot_accession2taxid.empty()) {
 		header2.taxon_array_offset = out->tell();
-		TaxonList::build(*out, accessions, n_seqs, stats);
+		if (config.makedb_append) {
+			File b(backup_file, "rb");
+			b.seek(backup_tail_pos + old_tax_rel);
+			copy_bytes(b, *out, old_tax_size);
+			b.close();
+		}
+		TaxonList::build(*out, accessions, n_seqs - old_seqs, stats);
 		header2.taxon_array_size = out->tell() - header2.taxon_array_offset;
 	}
 	if (!config.nodesdmp.empty()) {
@@ -357,6 +509,18 @@ void DatabaseFile::make_db()
 	serialize(*out, header);
 	serialize(*out, header2);
 	out->close();
+	out_open = false;
+	}
+	catch (std::exception&) {
+		if (config.makedb_append) {
+			if (out_open)
+				out->close();
+			append_restore(config.database, backup_file);
+		}
+		throw;
+	}
+	if (config.makedb_append)
+		remove(backup_file.c_str());
 
 	timer.finish();
 	stats("Database hash", hex_print(header2.hash, 16));
