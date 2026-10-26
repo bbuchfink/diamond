@@ -421,6 +421,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("algo", 0, "Seed search algorithm (0=double-indexed/1=query-indexed/ctg=contiguous-seed)", algo_str)
 		("min-orf", 'l', "ignore translated sequences without an open reading frame of at least this length", run_len)
 		("min-query-len", 0, "filter query sequences shorter than this length", min_query_len)
+		("dedup-frames", 0, "search byte-identical translated query frames once and share their seed hits (short reads; may change output slightly)", dedup_frames)
 		("load-threads", 0, "number of CPU threads for file I/O", load_threads, 16)
 		("minichunk", 0, "Mini chunk size for file I/O", minichunk, (size_t)262144)
 		("seed-cut", 0, "cutoff for seed complexity", seed_cut_)

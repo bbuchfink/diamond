@@ -280,6 +280,9 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (query_iteration > 0)
 		options.query_skip.reset(new vector<bool> (query_aligned));
 
+	if (config.dedup_frames && config.command != ::Config::blastn && align_mode.query_translated && !config.swipe_all)
+		Search::build_frame_dups(options);
+
 	if (options.lin_index)
 		config.algo = ::Config::Algo::DOUBLE_INDEXED;
 
@@ -345,7 +348,8 @@ static void run_query_iteration(const unsigned query_iteration,
 				options.target_seed_hits->emplace_back(options.query->seqs().raw_len());
 		}
 		EnumCfg enum_cfg{ nullptr, 0, 0, options.seed_encoding, options.query_skip.get(), false, false, options.seed_complexity_cut,
-		options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false, options.sketch_size, config.self ? options.target_seed_hits.get() : nullptr };
+		options.soft_masking, options.minimizer_window, static_cast<bool>(query_seeds_hashed.get()), false, options.sketch_size, config.self ? options.target_seed_hits.get() : nullptr,
+		options.frame_skip.get() };
 		options.query->hst() = SeedHistogram(*options.query, false, &no_filter, enum_cfg, options.seedp_bits);
 		timer.finish();
 	}

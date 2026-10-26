@@ -103,6 +103,7 @@ static void search_query_offset(const SeedLoc& q,
 	const bool skip_left_most = work_set.cfg.minimizer_window || work_set.cfg.sketch_size || config.lin_stage1_query || work_set.cfg.lin_stage1_target;
 	int n = 0;
 	size_t hit_count = 0;
+	work_set.dup_hits.clear();
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
@@ -142,15 +143,33 @@ static void search_query_offset(const SeedLoc& q,
 					else {
 						if (hit_count++ == 0)
 							work_set.out->new_query(query_id, seed_offset);
+						const uint16_t hit_score = pivot_code == 0 ? (uint16_t)scores[j] : pivot_code;
 #ifdef HIT_KEEP_TARGET_ID
-						work_set.out->write(query_id, (uint64_t)s[*(i + j)], pivot_code == 0 ? (uint16_t)scores[j] : pivot_code, block_id(s[*(i + j)]));
+						work_set.out->write(query_id, (uint64_t)s[*(i + j)], hit_score, block_id(s[*(i + j)]));
 #else
-						work_set.out->write(query_id, (uint64_t)s[*(i + j)], pivot_code == 0 ? (uint16_t)scores[j] : pivot_code);
+						work_set.out->write(query_id, (uint64_t)s[*(i + j)], hit_score);
 #endif
+						if (!work_set.cfg.frame_dup_ids.empty())
+							work_set.dup_hits.emplace_back((uint64_t)s[*(i + j)], hit_score);
 					}
 #endif
 				}
 			}
+		}
+	}
+
+	// Frames identical to this one were skipped during seed enumeration; give them the same hits.
+	if (!work_set.dup_hits.empty()) {
+		const uint32_t begin = work_set.cfg.frame_dup_begin[query_id], end = work_set.cfg.frame_dup_begin[query_id + 1];
+		for (uint32_t d = begin; d < end; ++d) {
+			const uint32_t dup = work_set.cfg.frame_dup_ids[d];
+			work_set.out->new_query(dup, seed_offset);
+			for (const auto& h : work_set.dup_hits)
+#ifdef HIT_KEEP_TARGET_ID
+				work_set.out->write(dup, PackedLoc(h.first), h.second, block_id(PackedLoc(h.first)));
+#else
+				work_set.out->write(dup, PackedLoc(h.first), h.second);
+#endif
 		}
 	}
 }

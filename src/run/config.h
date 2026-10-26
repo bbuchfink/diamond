@@ -126,6 +126,10 @@ struct Config {
 
 	std::shared_ptr<Block>                     query, target;
 	std::unique_ptr<std::vector<bool>>         query_skip;
+	// Identical translated frames are searched once: frame_skip marks the duplicates, and
+	// frame_dup_* lists, per representative, the frames its hits stand in for (see build_frame_dups).
+	std::unique_ptr<std::vector<bool>>         frame_skip;
+	std::vector<uint32_t>                      frame_dup_begin, frame_dup_ids;
 	std::unique_ptr<HitBuffer>                 seed_hit_buf;
 	std::unique_ptr<RankingBuffer>             global_ranking_buffer;
 	std::unique_ptr<RankingTable>              ranking_table;

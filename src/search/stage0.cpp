@@ -139,7 +139,7 @@ void search_shape(int sid, int query_block, unsigned query_iteration, char *quer
 		SA* query_idx;
 		EnumCfg enum_query{ target_seeds ? nullptr : &query_hst.partition(), sid, sid + 1, cfg.seed_encoding, cfg.query_skip.get(),
 			false, true, cfg.seed_complexity_cut, cfg.soft_masking, cfg.minimizer_window, static_cast<bool>(query_seeds_hashed.get()),
-			static_cast<bool>(query_seeds_hashed.get()), cfg.sketch_size, config.self ? cfg.target_seed_hits.get() : nullptr };
+			static_cast<bool>(query_seeds_hashed.get()), cfg.sketch_size, config.self ? cfg.target_seed_hits.get() : nullptr, cfg.frame_skip.get() };
 		if (target_seeds)
 			query_idx = new SA(*cfg.query, range, cfg.seedp_bits, target_seeds, enum_query);
 		else
