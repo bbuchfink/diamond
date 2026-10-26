@@ -327,6 +327,7 @@ struct Config
     int zdrop;
 	bool heartbeat;
     bool no_parse_seqids;
+    bool makedb_append;
     bool sam_qlen_field;
 #ifdef WITH_DNA
   DNAExtensionAlgo dna_extension;

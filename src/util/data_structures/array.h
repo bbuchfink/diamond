@@ -37,9 +37,12 @@ struct Array {
 	{}
 
 	Array& operator=(Array&& a) noexcept {
-		ptr_ = a.ptr_;
-		size_ = a.size_;
-		a.ptr_ = nullptr;
+		if (this != &a) {
+			delete[] ptr_;
+			ptr_ = a.ptr_;
+			size_ = a.size_;
+			a.ptr_ = nullptr;
+		}
 		return *this;
 	}
 

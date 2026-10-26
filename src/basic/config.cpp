@@ -240,6 +240,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	makedb_opt.add()
 		("in", 0, "input reference file in FASTA format/input DAA files for merge-daa", input_ref_file);
 
+	auto& makedb_append_opt = parser.add_group("Makedb append options", { makedb });
+	makedb_append_opt.add()
+		("append", 0, "append the input sequences to an existing database (same --taxonmap/--taxonnodes/--taxonnames usage as the original build)", makedb_append);
+
 	auto& makedb_tax_opt = parser.add_group("Makedb/taxon options", { makedb });
 	makedb_tax_opt.add()
 		("taxonmap", 0, "protein accession to taxid mapping file", prot_accession2taxid)
