@@ -63,8 +63,6 @@ Search::SeedStats enum_seeds(SequenceSet* seqs, F* f, unsigned begin, unsigned e
 	for (unsigned i = begin; i < end; ++i) {
 		if (UNLIKELY(cfg.skip) && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
-		if (UNLIKELY(cfg.skip_seq) && (*cfg.skip_seq)[i])
-			continue;
 		if(UNLIKELY(config.min_query_len > 0) && seqs->source_length(i) < config.min_query_len)
 			continue;
 		const Sequence seq = (*seqs)[i];
@@ -98,8 +96,6 @@ Search::SeedStats enum_seeds_minimizer(SequenceSet* seqs, F* f, unsigned begin, 
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
-		if (UNLIKELY(cfg.skip_seq) && (*cfg.skip_seq)[i])
-			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
 		const Sequence seq = (*seqs)[i];
@@ -127,8 +123,6 @@ void enum_seeds_hashed(SequenceSet* seqs, F* f, unsigned begin, unsigned end, co
 {
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
-			continue;
-		if (UNLIKELY(cfg.skip_seq) && (*cfg.skip_seq)[i])
 			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
@@ -166,8 +160,6 @@ void enum_seeds_hashed_sketch(SequenceSet* seqs, F* f, unsigned begin, unsigned 
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
 			continue;
-		if (UNLIKELY(cfg.skip_seq) && (*cfg.skip_seq)[i])
-			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;
 		const Sequence seq = (*seqs)[i];
@@ -197,8 +189,6 @@ void enum_seeds_contiguous(SequenceSet* seqs, F* f, unsigned begin, unsigned end
 	uint64_t key;
 	for (unsigned i = begin; i < end; ++i) {
 		if (cfg.skip && (*cfg.skip)[i / align_mode.query_contexts])
-			continue;
-		if (UNLIKELY(cfg.skip_seq) && (*cfg.skip_seq)[i])
 			continue;
 		if (config.min_query_len > 0 && seqs->source_length(i) < config.min_query_len)
 			continue;

@@ -361,7 +361,6 @@ struct Config
 	bool oid_output;
 	bool trace_pt_membuf;
 	Loc min_query_len;
-	bool dedup_frames;
 	bool hit_membuf;
 	size_t minichunk;
 	std::string aln_out;
