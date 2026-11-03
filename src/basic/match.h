@@ -451,6 +451,7 @@ struct HspContext
 		return hsp_;
 	}
 	HspContext& parse(const OutputFormat* output_format);
+	void set_hsp(Hsp&& h) { hsp_ = std::move(h); }
 
 	TranslatedSequence query;
 	std::string query_title, target_title;

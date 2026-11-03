@@ -157,6 +157,11 @@ struct SequenceFile {
 	virtual void skip_id_data() = 0;
 	virtual std::string seqid(OId oid, bool all, bool full_titles);
 	virtual std::string dict_title(DictId dict_id, const size_t ref_block) const final;
+	const char* dict_title_c_str(DictId dict_id, const size_t ref_block) const {
+		const size_t b = dict_block(ref_block);
+		if (b >= dict_title_.size() || dict_id >= (DictId)dict_title_[b].size()) throw std::runtime_error("Dictionary not loaded.");
+		return dict_title_[b][dict_id];
+	}
 	virtual Loc dict_len(DictId dict_id, const size_t ref_block);
 	std::vector<Letter> dict_seq(DictId dict_id, const size_t ref_block);
 	virtual optional<uint64_t> sequence_count() const = 0;

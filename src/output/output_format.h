@@ -206,6 +206,7 @@ struct TabularFormat : public OutputFormat
 	void output_header(File& f, bool cluster) const;
 	std::vector<FieldId> fields;
 	bool is_json;
+	std::vector<const FieldCallbacks*> callbacks_;
 };
 
 

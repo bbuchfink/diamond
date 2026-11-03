@@ -79,7 +79,11 @@ inline ssize_t getdelim_generic(char** buf, size_t* buf_size, char delimiter, Re
 
 struct PassThrough : Decompressor {
 	size_t fread(void* buffer, size_t size, size_t count, FILE* stream) override {
+#if defined(_MSC_VER) || defined(__APPLE__)
 		return std::fread(buffer, size, count, stream);
+#else
+		return fread_unlocked(buffer, size, count, stream);
+#endif
 	}
 	int fgetc(FILE* stream) override {
 #if defined(_MSC_VER) || defined(__APPLE__)

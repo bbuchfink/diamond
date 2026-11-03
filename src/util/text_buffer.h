@@ -28,10 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 inline size_t find_first_of(const char* s, const char* delimiters)
 {
-	const char* t = s;
-	while (*t && strchr(delimiters, *t) == 0)
-		++t;
-	return t - s;
+	return strcspn(s, delimiters);
 }
 
 struct TextBuffer
