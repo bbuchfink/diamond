@@ -110,8 +110,11 @@ static void search_query_offset(const SeedLoc& q,
 	for (vector<uint_fast32_t>::const_iterator i = hits; i < hits_end; i += n) {
 
 		n = std::min(N, int(hits_end - i));
-		for (int j = 0; j < n; ++j)
+		for (int j = 0; j < n; ++j) {
+			if (i + j + 8 < hits_end)
+				__builtin_prefetch(ref_seqs.data(s[*(i + j + 8)]) - window_left, 0, 1);
 			subjects[j] = ref_seqs.data(s[*(i + j)]) - window_left;
+		}
 		if (score_cutoff)
 			DP::window_ungapped_best(query_clipped.data(), subjects, n, window_clipped, scores);
 
