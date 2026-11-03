@@ -18,9 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <string>
 #include <vector>
 #include <stdexcept>
 #include <cstdio>
+#include <cstdlib>
 #include <zlib.h>
 #ifdef WITH_ZSTD
 #include <zstd.h>
@@ -38,6 +40,20 @@ struct Decompressor {
 	virtual ssize_t getdelim(char** buf, size_t* buf_size, char delimiter, FILE* fp) = 0;
 	ssize_t getline(char** buf, size_t* buf_size, FILE* fp) {
 		return getdelim(buf, buf_size, '\n', fp);
+	}
+	virtual size_t read_to_fasta_record_end(std::string& dst, FILE* stream) {
+		size_t n = 0;
+		int c;
+		for (;;) {
+			if ((c = this->fgetc(stream)) == EOF)
+				return n;
+			if (c == '>' && !dst.empty() && (dst.back() == '\n' || dst.back() == '\r')) {
+				this->ungetc(c, stream);
+				return n;
+			}
+			++n;
+			dst.push_back((char)c);
+		}
 	}
 	virtual CompressionLib lib() const = 0;
 	virtual int ungetc(int c, FILE* stream) = 0;
@@ -95,6 +111,20 @@ struct PassThrough : Decompressor {
 		return ::getdelim(buf, buf_size, delimiter, fp);
 #endif
 	}
+	size_t read_to_fasta_record_end(std::string& dst, FILE* stream) override {
+		size_t n = 0;
+		int c;
+		for (;;) {
+			if ((c = PassThrough::fgetc(stream)) == EOF)
+				return n;
+			if (c == '>' && !dst.empty() && (dst.back() == '\n' || dst.back() == '\r')) {
+				std::ungetc(c, stream);
+				return n;
+			}
+			++n;
+			dst.push_back((char)c);
+		}
+	}
 	virtual CompressionLib lib() const override {
 		return CompressionLib::NONE;
 	}
@@ -112,19 +142,24 @@ struct ZlibDecompressor : Decompressor {
 	size_t fread(void* buffer, size_t size, size_t count, FILE* stream) override;
 	int fgetc(FILE* stream) override;
 	ssize_t getdelim(char** buf, size_t* buf_size, char delimiter, FILE* fp) override;
+	size_t read_to_fasta_record_end(std::string& dst, FILE* stream) override;
 	virtual CompressionLib lib() const override {
 		return CompressionLib::ZLIB;
 	}
 	int ungetc(int c, FILE* stream) override;
 	virtual void reset() override;
 	virtual bool eof(FILE*) const override {
-		return eos_ && pushback_ == EOF;
+		return eos_ && out_pos_ == out_end_ && pushback_ == EOF;
 	}
 	virtual ~ZlibDecompressor();
 private:
+	bool fill_out_buf(FILE* stream);
 	static const size_t chunk_size = 1llu << 20;
 	z_stream strm_;
 	std::vector<unsigned char> in_;
+	std::vector<unsigned char> out_;
+	size_t out_pos_ = 0;
+	size_t out_end_ = 0;
 	bool eos_ = false;
 	bool initialized_ = false;
 	int pushback_ = EOF;
@@ -136,19 +171,24 @@ struct ZstdDecompressor : Decompressor {
 	size_t fread(void* buffer, size_t size, size_t count, FILE* stream) override;
 	int fgetc(FILE* stream) override;
 	ssize_t getdelim(char** buf, size_t* buf_size, char delimiter, FILE* fp) override;
+	size_t read_to_fasta_record_end(std::string& dst, FILE* stream) override;
 	virtual CompressionLib lib() const override {
 		return CompressionLib::ZSTD;
 	}
 	int ungetc(int c, FILE* stream) override;
 	virtual void reset() override;
 	virtual bool eof(FILE*) const override {
-		return eos_ && pushback_ == EOF;
+		return eos_ && out_pos_ == out_end_ && pushback_ == EOF;
 	}
 	virtual ~ZstdDecompressor();
 private:
+	bool fill_out_buf(FILE* stream);
 	static const size_t chunk_size = 1llu << 20;
 	ZSTD_DStream* strm_ = nullptr;
 	std::vector<unsigned char> in_;
+	std::vector<unsigned char> out_;
+	size_t out_pos_ = 0;
+	size_t out_end_ = 0;
 	ZSTD_inBuffer in_buf_{ nullptr, 0, 0 };
 	bool eos_ = false;
 	int pushback_ = EOF;

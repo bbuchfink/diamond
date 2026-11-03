@@ -252,8 +252,18 @@ struct FastaRawChunk : public RawChunk {
 	}
 
 	static const char* find_record_end(const char* begin, const char* end) {
-		static const char* delimiter = "\n>";
-		return std::search(begin + 1, end, delimiter, delimiter + 2);
+		if (end - begin <= 2)
+			return end;
+		const char* p = begin + 2;
+		while (p < end) {
+			const char* gt = static_cast<const char*>(std::memchr(p, '>', static_cast<size_t>(end - p)));
+			if (!gt)
+				return end;
+			if (gt[-1] == '\n')
+				return gt - 1;
+			p = gt + 1;
+		}
+		return end;
 	}
 
 	void parse_sequence(const char* begin, const char* end, vector<Letter>& out) const {
