@@ -30,6 +30,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../score_vector_int16.h"
 #include "../score_vector_int8.h"
 
+#if !defined(__APPLE__) && !defined(USE_TLS)
+#define USE_TLS
+#endif
+
 using std::list;
 using std::thread;
 using std::atomic;
@@ -103,7 +107,11 @@ struct Banded3FrameSwipeMatrix
 
 private:
 	const size_t band_;
+#ifdef USE_TLS
+	static thread_local MemBuffer<Sv> hgap_, score_;
+#else
 	MemBuffer<Sv> hgap_, score_;
+#endif
 
 };
 
@@ -306,10 +314,20 @@ struct Banded3FrameSwipeTracebackMatrix
 
 private:
 	const size_t band_;
-	MemBuffer<Sv> hgap_;
-	MemBuffer<Sv> score_;
+#ifdef USE_TLS
+	static thread_local MemBuffer<Sv> hgap_, score_;
+#else
+	MemBuffer<Sv> hgap_, score_;
+#endif
 
 };
+
+#ifdef USE_TLS
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeMatrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeMatrix<Sv>::score_;
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeTracebackMatrix<Sv>::hgap_;
+template<typename Sv> thread_local MemBuffer<Sv> Banded3FrameSwipeTracebackMatrix<Sv>::score_;
+#endif
 
 template<typename Sv, typename Traceback>
 struct Banded3FrameSwipeMatrixRef
@@ -457,7 +475,7 @@ list<Hsp> banded_3frame_swipe(
 #endif
 		for (int i = i0_; i <= i1_; ++i) {
 			hgap = it.hgap();
-			Sv next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[0][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
+			Sv next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -465,7 +483,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen2)
 				break;
 			hgap = it.hgap();
-			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[1][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
+			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -473,7 +491,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen3)
 				break;
 			hgap = it.hgap();
-			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(q[2][i]), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
+			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
