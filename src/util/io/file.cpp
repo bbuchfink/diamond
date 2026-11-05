@@ -374,25 +374,23 @@ size_t File::read_raw(string& dst, size_t count) {
 }
 
 uint64_t File::read_to_fasta_record_end(std::string& dst) {
-	uint64_t n = 0;
-	int c;
-	for (;;) {
-		if ((c = decompressor_->fgetc(file_)) == EOF)
-			return n;
-		if (c == '>' && (dst.back() == '\n' || dst.back() == '\r')) {
-			decompressor_->ungetc(c, file_);
-			return n;
-		}
-		++n;
-		dst.push_back(c);
-	}
+	return decompressor_->read_to_fasta_record_end(dst, file_);
 }
 
 bool File::eof() const {
 	return decompressor_->eof(file_);
 }
 
-string File::peek(int64_t n) {	
+string File::peek(int64_t n) {
+	if (n == 1) {
+		int c = decompressor_ ? decompressor_->fgetc(file_) : fgetc(file_);
+		if (c == EOF)
+			return string();
+		const int u = decompressor_ ? decompressor_->ungetc(c, file_) : ungetc(c, file_);
+		if (u == EOF)
+			throw std::runtime_error("Error calling ungetc on stream " + file_name_);
+		return string(1, (char)c);
+	}
 	if (seekable_ && (decompressor_ == nullptr || decompressor_->lib() == CompressionLib::NONE)) {
 		char buf[4];
 		const size_t l = read_max(buf, n);
