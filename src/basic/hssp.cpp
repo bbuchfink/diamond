@@ -380,8 +380,10 @@ Hsp::Hsp(const ApproxHsp& h, Loc qlen, Loc tlen) :
 }
 
 bool Hsp::is_identity(const Sequence& query, const Sequence& target) const {
-	query_range.check(query.length());
-	subject_range.check(target.length());
+	if (query_range.begin_ < 0 || query_range.end_ < query_range.begin_ || query_range.end_ > query.length())
+		return false;
+	if (subject_range.begin_ < 0 || subject_range.end_ < subject_range.begin_ || subject_range.end_ > target.length())
+		return false;
 	return query_range.length() == subject_range.length()
 		&& std::equal(query.data() + query_range.begin_, query.data() + query_range.end_, target.data() + subject_range.begin_,
 			[](Letter x, Letter y) {return letter_mask(x) == letter_mask(y); });
