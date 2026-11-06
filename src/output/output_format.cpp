@@ -152,6 +152,7 @@ void IntermediateRecord::finish_file(File& f)
 
 void OutputFormat::print_title(TextBuffer &buf, const char *id, bool full_titles, bool all_titles, const char *separator, const EscapeSequences *esc, bool json_array)
 {
+	if (!all_titles && !full_titles && esc == 0 && !json_array) { buf.write_until(id, Util::Seq::id_delimiters); return; }
 	Util::String::Tokenizer<Util::String::StringDelimiters> tok(id, Util::String::StringDelimiters(Util::Seq::FASTA_HEADER_SEP, 2));
 	string s;
 	int n = 0;

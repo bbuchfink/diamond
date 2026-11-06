@@ -654,6 +654,7 @@ TabularFormat::TabularFormat(bool json) :
         else
             hsp_values = HspValues::TRANSCRIPT;
         flags |= Output::Flags::SSEQID;
+        for (FieldId id : fields) callbacks_.push_back(&field_callbacks.at(id));
         return;
     }
     for (vector<string>::const_iterator i = f.begin() + 1; i != f.end(); ++i) {
@@ -687,6 +688,7 @@ TabularFormat::TabularFormat(bool json) :
             throw std::runtime_error("Output field only supported for translated search.");
         hsp_values |= field_def.at(id).hsp_values;
         flags |= field_def.at(id).flags;
+        callbacks_.push_back(&field_callbacks.at(id));
     }
     //if (config.traceback_mode == TracebackMode::NONE && config.max_hsps == 1 && !needs_transcript && !needs_stats && !config.query_range_culling && config.min_id == 0.0 && config.query_cover == 0.0 && config.subject_cover == 0.0)
         //config.traceback_mode = TracebackMode::SCORE_ONLY;
@@ -738,6 +740,10 @@ void TabularFormat::print_match(const HspContext& r, Output::Info& info)
         if (is_json && !flag_any(field.flags, Flags::IS_STRING) && !flag_any(field.flags, Flags::IS_ARRAY))
             out << "N/A";
     };
+    if (!is_json && !r.seed_only() && !callbacks_.empty()) {
+        for (size_t k = 0, n = callbacks_.size(); k < n; ++k) { if (k) out << '\t'; callbacks_[k]->match(*this, r, info); }
+        out << '\n'; return;
+    }
     if (is_json) {
         if (r.hit_num != 0)
             out << ",";
