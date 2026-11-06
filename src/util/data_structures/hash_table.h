@@ -61,6 +61,14 @@ struct HashTable : private HashFunction
 	{
 	}
 
+	HashTable(char* table, size_t size, const HashFunction &hash):
+		HashFunction(hash),
+		table((Entry*)table),
+		size_(size / sizeof(Entry)),
+		destroy_(false)
+	{
+	}
+
 	~HashTable()
 	{
 		if (destroy_)

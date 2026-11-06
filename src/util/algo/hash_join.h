@@ -18,6 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -49,6 +52,22 @@ struct RelPtr
 	size_t r, s;
 };
 
+template<typename Entry>
+struct HashJoinTableTlsBuf {
+	Entry *ptr = nullptr;
+	size_t cap = 0;
+	~HashJoinTableTlsBuf() { std::free(ptr); }
+	Entry* get_zeroed(size_t n) {
+		if (n > cap) {
+			std::free(ptr);
+			cap = std::max(n, cap * 2);
+			ptr = (Entry*)std::malloc(sizeof(Entry) * cap);
+		}
+		std::memset(ptr, 0, sizeof(Entry) * n);
+		return ptr;
+	}
+};
+
 template<typename T>
 void hash_table_join(
 	const Relation<T> &R,
@@ -61,7 +80,8 @@ void hash_table_join(
 	typedef HashTable<Key, RelPtr, ExtractBits<Key>, NoModulo> Table;
 	
 	Key N = (Key)next_pow2(R.n * config.join_ht_factor);
-	Table table(N, ExtractBits<Key>(N, shift));
+	static thread_local HashJoinTableTlsBuf<typename Table::Entry> tls_ht;
+	Table table((char*)tls_ht.get_zeroed(N), (size_t)N * sizeof(typename Table::Entry), ExtractBits<Key>(N, shift));
 	typename Table::Entry *p;
 
 	for (T *i = R.data; i < R.end(); ++i) {
@@ -112,6 +132,21 @@ void hash_table_join(
 	}
 }
 
+struct RelPtrTlsBuf {
+	RelPtr *ptr = nullptr;
+	size_t cap = 0;
+	~RelPtrTlsBuf() { std::free(ptr); }
+	RelPtr* get_zeroed(size_t n) {
+		if (n > cap) {
+			std::free(ptr);
+			cap = std::max(n, cap * 2);
+			ptr = (RelPtr*)std::malloc(sizeof(RelPtr) * cap);
+		}
+		std::memset(ptr, 0, sizeof(RelPtr) * n);
+		return ptr;
+	}
+};
+
 template<typename T>
 void table_join(
 	const Relation<T> &R,
@@ -124,15 +159,17 @@ void table_join(
 	using Key = typename T::Key;
 	const Key keys = (Key)1 << (total_bits - shift);
 	ExtractBits<Key> key(keys, shift);
-	RelPtr *table = (RelPtr*)calloc(keys, sizeof(RelPtr));
-	MEM_TRACK(table, (int64_t)keys * sizeof(RelPtr));
+	static thread_local RelPtrTlsBuf tls_table;
+	RelPtr *table = tls_table.get_zeroed(keys);
 	RelPtr *p;
 
-	for (T *i = R.data; i < R.end(); ++i)
+	const T *r_end = R.end();
+	for (T *i = R.data; i < r_end; ++i)
 		++table[key(i->key)].r;
 
 	T *hit_s = S.data;
-	for (T *i = S.data; i < S.end(); ++i) {
+	const T *s_end = S.end();
+	for (T *i = S.data; i < s_end; ++i) {
 		if ((p = &table[key(i->key)])->r) {
 			++p->s;
 			std::copy(i, i + 1, hit_s++);
@@ -156,7 +193,7 @@ void table_join(
 	dst_r.set_end(it_r);
 	dst_s.set_end(it_s);
 
-	for (const T *i = R.data; i < R.end(); ++i) {
+	for (const T *i = R.data; i < r_end; ++i) {
 		p = &table[key(i->key)];
 		if (p->s) {
 			dst_r[p->r] = i->value;
@@ -169,9 +206,6 @@ void table_join(
 		dst_s[p->s] = i->value;
 		p->s += sizeof(typename T::Value);
 	}
-
-	MEM_UNTRACK(table);
-	free(table);
 }
 
 template<typename T>
@@ -199,7 +233,9 @@ void hash_join(
 	}
 	else {
 		const unsigned clusters = 1 << config.radix_bits;
-		size_t *hstR = new size_t[clusters], *hstS = new size_t[clusters];
+		size_t hstR_stack[256], hstS_stack[256];
+		size_t *hstR = (clusters <= 256) ? hstR_stack : new size_t[clusters];
+		size_t *hstS = (clusters <= 256) ? hstS_stack : new size_t[clusters];
 		radix_cluster<T, typename T::GetKey>(R, shift, dst_r, hstR);
 		radix_cluster<T, typename T::GetKey>(S, shift, dst_s, hstS);
 
@@ -208,25 +244,37 @@ void hash_join(
 		for (unsigned i = 1; i < clusters; ++i)
 			hash_join(Relation<T>(dst_r + hstR[i - 1], hstR[i] - hstR[i - 1]), Relation<T>(dst_s + hstS[i - 1], hstS[i] - hstS[i - 1]), R.data + hstR[i - 1], S.data + hstS[i - 1], out_r, out_s, total_bits, shift);
 
-		delete[] hstR;
-		delete[] hstS;
+		if (clusters > 256) {
+			delete[] hstR;
+			delete[] hstS;
+		}
 	}
 }
+
+template<typename T>
+struct HashJoinScratchBuf {
+	T *ptr = nullptr;
+	size_t cap = 0;
+	~HashJoinScratchBuf() { std::free(ptr); }
+	T* get(size_t n) {
+		if (n > cap) {
+			std::free(ptr);
+			cap = std::max(n, cap * 2);
+			ptr = (T*)std::malloc(sizeof(T) * cap);
+		}
+		return ptr;
+	}
+};
 
 template<typename T>
 std::pair<DoubleArray<typename T::Value>, DoubleArray<typename T::Value>> hash_join(Relation<T> R, Relation<T> S, unsigned total_bits = 32) {
 	const bool swap = config.hash_join_swap && R.n > S.n;
 	if (swap)
 		std::swap(R, S);
-	T *buf_r = (T*)malloc(sizeof(T) * R.n), *buf_s = (T*)malloc(sizeof(T) * S.n);
-	MEM_TRACK(buf_r, (int64_t)sizeof(T) * R.n);
-	MEM_TRACK(buf_s, (int64_t)sizeof(T) * S.n);
+	static thread_local HashJoinScratchBuf<T> tls_buf_r, tls_buf_s;
+	T *buf_r = tls_buf_r.get(R.n), *buf_s = tls_buf_s.get(S.n);
 	DoubleArray<typename T::Value> out_r((void*)R.data), out_s((void*)S.data);
 	hash_join(R, S, buf_r, buf_s, out_r, out_s, total_bits);
-	MEM_UNTRACK(buf_r);
-	MEM_UNTRACK(buf_s);
-	free(buf_r);
-	free(buf_s);
 	if (swap)
 		std::swap(out_r, out_s);
 	return { out_r, out_s };

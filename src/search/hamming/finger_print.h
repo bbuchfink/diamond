@@ -217,6 +217,8 @@ static void load_fps(const SeedLoc* p, size_t n, ::Search::Container& v, const S
 	const SeedLoc* end = p + n;
 	array<char, 48>* dst = v.data();
 	for (; p < end; ++p) {
+		if (p + 4 < end)
+			__builtin_prefetch(seqs.data(*(p + 4)) - 16, 0, 1);
 		FingerPrint::load(seqs.data(*p), dst++);
 	}
 }
