@@ -115,8 +115,14 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 	Block* block = new Block();
 	const uint64_t size_est = std::min(max_letters, disk_size_);
 	const BlockId entry_est = (size_est + SEQ_LEN_EST - 1) / SEQ_LEN_EST;
-	if (load_seqs)
-		block->seqs().reserve(entry_est, size_est, verbose_logging);
+	if (load_seqs) {
+		if (value_traits_.seq_type == SequenceType::nucleotide) {
+			block->seqs().reserve(entry_est * 6, size_est * 2, verbose_logging);
+			block->source_seqs().reserve(entry_est, size_est, verbose_logging);
+		}
+		else
+			block->seqs().reserve(entry_est, size_est, verbose_logging);
+	}
 	if (load_titles) {
 		block->reserve_ids(std::min(ID_EST * entry_est, size_est), entry_est, verbose_logging);
 	}
@@ -181,7 +187,7 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 			delete rc;
 			break;
 		}
-		block_letters += byte_limited ? rc->bytes() : rc->letters();
+		block_letters += rc->letters() > 0 ? rc->letters() : rc->bytes();
 		bytes += rc->bytes();
 		queue.enqueue(rc);
 	} while (!pool.stop() && block_letters < max_letters);
@@ -197,13 +203,12 @@ pair<Block*, int64_t> SequenceFile::load_parallel(const uint64_t max_letters, co
 	}
 	if (seqs > 0) {
 		if (load_seqs) {
-			block->source_seqs().finish_reserve(verbose_logging);
 			block->seqs().finish_reserve(verbose_logging);
+			if (value_traits_.seq_type == SequenceType::nucleotide)
+				block->source_seqs().finish_reserve(verbose_logging);
 		}
 		if (load_titles)
 			block->ids().finish_reserve(verbose_logging);
-		if (value_traits_.seq_type == SequenceType::nucleotide)
-			block->source_seqs_.finish_reserve(verbose_logging);
 	}
 	block->raw_bytes_ = bytes;
 	return { block, seqs };
@@ -369,7 +374,7 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, OId max_seqs, const Bi
 	if (type_ == Type::BLAST) {
 		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
 	}
-	else if (type_ == Type::FASTA && filter == nullptr && file_count() == 1 && static_cast<FastaFile*>(this)->is_fasta() && max_seqs == 0 && chunk.n_seqs == 0 && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION) && config.command != Config::regression_test) {
+	else if (type_ == Type::FASTA && filter == nullptr && file_count() == 1 && max_seqs == 0 && chunk.n_seqs == 0 && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION) && config.command != Config::regression_test) {
 		tie(block, seqs_processed) = load_parallel(max_letters, filter, nullptr, chunk, false);
 	}
 	else if (type_ == Type::VOLUMED && filter == nullptr && max_seqs == 0 && chunk.n_seqs == 0 && !flag_any(flags_, Flags::QUALITY | Flags::DNA_PRESERVATION)) {

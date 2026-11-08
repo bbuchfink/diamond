@@ -88,6 +88,7 @@ struct File {
 	}
 
 	uint64_t read_to_fasta_record_end(std::string& dst);
+	uint64_t read_to_line_end(std::string& dst);
 	static int64_t count_lines(const std::string& file_name);
 	void read_text_mt(int64_t max_size, int threads, std::function<void(int64_t chunk, const char*, const char*)>& callback);
 	size_t line_count = 0;

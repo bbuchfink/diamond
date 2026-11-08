@@ -283,21 +283,225 @@ struct FastaRawChunk : public RawChunk {
 	size_t bytes_;
 };
 
+struct FastqRawChunk : public RawChunk {
+	FastqRawChunk(const ValueTraits& value_traits) :
+		value_traits_(value_traits),
+		bytes_(0),
+		records_(0),
+		letters_(0),
+		id_letters_(0)
+	{}
+
+	virtual bool empty() const override {
+		return data_.empty();
+	}
+
+	virtual OId begin() const noexcept override {
+		return 0;
+	}
+
+	virtual OId end() const noexcept override {
+		return 0;
+	}
+
+	virtual DecodedPackage* decode(SequenceFile::Flags flags, const BitVector* filter, unordered_map<string, bool>* accs, SequenceType seq_type) const override {
+		static const char* DNA_ERR = "The sequences are expected to be proteins but only contain DNA letters. Use the option --ignore-warnings to proceed.";
+		assert(filter == nullptr && accs == nullptr);
+		const int frame_mask = ::frame_mask();
+		DecodedPackage* pkg = new DecodedPackage();
+		pkg->no = no;
+		const bool titles = flag_any(flags, SequenceFile::Flags::TITLES),
+			seqs = flag_any(flags, SequenceFile::Flags::SEQS),
+			preserve_dna = flag_any(flags, SequenceFile::Flags::DNA_PRESERVATION),
+			load_qual = flag_any(flags, SequenceFile::Flags::QUALITY);
+		vector<Letter> seq;
+		vector<char> qual;
+		string id;
+		if (seqs) {
+			if (seq_type == SequenceType::amino_acid || preserve_dna)
+				pkg->block.seqs().reserve(records_, letters_);
+			else {
+				pkg->block.source_seqs().reserve(records_, letters_);
+				pkg->block.seqs().reserve(records_ * 6, letters_ * 2);
+			}
+		}
+		if (titles)
+			pkg->block.reserve_ids(id_letters_, (BlockId)records_);
+		const char* ptr = data_.data(), *end = ptr + data_.size();
+		int64_t looks_like_dna = 0;
+		auto next_line_view = [&](const char*& line_begin, const char*& line_end) -> bool {
+			if (ptr >= end)
+				return false;
+			line_begin = ptr;
+			const char* nl = static_cast<const char*>(std::memchr(ptr, '\n', end - ptr));
+			if (nl) {
+				line_end = Util::String::trim_cr(ptr, nl);
+				ptr = nl + 1;
+			}
+			else {
+				line_end = Util::String::trim_cr(ptr, end);
+				ptr = end;
+			}
+			return true;
+		};
+		while (ptr < end) {
+			const char* line_begin, *line_end;
+			if (!next_line_view(line_begin, line_end))
+				break;
+			if (line_begin == line_end || *line_begin != '@')
+				throw Util::String::MalformedFastqRecord();
+			if (titles)
+				id.assign(line_begin + 1, line_end);
+			seq.clear();
+			size_t seq_len = 0;
+			for (;;) {
+				if (!next_line_view(line_begin, line_end) || line_begin == line_end)
+					throw Util::String::MalformedFastqRecord();
+				if (*line_begin == '+')
+					break;
+				seq_len += line_end - line_begin;
+				if (seqs) {
+					seq.reserve(seq.size() + (line_end - line_begin));
+					for (const char* i = line_begin; i < line_end; ++i)
+						seq.push_back(value_traits_.from_char(*i));
+				}
+			}
+			qual.clear();
+			size_t qual_len = 0;
+			for (;;) {
+				if (!next_line_view(line_begin, line_end))
+					break;
+				qual_len += line_end - line_begin;
+				if (load_qual)
+					qual.insert(qual.end(), line_begin, line_end);
+				if (qual_len >= seq_len)
+					break;
+			}
+			if (seqs && seq.empty())
+				continue;
+			pkg->block.push_back(Sequence(seq), titles ? id.c_str() : nullptr, load_qual ? &qual : nullptr, std::numeric_limits<OId>::max(), seq_type, frame_mask, !preserve_dna);
+			++pkg->seq_count;
+			if (pkg->no == 0 && pkg->seq_count <= CHECK_FOR_DNA_COUNT && value_traits_.seq_type == SequenceType::amino_acid && Util::Seq::looks_like_dna(Sequence(seq)) && !config.ignore_warnings) {
+				++looks_like_dna;
+				if (looks_like_dna >= CHECK_FOR_DNA_COUNT)
+					throw runtime_error(DNA_ERR);
+			}
+		}
+		if (pkg->no == 0 && pkg->seq_count > 0 && looks_like_dna == pkg->seq_count)
+			throw runtime_error(DNA_ERR);
+		return pkg;
+	}
+
+	virtual size_t letters() const noexcept override {
+		return letters_;
+	}
+
+	virtual size_t bytes() const noexcept override {
+		return bytes_;
+	}
+
+	bool next_line(File& file, size_t& pos, size_t& line_start, size_t& trimmed_len) {
+		line_start = pos;
+		if (pos >= data_.size()) {
+			const uint64_t n = file.read_to_line_end(data_);
+			if (n == 0)
+				return false;
+			bytes_ += n;
+			pos = data_.size();
+		}
+		else {
+			const char* begin = data_.data() + pos;
+			const size_t rem = data_.size() - pos;
+			const char* nl = static_cast<const char*>(std::memchr(begin, '\n', rem));
+			if (!nl) {
+				bytes_ += file.read_to_line_end(data_);
+				pos = data_.size();
+			}
+			else {
+				pos = (nl - data_.data()) + 1;
+			}
+		}
+		size_t line_end = pos;
+		if (line_end > line_start && data_[line_end - 1] == '\n')
+			--line_end;
+		if (line_end > line_start && data_[line_end - 1] == '\r')
+			--line_end;
+		trimmed_len = line_end - line_start;
+		return true;
+	}
+
+	void read_to_record_end(File& file) {
+		const size_t orig_size = data_.size();
+		size_t pos = 0, line_start = 0, trimmed_len = 0;
+		while (pos < orig_size) {
+			if (!next_line(file, pos, line_start, trimmed_len))
+				break;
+			if (trimmed_len == 0) {
+				if (pos == data_.size() && file.read_to_line_end(data_) == 0) {
+					data_.resize(line_start);
+					break;
+				}
+				throw Util::String::MalformedFastqRecord();
+			}
+			if (data_[line_start] != '@')
+				throw Util::String::MalformedFastqRecord();
+			id_letters_ += trimmed_len - 1;
+			size_t seq_len = 0;
+			for (;;) {
+				if (!next_line(file, pos, line_start, trimmed_len) || trimmed_len == 0)
+					throw Util::String::MalformedFastqRecord();
+				if (data_[line_start] == '+')
+					break;
+				seq_len += trimmed_len;
+			}
+			size_t qual_len = 0;
+			for (;;) {
+				if (!next_line(file, pos, line_start, trimmed_len))
+					break;
+				qual_len += trimmed_len;
+				if (qual_len >= seq_len)
+					break;
+			}
+			++records_;
+			letters_ += seq_len;
+		}
+	}
+
+	const ValueTraits& value_traits_;
+	string data_;
+	size_t bytes_;
+	size_t records_;
+	size_t letters_;
+	size_t id_letters_;
+};
+
 }
 
 RawChunk* FastaFile::raw_chunk(size_t bytes, Flags flags) {
-	if (format_ != SeqFileFormat::FASTA)
-		throw OperationNotSupported();
-	FastaRawChunk* chunk = new FastaRawChunk(value_traits_);
-	chunk->no = raw_chunk_no_++;
-	if (bytes == 0)
-		return chunk;
-	chunk->bytes_ = file_ptr_->read_raw(chunk->data_, bytes);
-	if (chunk->data_.empty())
-		return chunk;
-	chunk->bytes_ += file_ptr_->read_to_fasta_record_end(chunk->data_);
 	(void)flags;
-	return chunk;
+	if (format_ == SeqFileFormat::FASTA) {
+		FastaRawChunk* chunk = new FastaRawChunk(value_traits_);
+		chunk->no = raw_chunk_no_++;
+		if (bytes == 0)
+			return chunk;
+		chunk->bytes_ = file_ptr_->read_raw(chunk->data_, bytes);
+		if (chunk->data_.empty())
+			return chunk;
+		chunk->bytes_ += file_ptr_->read_to_fasta_record_end(chunk->data_);
+		return chunk;
+	}
+	else if (format_ == SeqFileFormat::FASTQ) {
+		FastqRawChunk* chunk = new FastqRawChunk(value_traits_);
+		chunk->no = raw_chunk_no_++;
+		if (bytes == 0)
+			return chunk;
+		chunk->bytes_ = file_ptr_->read_raw(chunk->data_, bytes);
+		if (chunk->data_.empty())
+			return chunk;
+		chunk->read_to_record_end(*file_ptr_);
+		return chunk;
+	}
+	throw OperationNotSupported();
 }
 
 void FastaFile::create_partition_balanced(int64_t max_letters) {

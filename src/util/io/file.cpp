@@ -377,6 +377,16 @@ uint64_t File::read_to_fasta_record_end(std::string& dst) {
 	return decompressor_->read_to_fasta_record_end(dst, file_);
 }
 
+uint64_t File::read_to_line_end(std::string& dst) {
+	const ssize_t n = decompressor_->getline(&line_buf_, &line_buf_size_, file_);
+	if (ferror(file_))
+		throw runtime_error("Error reading file " + file_name_ + ". " + strerror(errno));
+	if (n <= 0)
+		return 0;
+	dst.append(line_buf_, n);
+	return (uint64_t)n;
+}
+
 bool File::eof() const {
 	return decompressor_->eof(file_);
 }
