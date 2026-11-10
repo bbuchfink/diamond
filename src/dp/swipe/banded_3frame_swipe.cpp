@@ -44,6 +44,33 @@ using std::runtime_error;
 namespace DISPATCH_ARCH {
 
 template<typename Sv>
+inline Sv swipe_cell_update(const Sv &diagonal_cell,
+	const Sv &shift_cell0,
+	const Sv &shift_cell1,
+	const Sv &scores,
+	const Sv &gap_extension,
+	const Sv &gap_open,
+	const Sv &frame_shift,
+	Sv &horizontal_gap,
+	Sv &vertical_gap,
+	Sv &best)
+{
+	using std::max;
+	const Sv f = scores - frame_shift;
+	const Sv shift_max = max(shift_cell0, shift_cell1);
+	Sv current_cell = max(diagonal_cell + scores, shift_max + f);
+	current_cell = max(current_cell, max(vertical_gap, horizontal_gap));
+	saturate(current_cell);
+	best = max(best, current_cell);
+	vertical_gap -= gap_extension;
+	horizontal_gap -= gap_extension;
+	const Sv open = current_cell - gap_open;
+	vertical_gap = max(vertical_gap, open);
+	horizontal_gap = max(horizontal_gap, open);
+	return current_cell;
+}
+
+template<typename Sv>
 struct Banded3FrameSwipeMatrix
 {
 
@@ -473,9 +500,31 @@ list<Hsp> banded_3frame_swipe(
 #else
 		profile.set(targets.get(target_scores.data()));
 #endif
-		for (int i = i0_; i <= i1_; ++i) {
+		const int lim = std::min(i1_, qlen3 - 1);
+		int i = i0_;
+		for (; i <= lim; ++i) {
 			hgap = it.hgap();
-			Sv next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
+			Sv next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
+			it.set_hgap(hgap);
+			it.set_score(next);
+			++it;
+
+			hgap = it.hgap();
+			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
+			it.set_hgap(hgap);
+			it.set_score(next);
+			++it;
+
+			hgap = it.hgap();
+			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
+			it.set_hgap(hgap);
+			it.set_score(next);
+			++it;
+		}
+
+		for (; i <= i1_; ++i) {
+			hgap = it.hgap();
+			Sv next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -483,7 +532,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen2)
 				break;
 			hgap = it.hgap();
-			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
+			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
@@ -491,7 +540,7 @@ list<Hsp> banded_3frame_swipe(
 			if (i >= qlen3)
 				break;
 			hgap = it.hgap();
-			next = cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
+			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
 			it.set_hgap(hgap);
 			it.set_score(next);
 			++it;
