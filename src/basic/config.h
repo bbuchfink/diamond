@@ -82,6 +82,8 @@ struct Config
 	double reseek_ungapped_xdrop;
 	int		raw_ungapped_xdrop;
 	int		reseek_raw_ungapped_xdrop;
+	Option<double> swipe_xdrop;
+	int		raw_swipe_xdrop;
 	unsigned	min_compressed_identities;
 	int		min_seed_score;
 	unsigned	seed_signatures;

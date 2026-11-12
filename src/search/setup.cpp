@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <climits>
+#include <cmath>
 #include "basic/config.h"
 #include "search.h"
 #include "util/math/integer.h"
@@ -664,6 +666,17 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 			if (config.swipe_all)
 				throw runtime_error("--swipe only supports full matrix extension.");
 		}
+	}
+
+	const double swipe_xdrop_bits = config.swipe_xdrop.get(cfg.extension_mode == Extension::Mode::BANDED_FAST ? 23.8 : 0.0);
+	if (swipe_xdrop_bits < 0.0)
+		throw runtime_error("--swipe-xdrop must be non-negative.");
+	if (swipe_xdrop_bits > 0.0) {
+		const double raw = score_matrix.rawscore(swipe_xdrop_bits, double());
+		config.raw_swipe_xdrop = raw >= INT_MAX ? INT_MAX : std::max((int)std::ceil(raw), 1);
+	}
+	else {
+		config.raw_swipe_xdrop = 0;
 	}
 
 	if (cfg.extension_mode == Extension::Mode::FULL) {
