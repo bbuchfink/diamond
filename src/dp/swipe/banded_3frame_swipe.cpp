@@ -44,29 +44,25 @@ using std::runtime_error;
 namespace DISPATCH_ARCH {
 
 template<typename Sv>
-inline Sv swipe_cell_update(const Sv &diagonal_cell,
-	const Sv &shift_cell0,
-	const Sv &shift_cell1,
-	const Sv &scores,
-	const Sv &gap_extension,
-	const Sv &gap_open,
-	const Sv &frame_shift,
+inline Sv swipe_cell_update(Sv diagonal_cell,
+	Sv shift_cell0,
+	Sv shift_cell1,
+	Sv scores,
+	Sv gap_extension,
+	Sv gap_open,
+	Sv frame_shift,
 	Sv &horizontal_gap,
-	Sv &vertical_gap,
-	Sv &best)
+	Sv &vertical_gap)
 {
 	using std::max;
-	const Sv f = scores - frame_shift;
-	const Sv shift_max = max(shift_cell0, shift_cell1);
-	Sv current_cell = max(diagonal_cell + scores, shift_max + f);
-	current_cell = max(current_cell, max(vertical_gap, horizontal_gap));
+	const Sv c_diag = diagonal_cell + scores;
+	const Sv c_shift = max(shift_cell0, shift_cell1) + (scores - frame_shift);
+	const Sv c_gap = max(vertical_gap, horizontal_gap);
+	Sv current_cell = max(max(c_diag, c_shift), c_gap);
 	saturate(current_cell);
-	best = max(best, current_cell);
-	vertical_gap -= gap_extension;
-	horizontal_gap -= gap_extension;
 	const Sv open = current_cell - gap_open;
-	vertical_gap = max(vertical_gap, open);
-	horizontal_gap = max(horizontal_gap, open);
+	vertical_gap = max(vertical_gap - gap_extension, open);
+	horizontal_gap = max(horizontal_gap - gap_extension, open);
 	return current_cell;
 }
 
@@ -458,6 +454,7 @@ list<Hsp> banded_3frame_swipe(
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j)
 		band = std::max(band, j->d_end - j->d_begin);
 
+	using std::max;
 	int i0 = INT_MAX, i1 = INT_MAX, d_begin[ScoreTraits<Sv>::CHANNELS];
 	for (vector<DpTarget>::const_iterator j = subject_begin; j < subject_end; ++j) {
 		d_begin[j - subject_begin] = j->d_end - band;
@@ -465,6 +462,7 @@ list<Hsp> banded_3frame_swipe(
 		i1 = std::min(i1, i2);
 		i0 = std::min(i0, i2 + 1 - band);
 	}
+	const int orig_i0 = i0, orig_i1 = i1;
 
 	TargetIterator<Sv> targets(subject_begin, subject_end, false, i1, qlen, d_begin);
 	Matrix dp(band * 3, targets.cols);
@@ -484,6 +482,8 @@ list<Hsp> banded_3frame_swipe(
 		max_col[i] = 0;
 	}
 
+	const int xdrop = config.raw_swipe_xdrop;
+
 	int j = 0;
 	while (targets.active.size() > 0) {
 		const int i0_ = std::max(i0, 0), i1_ = std::min(i1, qlen - 1);
@@ -492,57 +492,71 @@ list<Hsp> banded_3frame_swipe(
 		typename Matrix::ColumnIterator it(dp.begin((i0_ - i0) * 3, j));
 		if (i0_ - i0 > 0)
 			it.set_zero();
-		Sv vgap0, vgap1, vgap2, hgap, col_best;
-		vgap0 = vgap1 = vgap2 = col_best = ScoreTraits<Sv>::zero();
+		Sv vgap0, vgap1, vgap2, hgap0, hgap1, hgap2;
+		vgap0 = vgap1 = vgap2 = ScoreTraits<Sv>::zero();
+		Sv col_best0, col_best1, col_best2, col_best;
+		col_best0 = col_best1 = col_best2 = col_best = ScoreTraits<Sv>::zero();
 
 #ifdef __SSSE3__
 		profile.set(targets.get());
 #else
 		profile.set(targets.get(target_scores.data()));
 #endif
-		const int lim = std::min(i1_, qlen3 - 1);
+		const int common_i1 = std::min(i1_, std::min(qlen2, qlen3) - 1);
 		int i = i0_;
-		for (; i <= lim; ++i) {
-			hgap = it.hgap();
-			Sv next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+		for (; i <= common_i1; ++i) {
+			const Sv s0 = profile.get(letter_mask(q[0][i]));
+			const Sv s1 = profile.get(letter_mask(q[1][i]));
+			const Sv s2 = profile.get(letter_mask(q[2][i]));
+
+			hgap0 = it.hgap();
+			Sv next0 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, s0, extend_penalty, open_penalty, frameshift_penalty, hgap0, vgap0);
+			it.set_hgap(hgap0);
+			it.set_score(next0);
+			col_best0 = max(col_best0, next0);
 			++it;
 
-			hgap = it.hgap();
-			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+			hgap1 = it.hgap();
+			Sv next1 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, s1, extend_penalty, open_penalty, frameshift_penalty, hgap1, vgap1);
+			it.set_hgap(hgap1);
+			it.set_score(next1);
+			col_best1 = max(col_best1, next1);
 			++it;
 
-			hgap = it.hgap();
-			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+			hgap2 = it.hgap();
+			Sv next2 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, s2, extend_penalty, open_penalty, frameshift_penalty, hgap2, vgap2);
+			it.set_hgap(hgap2);
+			it.set_score(next2);
+			col_best2 = max(col_best2, next2);
 			++it;
 		}
 
+		col_best = max(col_best0, max(col_best1, col_best2));
+
 		for (; i <= i1_; ++i) {
-			hgap = it.hgap();
-			Sv next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap0, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+			hgap0 = it.hgap();
+			Sv next0 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[0][i])), extend_penalty, open_penalty, frameshift_penalty, hgap0, vgap0);
+			it.set_hgap(hgap0);
+			it.set_score(next0);
+			col_best = max(col_best, next0);
 			++it;
 
 			if (i >= qlen2)
 				break;
-			hgap = it.hgap();
-			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap1, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+			hgap1 = it.hgap();
+			Sv next1 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[1][i])), extend_penalty, open_penalty, frameshift_penalty, hgap1, vgap1);
+			it.set_hgap(hgap1);
+			it.set_score(next1);
+			col_best = max(col_best, next1);
 			++it;
 
 			if (i >= qlen3)
 				break;
-			hgap = it.hgap();
-			next = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap, vgap2, col_best);
-			it.set_hgap(hgap);
-			it.set_score(next);
+			hgap2 = it.hgap();
+			Sv next2 = swipe_cell_update<Sv>(it.sm3, it.sm4, it.sm2, profile.get(letter_mask(q[2][i])), extend_penalty, open_penalty, frameshift_penalty, hgap2, vgap2);
+			it.set_hgap(hgap2);
+			it.set_score(next2);
+			col_best = max(col_best, next2);
 			++it;
 		}
 
@@ -553,15 +567,30 @@ list<Hsp> banded_3frame_swipe(
 
 		Score col_best_[ScoreTraits<Sv>::CHANNELS];
 		store_sv(col_best, col_best_);
-		for (int i = 0; i < targets.active.size();) {
-			int channel = targets.active[i];
-			if (!targets.inc(channel))
-				targets.active.erase(i);
-			else
-				++i;
-			if (col_best_[channel] > best[channel]) {
-				best[channel] = col_best_[channel];
-				max_col[channel] = j;
+		if (xdrop > 0) {
+			for (int i = 0; i < targets.active.size();) {
+				const int channel = targets.active[i];
+				if (col_best_[channel] > best[channel]) {
+					best[channel] = col_best_[channel];
+					max_col[channel] = j;
+				}
+				if (best[channel] - col_best_[channel] >= xdrop || !targets.inc(channel))
+					targets.active.erase(i);
+				else
+					++i;
+			}
+		}
+		else {
+			for (int i = 0; i < targets.active.size();) {
+				int channel = targets.active[i];
+				if (!targets.inc(channel))
+					targets.active.erase(i);
+				else
+					++i;
+				if (col_best_[channel] > best[channel]) {
+					best[channel] = col_best_[channel];
+					max_col[channel] = j;
+				}
 			}
 		}
 		++i0;
@@ -575,7 +604,7 @@ list<Hsp> banded_3frame_swipe(
 			const int score = ScoreTraits<Sv>::int_score(best[i]) * config.cbs_matrix_scale;
 			const double evalue = score_matrix.evalue(score, qlen, (unsigned)subject_begin[i].seq.length());
 			if (score_matrix.report_cutoff(score, evalue))
-				out.push_back(traceback<Sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, i0 - j, i1 - j));
+				out.push_back(traceback<Sv>(q, strand, (int)query.source().length(), dp, subject_begin[i], d_begin[i], best[i], evalue, max_col[i], i, orig_i0, orig_i1));
 		}
 		else
 			overflow.push_back(subject_begin[i]);
