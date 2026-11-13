@@ -134,6 +134,7 @@ struct Target {
 	}
 
 	void inner_culling();
+	double filter_bitscore() const { return score_matrix.bitscore(filter_score); }
 	void max_hsp_culling();
 
 	BlockId block_id;

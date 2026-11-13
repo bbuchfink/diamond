@@ -49,7 +49,7 @@ struct VectorScores
 	int scores[20];
 };
 
-HauserCorrection::HauserCorrection(const Sequence &seq):
+HauserCorrection::HauserCorrection(const Sequence &seq, bool integer_scores):
 	vector<float>(seq.length())
 {
 	VectorScores scores;
@@ -101,6 +101,7 @@ HauserCorrection::HauserCorrection(const Sequence &seq):
 		++m;
 	}
 
+	if (!integer_scores) return;
 	int8.reserve(seq.length() + PADDING);
 	for (float f : *this)
 		int8.push_back(int8_t(f < 0.0f ? f - 0.5f : f + 0.5f));

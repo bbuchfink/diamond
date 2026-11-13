@@ -286,14 +286,24 @@ map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
         };
 
     callbacks[FieldId::BitScore].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
-        info.out << r.bit_score();
+        if (config.float_scores) {
+            char value[32];
+            snprintf(value, sizeof(value), "%.17g", r.bit_score());
+            info.out << value;
+        }
+        else info.out << r.bit_score();
         };
     callbacks[FieldId::BitScore].query_intro = [](const TabularFormat&, Output::Info& info) {
         info.out << "-1";
         };
 
     callbacks[FieldId::Score].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
-        info.out << r.score();
+        if (config.float_scores) {
+            char value[32];
+            snprintf(value, sizeof(value), "%.17g", r.hsp().raw_score());
+            info.out << value;
+        }
+        else info.out << r.score();
         };
     callbacks[FieldId::Score].query_intro = [](const TabularFormat&, Output::Info& info) {
         info.out << "-1";
@@ -586,7 +596,12 @@ map<FieldId, FieldCallbacks> TabularFormat::field_callbacks = [] {
         };
 
     callbacks[FieldId::CorrectedBitScore].match = [](const TabularFormat&, const HspContext& r, Output::Info& info) {
-        info.out << r.corrected_bit_score();
+        if (config.float_scores) {
+            char value[32];
+            snprintf(value, sizeof(value), "%.17g", r.corrected_bit_score());
+            info.out << value;
+        }
+        else info.out << r.corrected_bit_score();
         };
 
     callbacks[FieldId::SLineages].match = [](const TabularFormat& format, const HspContext& r, Output::Info& info) {

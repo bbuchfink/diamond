@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct HauserCorrection : public std::vector<float>
 {
 	HauserCorrection() {}
-	HauserCorrection(const Sequence &seq);
+	HauserCorrection(const Sequence &seq, bool integer_scores = true);
 	void operator()(float &score, int i, int query_anchor, int mult) const
 	{
 		score += (*this)[query_anchor + i * mult];

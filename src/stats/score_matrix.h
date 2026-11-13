@@ -126,7 +126,7 @@ struct ScoreMatrix
 	char bias() const
 	{ return bias_; }
 
-	double bitscore(double raw_score) const;
+	double bitscore(double raw_score, bool fractional = false) const;
 
 	double rawscore(double bitscore, double) const
 	{ return (bitscore*LN_2 + ln_k()) / lambda(); }
@@ -134,9 +134,9 @@ struct ScoreMatrix
 	int rawscore(double bitscore) const
 	{ return (int)ceil(rawscore(bitscore, double ())); }
 
-	double evalue(int raw_score, unsigned query_len, unsigned subject_len) const;
+	double evalue(double raw_score, unsigned query_len, unsigned subject_len) const;
 	double evalue_norm(int raw_score, unsigned query_len, unsigned subject_len) const;
-	double bitscore_corrected(int raw_score, unsigned query_len, unsigned subject_len) const;
+	double bitscore_corrected(double raw_score, unsigned query_len, unsigned subject_len) const;
 
 	double evalue_norm(int raw_score, int query_len) const
 	{

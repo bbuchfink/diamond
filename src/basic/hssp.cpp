@@ -217,6 +217,7 @@ void Hsp::set_end(int i, int j, Frame frame, int dna_len)
 
 void Hsp::clear()
 {
+	floating_score = -1.0;
 	seed_only = false;
 	score = frame = length = identities = mismatches = positives = gap_openings = gaps = 0;
 	transcript.clear();
@@ -390,6 +391,7 @@ bool Hsp::is_identity(const Sequence& query, const Sequence& target) const {
 }
 
 double Hsp::approx_id_percent(const Sequence& query, const Sequence& target) const {
+	if (floating_score >= 0.0) return id_percent();
 	return is_identity(query, target) ? 100.0 : Stats::approx_id(score, query_range.length(), subject_range.length());
 }
 

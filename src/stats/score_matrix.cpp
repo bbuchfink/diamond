@@ -215,7 +215,7 @@ std::vector<const T*> Scores<T>::pointers() const {
 
 template struct Scores<int>;
 
-double ScoreMatrix::evalue(int raw_score, unsigned query_len, unsigned subject_len) const
+double ScoreMatrix::evalue(double raw_score, unsigned query_len, unsigned subject_len) const
 {
 	const double e = evaluer.evalue((double)raw_score / scale_, query_len, subject_len);
 	if (config.symmetrize_evalue && query_len < subject_len)
@@ -228,7 +228,7 @@ double ScoreMatrix::evalue_norm(int raw_score, unsigned query_len, unsigned subj
 	return evaluer.evalue((double)raw_score / scale_, query_len, subject_len) * (double)1e9 / (double)subject_len;
 }
 
-double ScoreMatrix::bitscore_corrected(int raw_score, unsigned query_len, unsigned subject_len) const
+double ScoreMatrix::bitscore_corrected(double raw_score, unsigned query_len, unsigned subject_len) const
 {
 	//const double area = evaluer.area(raw_score, query_len, subject_len);
 	const double log_area = evaluer.log_area(raw_score, query_len, subject_len);
@@ -251,8 +251,8 @@ void ScoreMatrix::init_background_scores()
 	}
 }
 
-double ScoreMatrix::bitscore(double raw_score) const
+double ScoreMatrix::bitscore(double raw_score, bool fractional) const
 {
-	const double s = std::round(raw_score / scale_);	// maintain compatibility with BLAST
+	const double s = fractional ? raw_score / scale_ : std::round(raw_score / scale_);
 	return (lambda() * s - ln_k()) / LN_2;
 }

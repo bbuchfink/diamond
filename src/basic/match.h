@@ -273,6 +273,9 @@ struct Hsp
 #endif
 	Interval query_source_range, query_range, subject_source_range, subject_range;
 	double evalue, bit_score, corrected_bit_score, approx_id;
+	// Kept separate from the integer score used by legacy kernels and archives.
+	double floating_score = -1.0;
+	double raw_score() const { return floating_score >= 0.0 ? floating_score : score; }
 	Sequence target_seq;
 	const Stats::TargetMatrix* matrix;
 	PackedTranscript transcript;

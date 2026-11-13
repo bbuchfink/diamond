@@ -240,6 +240,7 @@ set(DISPATCH_OBJECTS
         "src/masking/tantan.cpp"
         "src/dp/scan_diags.cpp"
         "src/dp/ungapped_simd.cpp"
+        "src/dp/floating_scores.cpp"
         "src/dp/anchored_swipe/anchored_wrapper.cpp"
         "src/dp/long_profile/score_profile.cpp"
         "src/stats/matrix_adjust/matrix_adjust.cpp"
@@ -471,6 +472,7 @@ set(OBJECTS
         src/legacy/daa/merge.cpp
         src/legacy/chaining/backtrace.cpp
         src/dp/scalar/smith_waterman.cpp
+        src/align/floating.cpp
         #src/util/algo/mcl.cpp
         src/stats/matrix_adjust/ncbi.cpp
         src/search/hit_buffer.cpp
@@ -586,6 +588,17 @@ target_link_libraries(diamond ${ZLIB_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS diamond DESTINATION bin)
 
 enable_testing()
+add_executable(floating_sw_test src/test/floating_sw.cpp)
+add_test(NAME floating-sw-unit COMMAND floating_sw_test)
+add_executable(floating_scores_test src/test/floating_scores_kernel.cpp src/dp/floating_scores.cpp)
+target_compile_definitions(floating_scores_test PRIVATE DISPATCH_ARCH=FLOAT_TEST ARCH_ID=99)
+add_test(NAME floating-scores-unit COMMAND floating_scores_test)
+find_package(PythonInterp QUIET)
+if(PYTHONINTERP_FOUND AND PYTHON_VERSION_MAJOR EQUAL 3)
+  add_test(NAME floating-scores-cli COMMAND ${PYTHON_EXECUTABLE}
+    ${CMAKE_SOURCE_DIR}/src/test/floating_scores.py $<TARGET_FILE:diamond>
+    ${CMAKE_SOURCE_DIR}/src/test/floating-scores.faa)
+endif()
 SET(TD ${CMAKE_SOURCE_DIR}/src/test)
 SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test.cmake)
 SET(SP_EC -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test_exit_code.cmake)

@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <array>
 #include <vector>
 #include "basic/match.h"
+#include "basic/config.h"
 #include "basic/statistics.h"
 #include "util/text_buffer.h"
 #include "run/config.h"
@@ -71,7 +72,13 @@ struct Match {
 		return m.filter_evalue < n.filter_evalue || (m.filter_evalue == n.filter_evalue && cmp_score(m, n));
 	}
 	static bool cmp_score(const Match& m, const Match& n) {
+		if (config.float_scores)
+			return m.filter_bitscore() > n.filter_bitscore()
+				|| (m.filter_bitscore() == n.filter_bitscore() && m.target_block_id < n.target_block_id);
 		return m.filter_score > n.filter_score || (m.filter_score == n.filter_score && m.target_block_id < n.target_block_id);
+	}
+	double filter_bitscore() const {
+		return config.float_scores ? (hsp.empty() ? 0.0 : hsp.front().bit_score) : score_matrix.bitscore(filter_score);
 	}
 	Match(BlockId target_block_id, const Sequence& seq, std::unique_ptr<::Stats::TargetMatrix>&& matrix, std::array<std::list<Hsp>, MAX_CONTEXT> &hsp, int ungapped_score);
 	static Match self_match(BlockId query_id, Sequence query_seq);
@@ -88,6 +95,7 @@ struct Match {
 };
 
 std::vector<Match> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags, std::pmr::memory_resource& pool);
+std::vector<Match> extend_floating(const Query& query, const Search::Config& cfg);
 TextBuffer* generate_output(std::vector<Match> &targets, BlockId query_block_id, Statistics &stat, const Search::Config& cfg);
 TextBuffer* generate_intermediate_output(const std::vector<Match> &targets, BlockId query_block_id, const Search::Config& cfg);
 

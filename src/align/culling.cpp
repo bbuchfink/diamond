@@ -101,8 +101,8 @@ static It output_range(const It begin, const It end, const Search::Config& cfg) 
 	if (i->filter_evalue == DBL_MAX)
 		return begin;
 	if (config.toppercent.present()) {
-		const double cutoff = std::max(top_cutoff_score(score_matrix.bitscore(begin->filter_score)), 1.0);
-		while (i < end && (score_matrix.bitscore(i->filter_score) >= cutoff))
+		const double cutoff = std::max(top_cutoff_score(begin->filter_bitscore()), 1.0);
+		while (i < end && (i->filter_bitscore() >= cutoff))
 			++i;
 	}
 	else {

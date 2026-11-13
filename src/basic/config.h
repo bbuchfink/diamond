@@ -187,6 +187,8 @@ struct Config
 	bool tantan_ungapped;
 	string taxon_exclude;
 	bool swipe_all;
+	bool float_scores;
+	std::string float_score_kernel;
 	uint64_t taxon_k;
 	uint64_t upgma_edge_limit;
 	string tree_file;

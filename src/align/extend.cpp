@@ -86,8 +86,13 @@ Query::Query(BlockId block_id, Statistics& stats, const Search::Config& cfg, std
 	const unsigned cbs = static_cast<unsigned>(config.comp_based_stats_.get(Stats::DEFAULT_CBS));
 	if (::Stats::CBS::hauser(cbs)) {
 		hauser_correction.reserve(contexts);
-		for (const Sequence& seq : sequence)
-			hauser_correction.emplace_back(seq);
+		for (const Sequence& seq : sequence) {
+			if (config.float_scores && seq.length() < 2) {
+				hauser_correction.emplace_back();
+				hauser_correction.back().resize(seq.length(), 0.0f);
+			}
+			else hauser_correction.emplace_back(seq, !config.float_scores);
+		}
 	}
 	if (::Stats::CBS::matrix_adjust(cbs))
 		composition = ::Stats::composition(sequence.front());
@@ -365,6 +370,8 @@ vector<Match> extend(
 
 vector<Match> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, const Search::Config &cfg, Statistics &stat, DP::Flags flags, std::pmr::memory_resource& pool) {
 	const Query query(query_id, stat, cfg, pool);
+	if (config.float_scores)
+		return extend_floating(query, cfg);
 	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	timer.go("Loading seed hits");
 	SeedHitList l = load_hits(begin, end, cfg.target->seqs());

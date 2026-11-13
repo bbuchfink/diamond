@@ -311,6 +311,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("query-cover", 0, "minimum query cover% to report an alignment", query_cover)
 		("subject-cover", 0, "minimum subject cover% to report an alignment", subject_cover)
 		("swipe", 0, "exhaustive alignment against all database sequences", swipe_all)
+		("float-scores", 0, "experimental fractional composition scoring (blastp --swipe only)", float_scores)
+		("float-score-kernel", 0, "floating-point kernel: simd (default) or scalar reference", float_score_kernel, string("simd"))
 		("iterate", 0, "iterated search with increasing sensitivity", iterate, Option<vector<string>>(), 0)
 		("global-ranking", 'g', "number of targets for global ranking", global_ranking_targets)
 		("block-size", 'b', "sequence block size in billions of letters (default=2.0)", chunk_size)
@@ -724,6 +726,24 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		throw std::runtime_error("Invalid value for --comp-based-stats. Permitted values: 0, 1, 2, 3, 4, 5, 6.");
 
 	Stats::comp_based_stats = Stats::CBS(comp_based_stats_.get(Stats::DEFAULT_CBS), query_match_distance_threshold, length_ratio_threshold, cbs_angle);
+	if (float_scores) {
+		if (float_score_kernel != "simd" && float_score_kernel != "scalar")
+			throw runtime_error("--float-scores kernel must be simd or scalar.");
+		if (command != blastp || !swipe_all || comp_based_stats_.get(Stats::DEFAULT_CBS) != 1)
+			throw runtime_error("--float-scores requires blastp --swipe --comp-based-stats 1.");
+		if (max_hsps != 1 || iterate.present() || global_ranking_targets || multiprocessing
+			|| new_extension_pipeline || multipass_extension_pipeline || cbs_matrix_scale != 1)
+			throw runtime_error("--float-scores supports a single HSP, one search round, and the default extension pipeline and matrix scale.");
+		if (!output_format.empty() && output_format.front() != "6")
+			throw runtime_error("--float-scores currently supports tabular output (-f 6) only.");
+		for (const auto& field : output_format)
+			if (field == "normalized_bitscore" || field == "normalized_bitscore_query")
+				throw runtime_error("--float-scores does not support normalization by integer self-alignment scores.");
+		if (cbs_window < 2)
+			throw runtime_error("--float-scores requires --cbs-window >= 2.");
+		*message_stream << "Experimental floating-point alignment (" << float_score_kernel << "): exhaustive Smith-Waterman; "
+			"statistical parameters have not been recalibrated for fractional scores." << endl;
+	}
 
 	if (command == blastx && !Stats::CBS::support_translated(comp_based_stats_.get(Stats::DEFAULT_CBS)))
 		throw std::runtime_error("This mode of composition based stats is not supported for translated searches.");
