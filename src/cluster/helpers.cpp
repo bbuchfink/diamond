@@ -209,7 +209,7 @@ static int64_t seq_mem_use(Loc len, Loc id_len, int c, int min, int sketch_size)
 		, extend_stage);
 }
 
-vector<string> cluster_steps(double approx_id, bool linear) {
+vector<string> cluster_steps(double id, bool linear) {
 	if (!config.cluster_steps.empty()) {
 		for (vector<string>::const_iterator it = config.cluster_steps.begin() + 1; it != config.cluster_steps.end(); ++it) {
 			if (ends_with(*it, "_lin") && !ends_with(*(it - 1), "_lin"))
@@ -218,20 +218,26 @@ vector<string> cluster_steps(double approx_id, bool linear) {
 		return config.cluster_steps;
 	}
 	vector<string> v = { "faster_lin" };
-	if (approx_id < 90)
+	if (id < 90)
 		v.push_back("fast_lin");
-	if (approx_id < 40)
-		v.push_back("linclust-20_lin");
-	else if (approx_id < 80)
-		v.push_back("linclust-40_lin");
-	if (linear)
-		return v;
-	if (approx_id < 80)
-		v.push_back("default");
-	else
-		v.push_back("fast");
-	if (approx_id < 50)
-		v.push_back("more-sensitive");
+	if (linear && id < 80) {
+		if (id >= 70)
+			v.push_back("linclust-70_lin");
+		else if (id >= 60)
+			v.push_back("linclust-60_lin");
+		else if (id >= 40)
+			v.push_back("linclust-40_lin");
+		else
+			v.push_back("linclust-20_lin");
+	}
+	else if (!linear) {
+		if (id >= 80)
+			v.push_back("fast");
+		else
+			v.push_back("default");
+		if (id < 50)
+			v.push_back("more-sensitive");
+	}
 	return v;
 }
 

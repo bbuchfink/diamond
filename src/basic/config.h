@@ -26,8 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/io/decompressor.h"
 #include "util/enum.h"
 
-enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_40 = 2, LINCLUST_20 = 3, SHAPES6x10 = 4, SHAPES30x10 = 5, MID_SENSITIVE = 6, SENSITIVE = 7,
-	MORE_SENSITIVE = 8, VERY_SENSITIVE = 9, ULTRA_SENSITIVE = 10 };
+enum class Sensitivity { FASTER = -1, FAST = 0, DEFAULT = 1, LINCLUST_70 = 2, LINCLUST_60 = 3, LINCLUST_40 = 4, LINCLUST_20 = 5, SHAPES6x10 = 6, SHAPES30x10 = 7, MID_SENSITIVE = 8, SENSITIVE = 9,
+	MORE_SENSITIVE = 10, VERY_SENSITIVE = 11, ULTRA_SENSITIVE = 12 };
 
 template<> struct EnumTraits<Sensitivity> {
 	static const EMap<Sensitivity> to_string;
@@ -92,6 +92,7 @@ struct Config
 	double	max_seed_freq;
 	string	tmpdir;
 	string	parallel_tmpdir;
+	bool	recover;
 	bool		long_mode;
 	double gapped_xdrop;
 	double	max_evalue;
@@ -215,7 +216,6 @@ struct Config
 	int col_bin;
 	int64_t file_buffer_size;
 	bool self;
-	uint64_t trace_pt_fetch_size;
 	uint32_t tile_size;
 	double short_query_ungapped_bitscore;
 	int short_query_max_len;
@@ -384,6 +384,9 @@ struct Config
 	uint64_t oid_title_max;
 	string linclust_minichunk;
 	bool new_extension_pipeline;
+	bool multipass_extension_pipeline;
+	int64_t swipe_batch;
+	string band_hist_file;
 
 	// TODO
 	double cbs_angle;
@@ -407,7 +410,7 @@ struct Config
 		smith_waterman = 26, cluster = 27, simulate_seqs = 31, split = 32, upgma = 33, upgma_mc = 34, regression_test = 35,
 		reverse_seqs = 36, compute_medoids = 37, mutate = 38, rocid = 40, makeidx = 41, find_shapes, prep_db, HASH_SEQS, LIST_SEEDS, CLUSTER_REALIGN,
 		GREEDY_VERTEX_COVER, CLUSTER_REASSIGN, blastn, RECLUSTER, MERGE_DAA, DEEPCLUST, LINCLUST, WORD_COUNT, CUT, MODEL_SEQS,
-		MAKE_SEED_TABLE, COMPOSITION_MATRIX, COUNT_DISTINCT
+		MAKE_SEED_TABLE, COMPOSITION_MATRIX, COUNT_DISTINCT, RECOVER
 	};
 
 	unsigned command;

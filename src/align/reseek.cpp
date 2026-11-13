@@ -38,7 +38,7 @@ vector<SeedHit> reseek_diags(const Query& query, Sequence target, unsigned hammi
 	const Loc offset = target.length() - 1, t = query.sequence[0].length() - 1 + target.length();
 	vector<Loc> last_hit(t, -1);
 	vector<bool> double_hit(t, false);
-	auto f = std::function<void(Loc, Loc)>([&hits, &last_hit, &double_hit, offset, &query, target, hamming_filter_id](Loc query_loc, Loc target_loc) {
+	auto f = [&hits, &last_hit, &double_hit, offset, &query, target, hamming_filter_id](Loc query_loc, Loc target_loc) {
 		const Loc d = query_loc - target_loc + offset;
 		if (d < 0 || d >= (Loc)last_hit.size())
 			throw runtime_error("Invalid diagonal");
@@ -67,7 +67,7 @@ vector<SeedHit> reseek_diags(const Query& query, Sequence target, unsigned hammi
 			double_hit[d] = true;
 		}
 		last_hit[d] = target_loc;
-	});
+	};
 	query.seqindex->scan(target, f);
 	return hits;
 }

@@ -132,8 +132,11 @@ inline double log(double x) {
 
     e += static_cast<int>(u >> 52) - 1023;
     u  = (u & 0x000fffffffffffffULL) | 0x3ff0000000000000ULL;
+    // Halves a mantissa greater than sqrt(2) by decrementing the exponent, without a hardly predictable branch.
+    const std::uint64_t high = u > to_bits(SQRT2) ? 1 : 0;
+    u -= high << 52;
+    e += static_cast<int>(high);
     double m = from_bits(u);
-    if (m > SQRT2) { m *= 0.5; e += 1; }
 
     double f = m - 1.0;
     double s = f / (2.0 + f);

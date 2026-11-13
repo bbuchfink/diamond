@@ -306,6 +306,18 @@ Blast_FreqRatioToScore(double** matrix, size_t rows, size_t cols, double Lambda)
     }
 }
 
+/* Returns (int)std::round(x), computed inline for the values that scores take. The difference of x and its
+   integer part is exact, so that the result is the same. */
+static inline int s_Round(double x)
+{
+    if (std::fabs(x) < 1e9) {
+        const int t = (int)x;
+        const double d = x - t;
+        return t + (d >= 0.5) - (d <= -0.5);
+    }
+    return (int)std::round(x);
+}
+
 void
 s_RoundScoreMatrix(int** matrix, size_t rows, size_t cols,
     double** floatScoreMatrix)
@@ -316,7 +328,7 @@ s_RoundScoreMatrix(int** matrix, size_t rows, size_t cols,
                 matrix[p][c] = INT_MIN;
             }
             else {
-                matrix[p][c] = (int)std::round(floatScoreMatrix[p][c]);
+                matrix[p][c] = s_Round(floatScoreMatrix[p][c]);
             }
         }
     }

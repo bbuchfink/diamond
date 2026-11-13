@@ -128,6 +128,19 @@ void CompressedBuffer::finish() {
 	stream_ = nullptr;
 }
 
+size_t CompressedBuffer::stream_memory() {
+#ifdef WITH_ZSTD
+	// zstd allocates its workspace on the first compression call, so probe a stream that has seen input.
+	CompressedBuffer probe;
+	const char c = 0;
+	probe.write(&c, 1);
+	return ZSTD_sizeof_CStream(probe.stream_);
+#else
+	// deflate memory as documented in zconf.h, for the defaults used by deflateInit (memLevel 8).
+	return (size_t(1) << (MAX_WBITS + 2)) + (size_t(1) << (8 + 9)) + sizeof(z_stream);
+#endif
+}
+
 void CompressedBuffer::clear() {
 #ifdef WITH_ZSTD
 	stream_ = ZSTD_createCStream();

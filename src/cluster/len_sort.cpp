@@ -57,7 +57,8 @@ struct OutputChunk {
 	}
 };
 
-static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstream>>& out, vector<unique_ptr<ofstream>>& acc_out, const vector<int>& block_mapping) {
+/* Returns the maximum length of the accessions written to the accession files. */
+static size_t write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstream>>& out, vector<unique_ptr<ofstream>>& acc_out, const vector<int>& block_mapping) {
 	job.log("Writing length sorted blocks");
 	/* The input is masked here, once, and the masked letters are written to the minichunks
 	   as X. All later stages of the workflow (seed counting, seed index building, alignment)
@@ -66,6 +67,7 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 	job.log("Input masking: %s", to_string(masking).c_str());
 	OId oid = 0;
 	atomic<uint64_t> bytes_written{ 0 };
+	atomic<size_t> max_acc_len{ 0 };
 	const size_t writer_count = std::max<size_t>(1, std::min<size_t>(out.size(), std::max(1, config.threads_)));
 	const int formatter_count = std::max(1, config.threads_);
 	SimpleThreadPool pool;
@@ -130,7 +132,7 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 			auto worker = [&](const atomic<bool>& stop) {
 				vector<TextBuffer> buffers(out.size());
 				vector<TextBuffer> acc_buffers(out.size());
-				size_t c;
+				size_t c, local_max_acc_len = 0;
 				while (!stop.load(std::memory_order_relaxed) && (c = next.fetch_add(1, std::memory_order_relaxed), c < chunk_count)) {
 					const size_t j_begin = c * chunk_size;
 					const size_t j_end = std::min(j_begin + chunk_size, seq_count);
@@ -139,9 +141,11 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 						const size_t block = (size_t)block_mapping[seq_oid];
 						const string oid_str = std::to_string(seq_oid);
 						Util::Seq::format(b->seqs()[j], oid_str.c_str(), nullptr, buffers[block], "fasta", amino_acid_traits);
+						const string acc = Util::Seq::seqid(b->ids()[j]);
+						local_max_acc_len = std::max(local_max_acc_len, acc.length());
 						acc_buffers[block] << oid_str << '\t';
-						acc_buffers[block] << Util::Seq::seqid(b->ids()[j]) << '\n';
-					}					
+						acc_buffers[block] << acc << '\n';
+					}
 					vector<OutputChunk> bundles(writer_count);
 					for (size_t w = 0; w < writer_count; ++w)
 						bundles[w].order = c;
@@ -159,6 +163,8 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 					for (size_t w = 0; w < writer_count; ++w)
 						queues[w]->enqueue(std::move(bundles[w]));
 				}
+				size_t m = max_acc_len.load(std::memory_order_relaxed);
+				while (m < local_max_acc_len && !max_acc_len.compare_exchange_weak(m, local_max_acc_len, std::memory_order_relaxed));
 				};
 
 			vector<std::thread::id> writer_threads;
@@ -202,29 +208,41 @@ static void write_blocks(Job& job, VolumedFile& volumes, vector<unique_ptr<ofstr
 	for (const auto& file : acc_out)
 		if (!*file)
 			throw runtime_error("Error writing length sorted block");
+	job.log("Maximum accession length = %zu", max_acc_len.load());
+	return max_acc_len.load();
 }
 
 pair<string, string> len_sort(Job& job, VolumedFile& volumes) {
+	if (config.recover && !recover_step(job, "Length sorting", job.root_dir() + "lensort_lock", job.root_dir() + "lensort_done"))
+		return {};
 	Atomic lock(job.root_dir() + "lensort_lock", job), done(job.root_dir() + "lensort_done", job);
 	const bool first_round_linear = job.is_linear_round();
 	const string input_letters = job.root_dir() + "input_letters.txt", out_dir = job.root_dir() + "input_minichunks" + PATH_SEPARATOR,
 		out_seqs = out_dir + "seqs.tsv", out_accs = out_dir + "accs.tsv";
-	if (lock.fetch_add() == 0) {
+	if (!config.recover && lock.fetch_add() == 0) {
 		vector<unique_ptr<ofstream>> out;
 		vector<unique_ptr<ofstream>> acc_out;
 		vector<int> block_mapping = make_blocks(job, volumes, out, acc_out, out_seqs, out_accs);
-		write_blocks(job, volumes, out, acc_out, block_mapping);
+		const size_t max_acc_len = write_blocks(job, volumes, out, acc_out, block_mapping);
+		// Appended to the stats written by make_blocks, so that all workers of a parallel run see it.
+		ofstream letters_out(input_letters, std::ios::app);
+		letters_out << max_acc_len << endl;
+		if (!letters_out)
+			throw runtime_error("Error writing file " + input_letters);
+		letters_out.close();
 		done.fetch_add();
 		job.finish_step();
 	}
-	else
-		done.await(1);
+	else if (!done.await(1, job))
+		return {};
 	uint64_t letters, seq_count, minichunk_count;
+	size_t max_acc_len;
 	ifstream input_letters_file(input_letters);
-	input_letters_file >> letters >> seq_count >> minichunk_count;
+	input_letters_file >> letters >> seq_count >> minichunk_count >> max_acc_len;
 	if(!input_letters_file)
 		throw runtime_error("Error opening file " + input_letters);
 	volumes.set_letter_count(letters);
+	job.set_max_acc_len(max_acc_len);
 	job.register_sync_file(input_letters);
 	if (first_round_linear && config.mutual_cover.present()) {
 		double block_gb;

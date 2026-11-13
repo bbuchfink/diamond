@@ -104,6 +104,17 @@ struct FileArray {
 		return buckets;
 	}
 
+	// Bucket i holds the keys [key_bounds[i], key_bounds[i + 1]).
+	RadixedTable buckets(const std::vector<uint64_t>& key_bounds) const {
+		if (key_bounds.size() != size_ + 1)
+			throw std::runtime_error("FileArray::buckets");
+		RadixedTable buckets(0);
+		buckets.reserve(size_);
+		for (uint64_t i = 0; i < size_; ++i)
+			buckets.emplace_back(bucket(i), exclusive_ ? records_total_[i] : Bucket::NIL, key_bounds[i], key_bounds[i + 1]);
+		return buckets;
+	}
+
 	RadixedTable buckets(const DegreePartition& p) {
 		RadixedTable buckets(0);
 		const auto b = p.buckets();

@@ -44,8 +44,13 @@ string lin_index_file(const string& volume_path) {
 void build_lin_indices(Job& job, const VolumedFile& volumes) {
 	log_rss();
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "seed_index" + PATH_SEPARATOR;
+	if (config.recover) {
+		recover_queue(job, "Seed index building", base_dir + "queue", base_dir + "finished", (int64_t)volumes.size());
+		return;
+	}
 	job.make_temp_dir(base_dir);
-	Atomic q(base_dir + "queue", job), finished(base_dir + "finished", job);
+	AtomicList finished(base_dir + "finished", job);
+	Atomic q(base_dir + "queue", job, finished);
 	const int64_t n = (int64_t)volumes.size();
 	int64_t v, volumed_processed = 0;
 
@@ -61,7 +66,7 @@ void build_lin_indices(Job& job, const VolumedFile& volumes) {
 	while (job.goon() && (v = q.fetch_add(), v < n)) {
 		const string index_file = lin_index_file(volumes[v].path);
 		if (file_exists(index_file)) {
-			finished.fetch_add();
+			finished.push(v);
 			continue;
 		}
 		job.log("Building seed index. Block=%lli/%lli", v + 1, n);
@@ -86,14 +91,15 @@ void build_lin_indices(Job& job, const VolumedFile& volumes) {
 		if (!file_exists(index_file) && std::rename(tmp_file.c_str(), index_file.c_str()) != 0)
 			throw runtime_error("Error renaming seed index file " + tmp_file);
 		std::remove(tmp_file.c_str());
-		finished.fetch_add();
+		finished.push(v);
 		++volumed_processed;
 	}
 	if (volumed_processed > 0)
 		job.finish_step();
 	if (!job.goon())
 		return;
-	finished.await(n);
+	if (!finished.await(n, job))
+		return;
 	rmdir(base_dir.c_str());
 }
 

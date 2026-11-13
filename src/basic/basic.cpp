@@ -219,11 +219,25 @@ void Statistics::print() const
 	*log_stream << "Cells (16 bit)        = " << data_[DP_CELLS_16] << endl;
 	*log_stream << "SWIPE tasks           = " << data_[SWIPE_TASKS_TOTAL] << endl;
 	*log_stream << "SWIPE tasks (async)   = " << data_[SWIPE_TASKS_ASYNC] << endl;
+	*log_stream << "Extensions refilled   = " << data_[EXTENSIONS_REFILLED] << endl;
 	*log_stream << "Trivial aln           = " << data_[TRIVIAL_ALN] << endl;
 	*log_stream << "Hard queries          = " << data_[HARD_QUERIES] << endl;
 #ifdef DP_STAT
 	*log_stream << "Gross DP Cells        = " << data_[GROSS_DP_CELLS] << endl;
 	*log_stream << "Net DP Cells          = " << data_[NET_DP_CELLS] << " (" << data_[NET_DP_CELLS] * 100.0 / data_[GROSS_DP_CELLS] << " %)" << endl;
+#endif
+#ifdef ANCHORED_SWIPE_STAT
+	{
+		const StatType lane = data_[ANCHORED_LANE_CELLS],
+			useful = lane - data_[ANCHORED_LANE_CELLS_IDLE] - data_[ANCHORED_LANE_CELLS_TARGET_OOB] - data_[ANCHORED_LANE_CELLS_QUERY_OOB] - data_[ANCHORED_LANE_CELLS_OUT_OF_BAND];
+		auto pct = [lane](StatType n) { return lane ? n * 100.0 / lane : 0.0; };
+		*log_stream << "Anchored lane cells   = " << lane << endl;
+		*log_stream << "  Idle lane           = " << data_[ANCHORED_LANE_CELLS_IDLE] << " (" << pct(data_[ANCHORED_LANE_CELLS_IDLE]) << " %)" << endl;
+		*log_stream << "  Target out of bounds= " << data_[ANCHORED_LANE_CELLS_TARGET_OOB] << " (" << pct(data_[ANCHORED_LANE_CELLS_TARGET_OOB]) << " %)" << endl;
+		*log_stream << "  Query out of bounds = " << data_[ANCHORED_LANE_CELLS_QUERY_OOB] << " (" << pct(data_[ANCHORED_LANE_CELLS_QUERY_OOB]) << " %)" << endl;
+		*log_stream << "  Outside target band = " << data_[ANCHORED_LANE_CELLS_OUT_OF_BAND] << " (" << pct(data_[ANCHORED_LANE_CELLS_OUT_OF_BAND]) << " %)" << endl;
+		*log_stream << "  Useful              = " << useful << " (" << pct(useful) << " %)" << endl;
+	}
 #endif
 	*log_stream << "Gapped filter (targets) = " << data_[GAPPED_FILTER_TARGETS] << endl;
 	*log_stream << "Gapped filter (hits) stage 1 = " << data_[GAPPED_FILTER_HITS1] << endl;

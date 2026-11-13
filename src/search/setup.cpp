@@ -138,6 +138,44 @@ const map<Sensitivity, SensitivityTraits> sensitivity_traits = {
 		3,         // keyword_length
 		8.4        // keyword_threshold
 	}},
+	{ Sensitivity::LINCLUST_70, {
+		true,      // support_query_indexed
+		true,      // motif_masking
+		50.0,      // freq_sd
+		11,        // min_identities
+		0,         // ungapped_evalue
+		0,         // ungapped_evalue_short
+		0,         // gapped_filter_evalue
+		4,         // index_chunks
+		16,        // query_bins
+		nullptr,   // contiguous_seed
+		0.9,       // seed_cut
+		2.0,       // default_block_size
+		diamond9b, // reduction
+		0,         // minimizer_window
+		0,         // sketch_size
+		4,         // keyword_length
+		12         // keyword_threshold
+	}},
+	{ Sensitivity::LINCLUST_60, {
+		true,      // support_query_indexed
+		true,      // motif_masking
+		50.0,      // freq_sd
+		11,        // min_identities
+		0,         // ungapped_evalue
+		0,         // ungapped_evalue_short
+		0,         // gapped_filter_evalue
+		4,         // index_chunks
+		16,        // query_bins
+		nullptr,   // contiguous_seed
+		0.9,       // seed_cut
+		2.0,       // default_block_size
+		diamond8,  // reduction
+		0,         // minimizer_window
+		0,         // sketch_size
+		4,         // keyword_length
+		12         // keyword_threshold
+	} },
 	{ Sensitivity::LINCLUST_40, {
 		true,      // support_query_indexed
 		true,      // motif_masking
@@ -277,6 +315,8 @@ const map<Sensitivity, vector<Round>> iterated_sens{
 	{ Sensitivity::FASTER,            { }},
 	{ Sensitivity::FAST,            { {Sensitivity::FAST, true} }},
 	{ Sensitivity::DEFAULT,         { {Sensitivity::FAST, true}, { Sensitivity::LINCLUST_40, true }}},
+	{ Sensitivity::LINCLUST_70,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_70, true} }},
+	{ Sensitivity::LINCLUST_60,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_60, true} }},
 	{ Sensitivity::LINCLUST_40,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_40, true} }},
 	{ Sensitivity::LINCLUST_20,     { {Sensitivity::FAST, true}, {Sensitivity::LINCLUST_20, true} }},
 	{ Sensitivity::SHAPES30x10,     { {Sensitivity::FAST, true}, {Sensitivity::SHAPES30x10, true} }},
@@ -297,7 +337,7 @@ static unsigned hamming_id_cutoff(double approx_id) {
 	return it == approx_id_to_hamming_id.begin() ? 0 : prev(it)->second;
 }
 
-const map<Sensitivity, vector<string>> shape_codes ={
+const map<Sensitivity, vector<string>> shape_codes = {
 
 	{{Sensitivity::DEFAULT, {
 		"111101110111",
@@ -418,7 +458,7 @@ const map<Sensitivity, vector<string>> shape_codes ={
 		"1101000011010111",
 		"1110011000011011"
 }}, // 8x9
-	{ Sensitivity::FAST, 
+	{ Sensitivity::FAST,
 		{ "1101110101101111" } },
 	{ Sensitivity::FASTER,
 		{ "1101110101101111" } },
@@ -509,9 +549,12 @@ const map<Sensitivity, vector<string>> shape_codes ={
 "111010111110111",
 "111101011101111",
 "111110110011111" }
-}
-}
-};
+},
+	{ Sensitivity::LINCLUST_60, { "111110111011","11101101001111","1110110001010111","1101001011010111","11010101010010111",
+"1101010010100011011","1101100001100100111","1101100100011001011","1110011000001101011",
+"1110001010001010111" }},
+	{ Sensitivity::LINCLUST_70, { "1110110110111","1111010001101011","1110011100010111","1110101001001000111" } }
+} };
 
 // Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
 // of each group is the representative, and the rest are skipped during seed enumeration; their hits
@@ -684,15 +727,38 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 			throw runtime_error("Frameshift alignment does not support full matrix extension.");
 	}
 
-	// The new extension pipeline computes the extensions using the anchored swipe, which
-	// computes no traceback and uses the unadjusted scoring matrix.
+	// The new extension pipeline computes the extensions using the anchored swipe, which computes no
+	// traceback. It scores with the unadjusted matrix or a compositionally adjusted one per pair, but
+	// supports no position specific score correction (Hauser) and no scaled adjusted matrices.
 	if (config.new_extension_pipeline) {
-		if (config.comp_based_stats_.get(Stats::DEFAULT_CBS) != Stats::CBS::DISABLED)
-			throw runtime_error("The new extension pipeline requires --comp-based-stats 0.");
+		if (Stats::CBS::hauser(static_cast<unsigned>(config.comp_based_stats_.get(Stats::DEFAULT_CBS))))
+			throw runtime_error("The new extension pipeline does not support --comp-based-stats 1-3.");
+		if (config.cbs_matrix_scale != 1)
+			throw runtime_error("The new extension pipeline does not support --cbs-matrix-scale.");
 		if (!flag_only(cfg.output_format->hsp_values, HspValues::COORDS))
 			throw runtime_error("The new extension pipeline only supports output fields that do not require a traceback.");
+		if (config.min_id > 0)
+			throw runtime_error("The new extension pipeline does not support --id, use --approx-id instead.");
 		if (cfg.extension_mode == Extension::Mode::FULL)
 			throw runtime_error("The new extension pipeline does not support full matrix extension.");
+		if (config.swipe_batch < 1)
+			throw runtime_error("--swipe-batch has to be at least 1.");
+	}
+
+	// The multipass extension pipeline uses the anchored swipe as well, so the same limitations apply. In addition,
+	// it writes the alignments in no particular order and not grouped by query, so the output must not be compared
+	// to the query order or rely on the output format framing the alignments of a query.
+	if (config.multipass_extension_pipeline) {
+		if (Stats::CBS::hauser(static_cast<unsigned>(config.comp_based_stats_.get(Stats::DEFAULT_CBS))))
+			throw runtime_error("The multipass extension pipeline does not support --comp-based-stats 1-3.");
+		if (config.cbs_matrix_scale != 1)
+			throw runtime_error("The multipass extension pipeline does not support --cbs-matrix-scale.");
+		if (!flag_only(cfg.output_format->hsp_values, HspValues::COORDS))
+			throw runtime_error("The multipass extension pipeline only supports output fields that do not require a traceback.");
+		if (config.min_id > 0)
+			throw runtime_error("The multipass extension pipeline does not support --id, use --approx-id instead.");
+		if (cfg.extension_mode == Extension::Mode::FULL)
+			throw runtime_error("The multipass extension pipeline does not support full matrix extension.");
 	}
 
 	if(!config.aln_out.empty() && config.parallel_tmpdir.empty())

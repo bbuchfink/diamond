@@ -105,6 +105,10 @@ struct Block {
 	uint64_t raw_bytes() const noexcept {
 		return raw_bytes_;
 	}
+	// For blocks that are handed out again from memory, so load_stats does not report a disk read.
+	void clear_raw_bytes() noexcept {
+		raw_bytes_ = 0;
+	}
 	void load_stats(std::ostream& stream, double microseconds) const {
 		if (raw_bytes() > 0)
 			stream << "Loaded " << raw_bytes() << " bytes from disk at " << ((double)raw_bytes() / MEGABYTES / microseconds * 1e6) << " MB/s" << std::endl;

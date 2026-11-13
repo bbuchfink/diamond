@@ -77,7 +77,8 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	const SequenceFile::Flags flags = SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::NEED_LETTER_COUNT;
 	string out_file = cfg.single_out_file ? cfg.output_path : cfg.output_path + std::to_string(idx) + ".faa";
 	const string offset_file = out_file + ".faidx";
-	ofstream out(out_file, std::ios::out | (cfg.single_out_file && idx == 0 ? std::ios::trunc : std::ios::app ) | std::ios::binary);
+	// Truncated unless appending to the single output file, so that a volume redone after an interrupted run overwrites the partial output.
+	ofstream out(out_file, std::ios::out | (cfg.single_out_file && idx > 0 ? std::ios::app : std::ios::trunc) | std::ios::binary);
 	if (!out)
 		throw runtime_error("Error opening file " + out_file);
 	unique_ptr<ofstream> offsets;
@@ -138,7 +139,6 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 		b = file->load_seqs(INT64_MAX);
 	}
 	catch (const EmptyFileError& e) {
-		remove_tmp_file(volumes[idx].path);
 		return std::make_tuple<OId, uint64_t, uint64_t>(0, 0, 0);
 	}
 	catch (const std::exception& e) {
@@ -213,31 +213,36 @@ static tuple<OId, uint64_t, uint64_t> write_reps(Job& job, const VolumedFile& vo
 	if (cfg.single_out_file && (!offsets || !*offsets))
 		throw runtime_error("Error writing representative offset file");
 	file.reset();
-	remove_tmp_file(volumes[idx].path);
 	if (!cfg.single_out_file || idx == volumes.size() - 1) {
 		ostringstream ss;
 		ss << out_file << '\t' << count_all.load() << '\t' << min_all.load() << '\t' << max_all.load() + 1 << endl;
-		cfg.reps_list.push(ss.str());
+		// A volume redone after an interrupted run may already be listed.
+		cfg.reps_list.push_unique(ss.str(), out_file + '\t');
 	}
 	return std::make_tuple<OId, uint64_t, uint64_t>(count_this_volume, letters_all, bytes_all.load(std::memory_order_relaxed));
 }
 
 pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks, unique_ptr<vector<OId>> clustering) {
 	if (job.last_round()) {
-		VolumedFile volumes(round_minichunks);
-		volumes.remove(false, true, false);
+		if (!config.recover) {
+			VolumedFile volumes(round_minichunks);
+			volumes.remove(false, true, false);
+		}
 		return { string(), 0 };
 	}
 	const bool single_out_file = !ends_with(job.steps().at(job.round() + 1), "_lin");
 	const string base_dir = job.base_dir() + PATH_SEPARATOR + "rep_minichunks" + PATH_SEPARATOR, qpath = base_dir + "queue";
 	const string reps_list_name = base_dir + "reps.tsv";
+	// With a single output file, the queue is processed by the worker holding the lock only.
+	if (config.recover && !recover_step(job, "Representative extraction", single_out_file ? base_dir + "get_reps_lock" : string(), base_dir + "get_reps_done", qpath))
+		return { string(), 0 };
 	job.make_temp_dir(base_dir);
 	Atomic get_reps_lock(base_dir + "get_reps_lock", job), get_reps_done(base_dir + "get_reps_done", job);
-	Atomic finished(base_dir + "finished", job);
+	AtomicList finished(base_dir + "finished", job);
 	Atomic letter_count(base_dir + "letter_count", job);
-	Atomic q(qpath, job);
+	Atomic q(qpath, job, finished);
 
-	if ((!single_out_file || get_reps_lock.fetch_add() == 0) && get_reps_done.get() == 0) {
+	if (!config.recover && (!single_out_file || get_reps_lock.fetch_add() == 0) && get_reps_done.get() == 0) {
 		if (!clustering) {
 			const string path = job.base_dir() + "clusters.bin";
 			File in(path, "rb");
@@ -271,9 +276,12 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks, unique
 			cluster_count += count;
 			bytes += bytes_written;
 			letter_count.fetch_add(seq_letters);
-			finished.fetch_add();
+			finished.push(v);
+			// Removed only once finished, so that the volume can be redone after an interrupted run.
+			remove_tmp_file(volumes[v].path);
 		}
-		finished.await((int)volumes.size());		
+		if (!finished.await((int64_t)volumes.size(), job))
+			return { string(), 0 };
 		if (!config.fasta_index_file.empty())
 			remove_tmp_file(config.fasta_index_file);
 		volumes.remove(false, true, false);
@@ -284,8 +292,7 @@ pair<string, uint64_t> get_reps(Job& job, const string& round_minichunks, unique
 		get_reps_done.fetch_add();
 		job.finish_step();
 	}
-	else {
-		get_reps_done.await(1);
-	}
+	else if (!get_reps_done.await(1, job))
+		return { string(), 0 };
 	return { reps_list_name, letter_count.get() };
 }

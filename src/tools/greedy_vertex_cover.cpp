@@ -29,6 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/config.h"
 #include "util/log_stream.h"
 #include "util/string/tokenizer.h"
+#include "util/string/string.h"
 #include "util/algo/algo.h"
 #include "util/system/system.h"
 #include "cluster/cluster.h"
@@ -95,7 +96,10 @@ namespace GVC {
 
 static const bool merge_recursive = true;
 static const uint64_t RADIX_COUNT = 256;
-static const int RADIX_BITS = 8;
+// Resolution of the edge count histogram of edge_pass_zero: at most 2^BIN_BITS key bins.
+static const int BIN_BITS = 22;
+// Share of the memory limit that one bucket of edges loaded by edge_pass_two may use.
+static const double BUCKET_MEMORY_FRACTION = 0.5;
 
 struct PotentialRep {
 	OId oid, degree;
@@ -149,59 +153,59 @@ static void greedy_vertex_cover(vector<OId>& clustering, vector<double>& weights
 	}
 }
 
-static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, bool triplets, bool symmetric, double cov, const unordered_map<Acc, OId>* acc2oid, const VolumedFile* edges) {
-	mkdir(base_dir);
-	FileArray file_array(base_dir, RADIX_COUNT, 0, true);
-	const int shift = std::max(bit_length(max_oid) - RADIX_BITS, 0);
-	atomic<uint64_t> total_lines(0);
+struct EdgeInput {
+	OId max_oid;
+	bool triplets, symmetric;
+	double cov;
+	const unordered_map<Acc, OId>* acc2oid;
+	const VolumedFile* edges;
+};
 
-	TaskTimer timer("Reading input lines");
+// Parses the input and calls emit(node1, node2, weight) for every directed edge, concurrently from multiple threads.
+// Returns the number of input lines.
+template<typename Emit>
+static uint64_t read_edges(const EdgeInput& in, Emit emit) {
+	atomic<uint64_t> total_lines(0);
 	function<void(int64_t, const char*, const char*)> fn2([&](int64_t, const char* begin, const char* end) {
 		size_t line_count = 0;
 		Util::String::LineIterator it(begin, end);
-		thread_local BufferArray buffers(file_array, RADIX_COUNT);
 		string query, target;
 		OId q, t;
 		double qcov, tcov, weight;
-		auto emit = [&](OId n1, OId n2, double w) {
-			Edge edge(n1, n2, w);
-			const uint64_t radix = (uint64_t)n1 >> shift;
-			buffers.write(radix, &edge, 1, 1);
-			};
 		while (it.good()) {
 			++line_count;
 			string line = *it;
 			if (ends_with(line, "\r"))
 				line.pop_back();
 			Util::String::Tokenizer<Util::String::CharDelimiter> tok(line, Util::String::CharDelimiter('\t'));
-			if (acc2oid)
+			if (in.acc2oid)
 				tok >> query >> target;
 			else {
 				tok >> q >> t;
-				if (q > max_oid || t > max_oid)
+				if (q > in.max_oid || t > in.max_oid)
 					throw runtime_error("Numeric vertex ID exceeds --max-id");
 			}
-			if (!triplets)
+			if (!in.triplets)
 				tok >> qcov >> tcov;
 			tok >> weight;
-			if (triplets || tcov >= cov || qcov >= cov) {
-				if (acc2oid) {
-					q = acc2oid->at(query);
-					t = acc2oid->at(target);
+			if (in.triplets || tcov >= in.cov || qcov >= in.cov) {
+				if (in.acc2oid) {
+					q = in.acc2oid->at(query);
+					t = in.acc2oid->at(target);
 				}
 				if (q == t) {
 					++it;
 					continue;
 				}
-				if (triplets) {
+				if (in.triplets) {
 					emit(t, q, weight);
-					if (symmetric)
+					if (in.symmetric)
 						emit(q, t, weight);
 				}
 				else {
-					if (tcov >= cov)
+					if (tcov >= in.cov)
 						emit(q, t, weight);
-					if (qcov >= cov)
+					if (qcov >= in.cov)
 						emit(t, q, weight);
 				}
 			}
@@ -209,22 +213,90 @@ static RadixedTable edge_pass_one(const string& base_dir, const OId max_oid, boo
 		}
 		total_lines.fetch_add(line_count, std::memory_order_relaxed);
 		});
-	if (edges) {
-		for (const Volume& volume : *edges) {
-			File in(volume.path, "rb");
-			in.read_text_mt(INT64_MAX, config.threads_, fn2);
+	if (in.edges) {
+		for (const Volume& volume : *in.edges) {
+			File f(volume.path, "rb");
+			f.read_text_mt(INT64_MAX, config.threads_, fn2);
 		}
 	}
 	else {
-		File in(config.edges, "rb");
-		in.read_text_mt(INT64_MAX, config.threads_, fn2);
+		File f(config.edges, "rb");
+		f.read_text_mt(INT64_MAX, config.threads_, fn2);
 	}
+	return total_lines.load(std::memory_order_relaxed);
+}
+
+// Contiguous ranges of node1 keys, sized so that the edges of one range fit into the memory budget of edge_pass_two.
+struct EdgePartition {
+	size_t size() const {
+		return key_bounds.size() - 1;
+	}
+	uint32_t bucket_of(OId key) const {
+		return bucket[key >> shift];
+	}
+	int shift;
+	vector<uint32_t> bucket;     // key bin -> bucket
+	vector<uint64_t> key_bounds; // bucket i holds the keys [key_bounds[i], key_bounds[i + 1])
+};
+
+// Counts the edges per key bin and cuts the key range greedily into the fewest buckets that fit into the memory budget.
+static EdgePartition edge_pass_zero(const EdgeInput& in) {
+	TaskTimer timer("Counting input edges");
+	EdgePartition p;
+	p.shift = std::max(bit_length(in.max_oid) - BIN_BITS, 0);
+	const size_t bins = size_t(in.max_oid >> p.shift) + 1;
+	vector<atomic<uint64_t>> counts(bins);
+	for (auto& c : counts)
+		c.store(0, std::memory_order_relaxed);
+	read_edges(in, [&](OId n1, OId, double) {
+		counts[n1 >> p.shift].fetch_add(1, std::memory_order_relaxed);
+		});
+	timer.finish();
+
+	const uint64_t budget = uint64_t(Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT)) * BUCKET_MEMORY_FRACTION);
+	const uint64_t max_records = std::max<uint64_t>(budget / sizeof(Edge), 1);
+	p.bucket.resize(bins);
+	p.key_bounds.push_back(0);
+	uint64_t records = 0, largest = 0, total = 0;
+	for (size_t i = 0; i < bins; ++i) {
+		const uint64_t c = counts[i].load(std::memory_order_relaxed);
+		if (records > 0 && records + c > max_records) {
+			p.key_bounds.push_back(uint64_t(i) << p.shift);
+			largest = std::max(largest, records);
+			records = 0;
+		}
+		records += c;
+		total += c;
+		p.bucket[i] = uint32_t(p.key_bounds.size() - 1);
+	}
+	largest = std::max(largest, records);
+	p.key_bounds.push_back(uint64_t(in.max_oid) + 1);
+	*message_stream << "#Counted edges: " << total << endl;
+	*message_stream << "Edge buckets: " << p.size() << " (largest=" << largest << " edges, limit=" << max_records << " edges)" << endl;
+	if (largest > max_records)
+		*message_stream << "Warning: the edges of one key range exceed the memory budget of " << budget << " bytes." << endl;
+	return p;
+}
+
+static RadixedTable edge_pass_one(const string& base_dir, const EdgeInput& in, const EdgePartition& p) {
+	mkdir(base_dir);
+	FileArray file_array(base_dir, (int)p.size(), 0, true);
+	// A buffer is flushed at BufferArray::BUF_SIZE and grows in steps of CompressedBuffer::BUF_SIZE.
+	const uint64_t buffer_mem = CompressedBuffer::stream_memory() + BufferArray::BUF_SIZE + CompressedBuffer::BUF_SIZE;
+	*message_stream << "Edge write buffer memory: " << (uint64_t)config.threads_ * p.size() * buffer_mem << " bytes" << endl;
+
+	TaskTimer timer("Reading input lines");
+	const uint64_t total_lines = read_edges(in, [&](OId n1, OId n2, double w) {
+		thread_local BufferArray buffers(file_array, (int)p.size());
+		Edge edge(n1, n2, w);
+		buffers.write(p.bucket_of(n1), &edge, 1, 1);
+		});
 	timer.finish();
 	log_rss();
-	*message_stream << "#Input lines: " << total_lines.load(std::memory_order_relaxed) << endl;
+	*message_stream << "#Input lines: " << total_lines << endl;
 	*message_stream << "#Input edges: " << file_array.records_total() << endl;
 	file_array.close();
-	return file_array.buckets(shift);
+	return file_array.buckets(p.key_bounds);
 }
 
 static OId node_degree(vector<Edge>::const_iterator begin, vector<Edge>::const_iterator end) {
@@ -268,7 +340,15 @@ static DegreePartition edge_pass_two(const RadixedTable& rep_sorted) {
 			for (const auto& degree : local)
 				degrees[degree.first] += degree.second;
 	}
-	DegreePartition r(degrees, RADIX_COUNT);
+	// With a single bucket, edge_pass_four holds all edges and the members of all potential reps at the same time,
+	// so its memory use is known in advance. Otherwise the amount of edges buffered in the queue is unknown.
+	uint64_t total_edges = 0;
+	for (const auto& d : degrees)
+		total_edges += d.second;
+	const uint64_t memory_limit = Util::String::interpret_number(config.memory_limit.get(DEFAULT_MEMORY_LIMIT));
+	const bool single_bucket = total_edges <= memory_limit / (sizeof(Edge) + sizeof(pair<OId, double>));
+	DegreePartition r(degrees, single_bucket ? 1 : RADIX_COUNT);
+	*message_stream << "Degree buckets: " << r.size() << " (edges=" << total_edges << ')' << endl;
 	*message_stream << "Time (finding neighbor counts): " << timer.seconds() << 's' << endl;
 	return r;
 }
@@ -408,7 +488,8 @@ void greedy_vertex_cover(Cfg& cfg) {
 		cfg.tmp_dir = config.tmpdir = create_temp_directory(config.tmpdir, "diamond-tmp-") + PATH_SEPARATOR;
 	const string base_dir = cfg.tmp_dir;
 	//mkdir(base_dir);
-	RadixedTable rep_sorted = edge_pass_one(base_dir + "rep_sorted" + PATH_SEPARATOR, max_oid, triplets, symmetric, cov, numeric_ids ? nullptr : &acc2oid, cfg.edges);
+	const EdgeInput input{ max_oid, triplets, symmetric, cov, numeric_ids ? nullptr : &acc2oid, cfg.edges };
+	RadixedTable rep_sorted = edge_pass_one(base_dir + "rep_sorted" + PATH_SEPARATOR, input, edge_pass_zero(input));
 	const DegreePartition p = edge_pass_two(rep_sorted);
 	RadixedTable degree_sorted = edge_pass_three(rep_sorted, p, cfg);
 	edge_pass_four(degree_sorted, db_size, cfg);

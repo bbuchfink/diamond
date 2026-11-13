@@ -43,6 +43,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "search/hit_buffer.h"
 #include "util/memory/mem_profile.h"
 #include "new/extension_pipeline.h"
+#include "multipass/multipass.h"
 
 using std::get;
 using std::tuple;
@@ -220,7 +221,7 @@ void align_queries(File* output_file, Search::Config& cfg)
 {
 	MEM_SCOPE("align/main-thread");	
 	MemProfile::reset_peaks();
-	const uint64_t mem_limit = Util::String::interpret_number(config.memory_limit.get("16G"));
+	const uint64_t mem_limit = config.memory_limit.present() ? Util::String::interpret_number(config.memory_limit.get_present()) : config.block_size() * (9.0 * 2 / config.lowmem_ + 2);
 
 	pair<BlockId, BlockId> query_range;
 	TaskTimer timer("Allocating memory", 3);
@@ -233,7 +234,7 @@ void align_queries(File* output_file, Search::Config& cfg)
 
 	const uint64_t res_size = cfg.query->mem_size() + (cfg.target.get() == cfg.query.get() ? 0 : cfg.target->mem_size());
 	const uint64_t avail = mem_limit > res_size ? mem_limit - res_size : 0;
-	cfg.seed_hit_buf->plan_bin_groups(std::min<uint64_t>(avail / 2, config.trace_pt_fetch_size));
+	cfg.seed_hit_buf->plan_bin_groups(avail / 2);
 	cfg.seed_hit_buf->alloc_buffer();
 	cfg.seed_hit_buf->load();
 	bool goon = true;
@@ -266,7 +267,10 @@ void align_queries(File* output_file, Search::Config& cfg)
 			output_sink.reset(new ReorderQueue<TextBuffer*, OutputWriter>(query_range.first, writer, !config.no_reorder));
 		}
 
-		if (config.new_extension_pipeline) {
+		if (config.multipass_extension_pipeline) {
+			timer.go("Computing alignments");
+			MultipassPipeline::run(hit_buf, hit_count, cfg, output_file);
+		} else if (config.new_extension_pipeline) {
 			timer.go("Computing alignments");
 			ExtensionPipeline::run(hit_buf, hit_count, cfg);
 		}

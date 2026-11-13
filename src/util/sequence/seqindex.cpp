@@ -79,19 +79,21 @@ struct Emit {
 Seqindex::Seqindex(Sequence seq, int k, double word_threshold, std::pmr::memory_resource& pool, Statistics& stats):
 	k_(k),
 	shift_(31),
-	mod_(1),
+	lead_(1),
 	entry_(&pool),
-	next_(&pool),
-	head_(&pool)
+	head_(&pool),
+	filter_(&pool)
 {
 	if (k < MIN_KMER_LEN || k > MAX_KMER_LEN)
 		throw runtime_error("Seqindex k-mer length must be between "
 			+ std::to_string(MIN_KMER_LEN) + " and " + std::to_string(MAX_KMER_LEN) + ".");
 
 	TaskTimer timer;
-	for (int i = 0; i < k; ++i)
-		mod_ *= TRUE_AA;
+	for (int i = 1; i < k; ++i)
+		lead_ *= TRUE_AA;
 
+	// The words in the order they are generated: by query position, then by the enumeration of the neighborhood.
+	std::pmr::vector<Entry> words(&pool);
 	if (seq.length() >= k) {
 		const SubstitutionTable table;
 		const int min_score = score_matrix.rawscore(word_threshold);
@@ -108,50 +110,38 @@ Seqindex::Seqindex(Sequence seq, int k, double word_threshold, std::pmr::memory_
 				subs[i] = &table.row[(int)mer[i]];
 			for (int i = k - 1; i >= 0; --i)
 				best_suffix[i] = best_suffix[i + 1] + (*subs[i])[0].score;
-			Emit{ k, min_score, subs, best_suffix, pos, entry_ }(0, 0, 0);
+			Emit{ k, min_score, subs, best_suffix, pos, words }(0, 0, 0);
 		}
 	}
 
-	size_t buckets = 2;
-	while (buckets < entry_.size() / 4)
+	size_t buckets = (size_t)1 << FILTER_BITS;
+	while (buckets < words.size())
 		buckets <<= 1;
 	shift_ = 32;
 	for (size_t b = buckets; b > 1; b >>= 1)
 		--shift_;
-	head_.assign(buckets, -1);
-	next_.resize(entry_.size());
-	for (int32_t i = (int32_t)entry_.size() - 1; i >= 0; --i) {
-		const uint32_t b = bucket(entry_[i].code);
-		next_[i] = head_[b];
-		head_[b] = i;
+
+	// Counting sort of the words by bucket, which keeps their order within a bucket.
+	head_.assign(buckets + 1, 0);
+	for (const Entry& e : words)
+		++head_[bucket(e.code) + 1];
+	for (size_t b = 0; b < buckets; ++b)
+		head_[b + 1] += head_[b];
+	entry_.resize(words.size());
+	for (const Entry& e : words)
+		entry_[head_[bucket(e.code)]++] = e;
+	for (size_t b = buckets; b > 0; --b)
+		head_[b] = head_[b - 1];
+	head_[0] = 0;
+
+	filter_.assign(buckets, 0);
+	for (const Entry& e : words) {
+		const uint32_t h = hash(e.code);
+		filter_[h >> shift_] |= filter_bit(h);
 	}
 
 	stats.inc(Statistics::TIME_KEYWORD_TREE, timer.nanoseconds());
 }
 
 Seqindex::~Seqindex() {
-}
-
-void Seqindex::scan(Sequence seq, std::function<void(Loc, Loc)>& callback) {
-	if (entry_.empty())
-		return;
-	const Letter* s = seq.data();
-	const Loc len = seq.length();
-	uint32_t code = 0;
-	int run = 0;
-	for (Loc j = 0; j < len; ++j) {
-		const Letter l = s[j];
-		if (l < 0 || l >= TRUE_AA) {
-			run = 0;
-			code = 0;
-			continue;
-		}
-		code = (code * TRUE_AA + (uint32_t)l) % mod_;
-		if (++run < k_)
-			continue;
-		const Loc begin = j - k_ + 1;
-		for (int32_t i = head_[bucket(code)]; i != -1; i = next_[i])
-			if (entry_[i].code == code)
-				callback(entry_[i].pos, begin);
-	}
 }

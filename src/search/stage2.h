@@ -112,7 +112,7 @@ static void search_query_offset(const SeedLoc& q,
 		n = std::min(N, int(hits_end - i));
 		for (int j = 0; j < n; ++j) {
 			if (i + j + 8 < hits_end)
-				__builtin_prefetch(ref_seqs.data(s[*(i + j + 8)]) - window_left, 0, 1);
+				prefetch_read(ref_seqs.data(s[*(i + j + 8)]) - window_left);
 			subjects[j] = ref_seqs.data(s[*(i + j)]) - window_left;
 		}
 		if (score_cutoff)

@@ -18,9 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <memory>
-#include <numeric>
 #include <cfloat>
 #include <mutex>
+#include <iterator>
 #include "../dp.h"
 #include "config.h"
 #include "anchored.h"
@@ -30,95 +30,54 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "align/def.h"
 #include "stats/stats.h"
 #include "util/memory/mem_profile.h"
+#include "basic/config.h"
 
-using std::list;
 using std::vector;
 using std::unique_ptr;
 using std::pair;
 using std::sort;
-using std::accumulate;
 
-namespace DP { namespace BandedSwipe { namespace DISPATCH_ARCH {
+namespace DP { namespace AnchoredSwipe { namespace DISPATCH_ARCH {
 
-struct TargetVector {
-	//vector<DP::AnchoredSwipe::Target<int8_t>> int8;
-	vector<DP::AnchoredSwipe::Target<int16_t>> int16;
-};
-
-// Score profiles (MATRIX_ROW_SCORES off) or padded query letters (on) of an extension, for the directions that are extended.
-struct Profiles {
-	const LongScoreProfile<int16_t>* forward, *reverse;
-	const Letter* query, *query_rev;
-};
-
-static Loc band_max(const DP::AnchoredSwipe::Config& cfg) {
-	return cfg.max_diag_spread + 2 * cfg.band;
-}
-
-static void align_right(Loc query_len, Sequence target_seq, bool reverse, Loc i, Loc j, Loc d_begin, Loc d_end, Score prefix_score, TargetVector& targets,
+// Returns the DP target of an extension, without its query letters or profile, which are set once it is loaded into a
+// channel of the kernel.
+static DP::AnchoredSwipe::Target<int16_t> align_right(Loc query_len, Sequence target_seq, bool reverse, Loc i, Loc j, Loc d_begin, Loc d_end,
 	int64_t target_idx,
-	const Profiles& profiles,
 	const DP::AnchoredSwipe::Config& cfg)
 {
+	// The diagonals [d_begin, d_end) are computed.
 	Loc qlen = query_len - i, tlen = target_seq.length();
-	//const int band_cap = std::max(std::min(qlen / 2, tlen / 2), 1);
-	//const int band = std::min(std::max(get_band(cfg.query.length()), Loc((d_end - d_begin) * 0.15)), band_cap);
-	//const int band = std::max(get_band(cfg.query.length()), Loc((d_end - d_begin) * 0.15));
-	const int band = cfg.band; // query_len?
-	d_begin -= band;
-	d_end += band - 1;
 	const Loc d0 = Geo::clip_diag(Geo::diag_sub_matrix(d_begin, i, j), qlen, tlen),
-		d1 = Geo::clip_diag(Geo::diag_sub_matrix(d_end, i, j), qlen, tlen);	
+		d1 = Geo::clip_diag(Geo::diag_sub_matrix(d_end - 1, i, j), qlen, tlen);
 	tlen = std::min(tlen, Geo::j(qlen - 1, d0) + 1);
 	assert(tlen > 0);
 	assert(d1 >= d0);
-	assert(d1 >= 0 && d1 + 1 - d0 <= band_max(cfg));
-	
-	const Sequence clipped_target = reverse ? target_seq.subseq(target_seq.length() - tlen, target_seq.length()) : target_seq.subseq(0, tlen);
+	assert(d1 >= 0 && d1 + 1 - d0 <= cfg.band_max);
 
-	auto& t = targets.int16;
-	t.emplace_back(clipped_target, d0, d1 + 1, i, qlen, target_idx, reverse);
-	t.back().profile = profiles.forward;
-	t.back().profile_rev = profiles.reverse;
-	t.back().query = profiles.query;
-	t.back().query_rev = profiles.query_rev;
+	const Sequence clipped_target = reverse ? target_seq.subseq(target_seq.length() - tlen, target_seq.length()) : target_seq.subseq(0, tlen);
+	DP::AnchoredSwipe::Target<int16_t> t(clipped_target, d0, d1 + 1, i, qlen, target_idx, reverse);
+	t.profile = t.profile_rev = nullptr;
+	t.query = t.query_rev = nullptr;
+	return t;
 }
 
-static void align_left(Loc query_len, Sequence target_seq, Loc i, Loc j, Loc d_begin, Loc d_end, Score suffix_score, TargetVector& targets,
+static DP::AnchoredSwipe::Target<int16_t> align_left(Loc query_len, Sequence target_seq, Loc i, Loc j, Loc d_begin, Loc d_end,
 	int64_t target_idx,
-	const Profiles& profiles,
 	const DP::AnchoredSwipe::Config& cfg)
 {
 	const Loc qlen = query_len, tlen = target_seq.length();
 	const Loc ir = qlen - 1 - i, jr = tlen - 1 - j;
-	align_right(qlen, target_seq.subseq(0, j + 1), true, ir, jr, Geo::rev_diag(d_end, qlen, tlen), Geo::rev_diag(d_begin, qlen, tlen), suffix_score, targets, target_idx, profiles, cfg);
+	return align_right(qlen, target_seq.subseq(0, j + 1), true, ir, jr, Geo::rev_diag(d_end, qlen, tlen), Geo::rev_diag(d_begin, qlen, tlen), target_idx, cfg);
 }
 
-static bool extend_right(const ExtensionPipeline::Extension& e) {
-	return std::min(e.query.length() - e.anchor.query_end(), e.target.length() - e.anchor.subject_end()) >= DpTarget::MIN_LETTERS;
-}
-
-static bool extend_left(const ExtensionPipeline::Extension& e) {
-	return std::min(e.anchor.query_begin(), e.anchor.subject_begin()) >= DpTarget::MIN_LETTERS;
-}
-
-static void add_target(const ExtensionPipeline::Extension& e, const Profiles& profiles, TargetVector& targets,
-	int64_t& target_idx,
-	const DP::AnchoredSwipe::Config& cfg)
+// Returns the DP target of one extension. Each extension yields exactly one target.
+static DP::AnchoredSwipe::Target<int16_t> make_target(const ExtensionPipeline::Extension& e, int64_t target_idx, const DP::AnchoredSwipe::Config& cfg)
 {
 	const Loc qlen = e.query.length();
-	const Anchor& anchor = e.anchor;
-	if (extend_right(e)) {
-		const Loc i = anchor.query_end(), j = anchor.subject_end();
-		align_right(qlen, e.target.subseq(j), false, i, j, anchor.d_min_right, anchor.d_max_right, anchor.prefix_score, targets, target_idx, profiles, cfg);
-		++target_idx;
-	}
-	if (extend_left(e)) {
-		const Score suffix_score = cfg.score_hint - anchor.prefix_score + anchor.score;
-		align_left(qlen, e.target, anchor.query_begin() - 1, anchor.subject_begin() - 1, anchor.d_min_left, anchor.d_max_left, suffix_score,
-			targets, target_idx, profiles, cfg);
-		++target_idx;
-	}
+	if (e.direction == ExtensionPipeline::RIGHT)
+		return align_right(qlen, e.target.subseq(e.j), false, e.i, e.j, e.d_min, e.d_max, target_idx, cfg);
+	else
+		return align_left(qlen, e.target, e.i, e.j, e.d_min, e.d_max, target_idx, cfg);
 }
 
 // Writes seq framed by `padding` padding letters on each side to out, reversed if reverse is set, and returns the pointer to its first letter.
@@ -133,153 +92,224 @@ static const Letter* pad_query(Sequence seq, bool reverse, int64_t padding, Lett
 	return begin;
 }
 
-void anchored_swipe(ExtensionPipeline::ExtensionQueue& queue, const DP::AnchoredSwipe::Config& cfg, const ExtensionPipeline::ExtensionCallback& callback) {
+/* Target source of the kernel (see TargetArray in anchored.h) feeding it the extensions of the queue. It first serves
+   the batch of extensions popped from the queue by the caller, ordered by band. Once they are used up, every channel that
+   becomes idle pops the next extension from the queue, so an extension submitted by a target task while the kernel
+   is running is loaded as soon as a channel is free for it.
+   This goes on until the queue has no extension for an idle channel. From then on the source does not ask the queue
+   again, so the kernel completes the channels still loaded and returns. Having the kernel wait for further extensions
+   instead would keep it running with part of its channels idle at the full cost per column, and when the queue
+   runs dry it does so for all the kernels popping from it, which would then share the few extensions coming in. Giving up
+   leaves these to the kernels that still have all their channels loaded, and frees the thread for the tasks submitting
+   extensions. A new kernel is started once enough extensions have been queued (see ThreadPool).
+   The padded query (or the profile) of an extension is built when it is loaded into a channel and lives in the
+   storage of that channel until the channel is loaded again. An extension whose pair carries a score table (a
+   compositionally adjusted matrix) is computed with it, the others with the unadjusted matrix.
+   Computed extensions are passed to the callback in batches of FLUSH_SIZE, and the remainder when the kernel is done.
+   Every batch is ordered by the sequence in which the extensions were popped from the queue. */
+class ExtensionSource {
+public:
+
+	enum { FLUSH_SIZE = 64 };
+
+	ExtensionSource(ExtensionPipeline::ExtensionQueue& queue, std::vector<ExtensionPipeline::Extension>&& batch, const DP::AnchoredSwipe::Config& cfg,
+		const ExtensionPipeline::ExtensionCallback& callback) :
+		queue_(queue),
+		batch_(std::move(batch)),
+		batch_pos_(0),
+		shard_(ExtensionPipeline::ExtensionQueue::thread_shard()),
+		popped_(0),
+		cfg_(cfg),
+		callback_(callback),
+		padding_(DP::AnchoredSwipe::MATRIX_ROW_SCORES
+			? std::max(DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(cfg.band_max), (int64_t)LongScoreProfile<int16_t>::DEFAULT_PADDING)
+			: DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(cfg.band_max)),
+		profile_time_(0),
+		output_time_(0),
+		record_bands_(!config.band_hist_file.empty())
+	{
+		TaskTimer timer;
+		batch_targets_.reserve(batch_.size());
+		for (size_t k = 0; k < batch_.size(); ++k)
+			batch_targets_.push_back(make_target(batch_[k], (int64_t)k, cfg));
+		cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ADD, timer.microseconds());
+
+		timer.go();
+		sort(batch_targets_.begin(), batch_targets_.end());
+		cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_SORT, timer.microseconds());
+
+		if (DP::AnchoredSwipe::MATRIX_ROW_SCORES)
+			DP::AnchoredSwipe::make_score_table(score_matrix.matrix8(), 32, score_table_);
+	}
+
+	~ExtensionSource() {
+		cfg_.stats.inc(Statistics::TIME_PROFILE, profile_time_ / 1000);
+		cfg_.stats.inc(Statistics::TIME_ANCHORED_SWIPE_OUTPUT, output_time_ / 1000);
+		cfg_.stats.inc(Statistics::EXTENSIONS_REFILLED, popped_);
+		if (record_bands_)
+			ExtensionPipeline::add_band_histogram(band_hist_);
+	}
+
+	bool next(int channel, DP::AnchoredSwipe::Target<int16_t>& t) {
+		if ((size_t)channel >= channels_.size())
+			channels_.resize(channel + 1);
+		Channel& c = channels_[channel];
+		if (batch_pos_ < batch_targets_.size()) {
+			t = batch_targets_[batch_pos_++];
+			c.extension = batch_[t.target_idx];
+			c.seq = t.target_idx;
+		}
+		else {
+			if (!pop(c.extension))
+				return false;
+			c.seq = int64_t(batch_.size()) + popped_++;
+			t = make_target(c.extension, c.seq, cfg_);
+		}
+		if (record_bands_)
+			record_band(c.extension.diag_spread());
+		load(c, t);
+		return true;
+	}
+
+	void finish(int channel, int16_t score, Loc query_end, Loc target_end) {
+		Channel& c = channels_[channel];
+		c.extension.score = score;
+		c.extension.query_len = query_end;
+		c.extension.target_len = target_end;
+		done_.emplace_back(c.seq, c.extension);
+		if (done_.size() >= FLUSH_SIZE)
+			flush();
+	}
+
+	// Pops the next extension of the queue to e. Returns false if none is available, and keeps doing so from then on
+	// without asking the queue again (see above).
+	bool pop(ExtensionPipeline::Extension& e) {
+		if (queue_drained_)
+			return false;
+		if (queue_.pop(shard_, e))
+			return true;
+		queue_drained_ = true;
+		return false;
+	}
+
+	// Passes the computed extensions to the callback.
+	void flush() {
+		if (done_.empty())
+			return;
+		TaskTimer timer;
+		sort(done_.begin(), done_.end(), [](const Done& a, const Done& b) { return a.first < b.first; });
+		out_.clear();
+		out_.reserve(done_.size());
+		for (const Done& d : done_)
+			out_.push_back(d.second);
+		done_.clear();
+		callback_(out_);
+		output_time_ += timer.nanoseconds();
+	}
+
+	DP::AnchoredSwipe::Options options() const {
+		return DP::AnchoredSwipe::Options{ nullptr, nullptr, score_table_ };
+	}
+
+private:
+
+	struct Channel {
+		ExtensionPipeline::Extension extension;
+		int64_t seq = 0;                        // position in the sequence the extensions were popped in
+		vector<Letter> query;                   // MATRIX_ROW_SCORES mode: padded query of the extension
+		LongScoreProfile<int16_t> profile;      // otherwise: its profile, reversed for LEFT extensions
+	};
+
+	using Done = pair<int64_t, ExtensionPipeline::Extension>;
+
+	void record_band(Loc band) {
+		if ((size_t)band >= band_hist_.size())
+			band_hist_.resize((size_t)band + 1, 0);
+		++band_hist_[band];
+	}
+
+	// Builds the padded query or profile of the extension of the channel, for the direction it extends into.
+	void load(Channel& c, DP::AnchoredSwipe::Target<int16_t>& t) {
+		MEM_SCOPE("dp/query-profile");
+		TaskTimer timer;
+		const ExtensionPipeline::Extension& e = c.extension;
+		const bool reverse = e.direction == ExtensionPipeline::LEFT;
+		if (DP::AnchoredSwipe::MATRIX_ROW_SCORES) {
+			c.query.resize((size_t)e.query.length() + 2 * padding_);
+			(reverse ? t.query_rev : t.query) = pad_query(e.query, reverse, padding_, c.query.data());
+			t.score_table = e.pair->score_table;
+		}
+		else {
+			assert(e.pair->score_table == nullptr); // adjusted matrices are only supported in MATRIX_ROW_SCORES mode
+			c.profile = make_profile16(e.query, nullptr, padding_, &score_matrix);
+			if (reverse)
+				for (int l = 0; l < AMINO_ACID_COUNT; ++l)
+					std::reverse(c.profile.data[l].begin(), c.profile.data[l].end());
+			(reverse ? t.profile_rev : t.profile) = &c.profile;
+		}
+		profile_time_ += timer.nanoseconds();
+	}
+
+	ExtensionPipeline::ExtensionQueue& queue_;
+	const std::vector<ExtensionPipeline::Extension> batch_;
+	vector<DP::AnchoredSwipe::Target<int16_t>> batch_targets_;
+	size_t batch_pos_;
+	int shard_;                            // shard of the queue popped from last
+	bool queue_drained_ = false;           // the queue had no extension to pop, it is not asked again
+	int64_t popped_;
+	const DP::AnchoredSwipe::Config& cfg_;
+	const ExtensionPipeline::ExtensionCallback& callback_;
+	const int64_t padding_;
+	alignas(32) int8_t score_table_[32 * 32];
+	vector<Channel> channels_;
+	vector<Done> done_;
+	vector<ExtensionPipeline::Extension> out_;
+	int64_t profile_time_, output_time_;
+	const bool record_bands_;              // --band-hist is set
+	vector<int64_t> band_hist_;            // bands of the extensions loaded, merged into the histogram of the run when done
+};
+
+/* Computes the extensions of the queue. Every extension is an independent local alignment of the
+   query and the target of its pair, starting at the anchor and running into its own direction, and
+   only its score and extent are reported. Merging the extensions of a pair into one alignment and
+   filtering it is up to the callback.
+   The batch, which the caller has popped from the queue, is computed first. Once it is used up, every
+   channel of the kernel that completes pops the next extension from the queue, so extensions submitted
+   while the kernel is running are computed by the same call. It returns once the queue had no extension
+   for a channel and the channels loaded before are complete (see ExtensionSource). */
+void anchored_swipe(std::vector<ExtensionPipeline::Extension>& batch, ExtensionPipeline::ExtensionQueue& queue, const DP::AnchoredSwipe::Config& cfg,
+	const ExtensionPipeline::ExtensionCallback& callback)
+{
 	MEM_SCOPE("dp/anchored-swipe");
 	TaskTimer total;
 
-	vector<ExtensionPipeline::Extension> extensions;
-	{
-		std::lock_guard<std::mutex> lock(queue.mtx);
-		extensions.swap(queue.extensions);
-	}
-	if (extensions.empty())
+	if (batch.empty())
 		return;
 
-	TargetVector target_vec;
+	{
+		ExtensionSource source(queue, std::move(batch), cfg, callback);
+		const DP::AnchoredSwipe::Options options = source.options();
 
-	TaskTimer timer;
-	target_vec.int16.reserve(extensions.size() * 2); // check for 16 bit overflow
-	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ALLOC, timer.microseconds());
+		TaskTimer timer;
+		const DP::AnchoredSwipe::Stats stats = DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(source, cfg.band_max, options);
+#ifdef ANCHORED_SWIPE_STAT
+		cfg.stats.inc(Statistics::ANCHORED_LANE_CELLS, stats.lane_cells);
+		cfg.stats.inc(Statistics::ANCHORED_LANE_CELLS_IDLE, stats.idle_cells);
+		cfg.stats.inc(Statistics::ANCHORED_LANE_CELLS_TARGET_OOB, stats.target_oob_cells);
+		cfg.stats.inc(Statistics::ANCHORED_LANE_CELLS_QUERY_OOB, stats.query_oob_cells);
+		cfg.stats.inc(Statistics::ANCHORED_LANE_CELLS_OUT_OF_BAND, stats.out_of_band_cells);
+#endif
+		cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
+		cfg.stats.inc(Statistics::TIME_SW, timer.microseconds());
 
-	timer.go();
-	// Each extension carries its own query, so the score profiles are built per extension, and only for
-	// the directions that are extended. The padding covers every target within the band limits of the call.
-	list<LongScoreProfile<int16_t>> profile_storage;
-	vector<Letter> query_storage;
-	vector<Profiles> profiles(extensions.size(), Profiles{ nullptr, nullptr, nullptr, nullptr });
-	const ScoreMatrix& matrix = score_matrix;
-	alignas(32) int8_t score_table[32 * 32];
-	if (DP::AnchoredSwipe::MATRIX_ROW_SCORES) {
-		MEM_SCOPE("dp/query-profile");
-		std::copy(matrix.matrix8(), matrix.matrix8() + 32 * 32, score_table);
-		for (int l = 0; l < 32; ++l)
-			score_table[(l << 5) + DP::AnchoredSwipe::PADDING_LETTER] = DP::AnchoredSwipe::PADDING_SCORE;
-		const int64_t padding = std::max(DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(band_max(cfg)),
-			(int64_t)LongScoreProfile<int16_t>::DEFAULT_PADDING);
-		size_t size = 0;
-		for (const ExtensionPipeline::Extension& e : extensions)
-			if (e.anchor.score > 0)
-				size += (size_t(extend_right(e)) + size_t(extend_left(e))) * (e.query.length() + 2 * padding);
-		query_storage.resize(size);
-		Letter* out = query_storage.data();
-		for (size_t k = 0; k < extensions.size(); ++k) {
-			const ExtensionPipeline::Extension& e = extensions[k];
-			if (e.anchor.score <= 0)
-				continue;
-			assert(e.diag_spread() <= cfg.max_diag_spread);
-			if (extend_right(e)) {
-				profiles[k].query = pad_query(e.query, false, padding, out);
-				out += e.query.length() + 2 * padding;
-			}
-			if (extend_left(e)) {
-				profiles[k].query_rev = pad_query(e.query, true, padding, out);
-				out += e.query.length() + 2 * padding;
-			}
-		}
+		source.flush();
 	}
-	else {
-		MEM_SCOPE("dp/query-profile");
-		const int64_t padding = DP::AnchoredSwipe::DISPATCH_ARCH::profile_padding<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(band_max(cfg));
-		for (size_t k = 0; k < extensions.size(); ++k) {
-			const ExtensionPipeline::Extension& e = extensions[k];
-			const bool right = extend_right(e), left = extend_left(e);
-			if (e.anchor.score <= 0 || (!right && !left))
-				continue;
-			assert(e.diag_spread() <= cfg.max_diag_spread);
-			profile_storage.push_back(make_profile16(e.query, nullptr, padding, &matrix));
-			if (right)
-				profiles[k].forward = &profile_storage.back();
-			if (left) {
-				if (right)
-					profile_storage.push_back(profile_storage.back().reverse());
-				else
-					for (int l = 0; l < AMINO_ACID_COUNT; ++l)
-						std::reverse(profile_storage.back().data[l].begin(), profile_storage.back().data[l].end());
-				profiles[k].reverse = &profile_storage.back();
-			}
-		}
-	}
-	cfg.stats.inc(Statistics::TIME_PROFILE, timer.microseconds());
-
-	timer.go();
-	int64_t target_idx = 0;
-	for (size_t k = 0; k < extensions.size(); ++k)
-		if (extensions[k].anchor.score > 0)
-			add_target(extensions[k], profiles[k], target_vec, target_idx, cfg);
-	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_ADD, timer.microseconds());
-
-	timer.go();
-	sort(target_vec.int16.begin(), target_vec.int16.end());
-	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_SORT, timer.microseconds());
-
-	DP::AnchoredSwipe::Stats stats;
-	DP::AnchoredSwipe::Options options{ nullptr, nullptr, score_table };
-
-	timer.go();
-	stats = DP::AnchoredSwipe::DISPATCH_ARCH::smith_waterman<::DISPATCH_ARCH::ScoreVector<int16_t, 0>>(target_vec.int16.data(), target_vec.int16.size(), band_max(cfg), options);
-	cfg.stats.inc(Statistics::SWIPE_TASKS_TOTAL);
-	cfg.stats.inc(Statistics::TIME_SW, timer.microseconds());
-
-	timer.go();
-	sort(target_vec.int16.begin(), target_vec.int16.end(), DP::AnchoredSwipe::Target<int16_t>::cmp_target_idx);
-	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_SORT, timer.microseconds());
-
-	timer.go();
-	auto target_it = target_vec.int16.cbegin();
-	for (ExtensionPipeline::Extension& e : extensions) {
-		e.score = 0;
-		e.evalue = DBL_MAX;
-		if (e.anchor.score <= 0)
-			continue;
-		const Sequence query = e.query;
-		int score = e.anchor.score, i0 = e.anchor.query_begin(), i1 = e.anchor.query_end(), j0 = e.anchor.subject_begin(), j1 = e.anchor.subject_end();
-		if (extend_right(e)) {
-			score += target_it->score;
-			i1 += target_it->query_end;
-			j1 += target_it->target_end;
-			++target_it;
-		}
-		if (extend_left(e)) {
-			score += target_it->score;
-			i0 -= target_it->query_end;
-			j0 -= target_it->target_end;
-			++target_it;
-		}
-		// filter for cover
-		cfg.stats.inc(Statistics::EXT16);
-		const double qcov = double(i1 - i0) / query.length() * 100.0, tcov = double(j1 - j0) / e.target.length() * 100.0;
-		if (config.query_or_target_cover > 0 || config.query_cover > 0 || config.subject_cover > 0) {
-			if (std::max(qcov, tcov) < config.query_or_target_cover || qcov < config.query_cover || tcov < config.subject_cover)
-				continue;
-		}
-
-		const double evalue = matrix.evalue(score, query.length(), e.target.length()); // consider adjusted matrix
-		if (evalue > config.max_evalue)
-			continue;
-
-		e.score = score;
-		e.evalue = evalue;
-		e.query_range = { i0, i1 };
-		e.target_range = { j0, j1 };
-	}
-	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE_OUTPUT, timer.microseconds());
 	cfg.stats.inc(Statistics::TIME_ANCHORED_SWIPE, total.microseconds());
-
-	callback(extensions);
 }
 
 }
 
-DISPATCH_3V(anchored_swipe, ExtensionPipeline::ExtensionQueue&, queue, const DP::AnchoredSwipe::Config&, cfg, const ExtensionPipeline::ExtensionCallback&, callback)
+DISPATCH_4(void, anchored_swipe, std::vector<ExtensionPipeline::Extension>&, batch, ExtensionPipeline::ExtensionQueue&, queue, const DP::AnchoredSwipe::Config&, cfg,
+	const ExtensionPipeline::ExtensionCallback&, callback)
 
 }}

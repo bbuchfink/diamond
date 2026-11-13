@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "basic/config.h"
 #include "fasta/fasta_file.h"
 #include "fasta/volumed_fasta_file.h"
+#include "block/block_wrapper.h"
 #include "util/string/tokenizer.h"
 #include "util/log_stream.h"
 #include "util/data_structures/queue.h"
@@ -395,6 +396,16 @@ Block* SequenceFile::load_seqs(const int64_t max_letters, OId max_seqs, const Bi
 		block->masked_.resize(block->seqs_.size(), false);
 	//block->seqs_.print_stats();
 	return block;
+}
+
+std::shared_ptr<Block> SequenceFile::load_seqs_shared(const int64_t max_letters, const BitVector* filter)
+{
+	if (type_ == Type::BLOCK && (filter == nullptr || filter->empty())) {
+		std::shared_ptr<Block> block = static_cast<BlockWrapper*>(this)->share_block(max_letters);
+		if (block)
+			return block;
+	}
+	return std::shared_ptr<Block>(load_seqs(max_letters, 0, filter));
 }
 
 void SequenceFile::get_seq()

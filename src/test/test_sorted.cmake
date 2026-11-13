@@ -1,0 +1,20 @@
+# Like test.cmake, but for commands that write their output lines in no particular order: the lines of
+# the output and of the reference are sorted before they are compared.
+SET(CMD "./diamond ${ARGS} -o ${NAME}.out")
+separate_arguments (SEP NATIVE_COMMAND ${CMD})
+execute_process(COMMAND ${SEP} RESULT_VARIABLE CMD_RESULT)
+if(NOT ${CMD_RESULT} EQUAL 0)
+  message(FATAL_ERROR "${NAME} failed with exit code ${CMD_RESULT}.")
+endif()
+# Reads the lines without their line endings, so CRLF/LF differences are ignored.
+file(STRINGS ${NAME}.out OUT_LINES)
+file(STRINGS ${TEST_DIR}/${NAME}.out REF_LINES)
+list(SORT OUT_LINES)
+list(SORT REF_LINES)
+if(NOT "${OUT_LINES}" STREQUAL "${REF_LINES}")
+  string(REPLACE ";" "\n" OUT_SORTED "${OUT_LINES}")
+  string(REPLACE ";" "\n" REF_SORTED "${REF_LINES}")
+  file(WRITE ${NAME}.sorted.out "${OUT_SORTED}\n")
+  file(WRITE ${NAME}.sorted.ref "${REF_SORTED}\n")
+  message(FATAL_ERROR "${NAME} failed. Compare ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.sorted.ref (sorted ${TEST_DIR}/${NAME}.out) with ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.sorted.out")
+endif()

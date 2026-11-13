@@ -116,38 +116,75 @@ struct TargetSeqBuffer {
 	Loc capacity = 0;
 };
 
-template<typename ScoreVector>
+/* Source of the targets over a fixed array. Loads the targets in the order of the array, skipping the ones with an
+   empty band, and writes the results back into the array.
+
+   The kernel pulls its targets from a source, which has to provide:
+   - bool next(int channel, Target<Score>& t): loads the next target into t, which is computed in the given
+     channel, and returns false if none is available at the moment. The kernel asks again later for channels that
+     are idle, so a source may supply targets that were not available when the kernel was invoked. Targets have to
+     satisfy band() >= 1.
+   - void finish(int channel, Score score, Loc query_end, Loc target_end): receives the result of the target
+     computed in the channel. The channel is loaded again (or found idle) right after. */
+template<typename Score>
+struct TargetArray {
+	TargetArray(Target<Score>* targets, int64_t target_count) :
+		begin(targets),
+		ptr(targets),
+		end(targets + target_count)
+	{}
+	bool next(int channel, Target<Score>& t) {
+		while (ptr < end && ptr->band() <= 0)
+			++ptr;
+		if (ptr == end)
+			return false;
+		if ((size_t)channel >= target_idx.size())
+			target_idx.resize(channel + 1);
+		target_idx[channel] = ptr - begin;
+		t = *ptr++;
+		return true;
+	}
+	void finish(int channel, Score score, Loc query_end, Loc target_end) {
+		Target<Score>& t = begin[target_idx[channel]];
+		t.score = score;
+		t.query_end = query_end;
+		t.target_end = target_end;
+	}
+	Target<Score>* begin, * ptr, * end;
+	std::vector<int64_t> target_idx;
+};
+
+template<typename ScoreVector, typename Source>
 struct TargetIterator {
 	enum { CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS };
 	using Score = typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score;
-	TargetIterator(Target<Score>* targets, int64_t target_count, DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, const Options& options) :
+	TargetIterator(Source& source, DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, const Options& options) :
 		options(options),
-		begin(targets),
-		next(targets),
-		end(targets + target_count),
+		source(source),
 		active(0),
 		band(0),
+		target_band(0),
 		blank_profile(std::max(matrix.band(), (int)CHANNELS), (Score)0),
 		blank_query(std::max(matrix.band(), (int)CHANNELS), (Letter)0)
 	{
 		assert(!MATRIX_ROW_SCORES || (options.profile == nullptr && options.score_table != nullptr));
 		zero_row.fill(0);
-		while (active < CHANNELS && next < end) {
-			int i = active;
-			init_target(i);
+		for (int i = 0; i < CHANNELS && init_target(i); ++i)
 			matrix.init_channel_diag(i, -Geo::i(0, targets[i].d_begin));
-		}
 		for (int i = active; i < CHANNELS; ++i)
 			reset_channel(i);
 		band = round_up(band, (Loc)CHANNELS);
 		//matrix.init_channels_nw(-Geo::i(0, targets[0].d_begin), score_matrix.gap_open(), score_matrix.gap_extend());
 	}
+	// Loads the next target of the source into the channel, which has to be blank.
 	inline bool init_target(int channel) {
-		while (next->band() <= 0 && next < end) ++next;
-		if (next == end)
+		if (!source.next(channel, targets[channel])) {
+			targets[channel].reset();
+			if (MASK_TARGET_BAND)
+				set_channel(target_band, channel, (Score)0);
 			return false;
-		target_idx[channel] = int(next - begin);
-		targets[channel] = *next++;
+		}
+		assert(targets[channel].band() > 0);
 		loc[channel] = 0;
 		TargetSeqBuffer& buf = target_seqs[channel];
 		const Sequence& target_seq = targets[channel].seq;
@@ -163,9 +200,11 @@ struct TargetIterator {
 		else
 			std::copy(target_seq.data(), target_seq.end(), seq);
 		std::fill(seq + target_seq.length(), seq + target_seq.length() + L, MASK_LETTER);
-		if (MATRIX_ROW_SCORES)
+		if (MATRIX_ROW_SCORES) {
 			query_ptrs[channel] = (targets[channel].reverse ? targets[channel].query_rev : targets[channel].query)
 				+ targets[channel].query_start + Geo::i(0, targets[channel].d_begin) - 1;
+			score_tables[channel] = targets[channel].score_table ? targets[channel].score_table : options.score_table;
+		}
 		else if (options.profile == nullptr) {
 			if (targets[channel].reverse)
 				for (int j = 0; j < AMINO_ACID_COUNT; ++j)
@@ -181,6 +220,8 @@ struct TargetIterator {
 		}
 		++active;
 		band = std::max(band, targets[channel].band());
+		if (MASK_TARGET_BAND)
+			set_channel(target_band, channel, (Score)targets[channel].band());
 		return true;
 	}
 	inline void init_target_matrix(int channel, DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, ScoreVector& max_score, ScoreVector& col_counter, ScoreVector& max_j) {
@@ -200,41 +241,47 @@ struct TargetIterator {
 			for (int j = 0; j < AMINO_ACID_COUNT; ++j)
 				profile_ptrs[channel][j] = (const Score*)options.profile[0];
 	}
-	inline void next_block(DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, ScoreVector& max_score, ScoreVector& max_i, ScoreVector& max_j, ScoreVector& col_counter) {
-		for (int i = 0; i < CHANNELS; ++i) {
-			if (targets[i].blank()) {
-				std::fill(letters[i].begin(), letters[i].end(), MASK_LETTER);
-				continue;
+	// Reports the result of the target computed in the channel to the source.
+	inline void finish_target(int channel, const ScoreVector& max_score, const ScoreVector& max_i, const ScoreVector& max_j) {
+		const ::Score score = max_score[channel];
+		Score result = 0;
+		Loc query_end = 0, target_end = 0;
+		if (score >= 0) {
+			result = Score(score + 1);
+			const Score j1 = max_j[channel];
+			if (j1 < numeric_limits<Score>::max()) {
+				target_end = (Loc)j1 + 1 - 1;
+				query_end = Geo::i((Loc)j1, targets[channel].d_begin) + (Loc)max_i[channel] + 1 - 1;
+				assert(target_end > 0 && query_end > 0);
 			}
-			if (loc[i] >= targets[i].seq.length() + 1) {
-				const ::Score score = max_score[i];
-				if (score >= 0) {
-					begin[target_idx[i]].score = score + 1;
-					const Score j1 = max_j[i];
-					if (j1 < numeric_limits<Score>::max()) {
-						begin[target_idx[i]].target_end = (Loc)j1 + 1 - 1;
-						begin[target_idx[i]].query_end = Geo::i((Loc)j1, targets[i].d_begin) + (Loc)max_i[i] + 1 - 1;
-						assert(begin[target_idx[i]].target_end > 0 && begin[target_idx[i]].query_end > 0);
-					}
-					else
-						begin[target_idx[i]].score = numeric_limits<Score>::max();
-				}
+			else
+				result = numeric_limits<Score>::max();
+		}
+		source.finish(channel, result, query_end, target_end);
+	}
+	/* Advances the channels to the next block of columns. A channel whose target is complete reports its result and
+	   is loaded with the next target of the source. Idle channels ask the source again as well, so that targets
+	   which became available while the kernel is running are picked up. Once the source had nothing to offer, it
+	   is not asked again within the same block. */
+	inline void next_block(DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>& matrix, ScoreVector& max_score, ScoreVector& max_i, ScoreVector& max_j, ScoreVector& col_counter) {
+		bool source_empty = false;
+		for (int i = 0; i < CHANNELS; ++i) {
+			const bool idle = targets[i].blank();
+			if (!idle && loc[i] >= targets[i].seq.length() + 1) {
+				finish_target(i, max_score, max_i, max_j);
 				--active;
 				targets[i].reset();
-				if (next < end) {
-					if (!init_target(i)) {
-						std::fill(letters[i].begin(), letters[i].end(), MASK_LETTER);
-						reset_channel(i);
-						continue;
-					}
-					init_target_matrix(i, matrix, max_score, col_counter, max_j);
-					band = round_up(band, (Loc)CHANNELS);
-				}
-				else {
+			}
+			if (targets[i].blank()) {
+				if (source_empty || !init_target(i)) {
+					source_empty = true;
 					std::fill(letters[i].begin(), letters[i].end(), MASK_LETTER);
-					reset_channel(i);
+					if (!idle)
+						reset_channel(i);
 					continue;
 				}
+				init_target_matrix(i, matrix, max_score, col_counter, max_j);
+				band = round_up(band, (Loc)CHANNELS);
 			}
 			copy(target_seqs[i].data.get() + loc[i], target_seqs[i].data.get() + loc[i] + L, letters[i].data());
 			loc[i] += L;
@@ -268,7 +315,7 @@ struct TargetIterator {
 				continue;
 			}
 			const Letter l = letter_mask(letters[i][k + L]);
-			rows[i] = options.score_table + ((int)l << 5);
+			rows[i] = score_tables[i] + ((int)l << 5);
 			query[i] = query_ptrs[i] + k;
 		}
 	}
@@ -283,18 +330,46 @@ struct TargetIterator {
 			}
 		return n;
 	}
+#ifdef ANCHORED_SWIPE_STAT
+	/* Classifies the cells of column k of the current block (see Stats), computed over the kernel band of `band` rows.
+	   Column k of channel i holds letter b = loc[i] + k of the target buffer, i.e. target position j = b - 1, and row r
+	   is on diagonal d_begin + r, i.e. at query position j + d_begin + r. */
+	void lane_stats(int k, int band, Stats& stats) const {
+		stats.lane_cells += (int64_t)band * CHANNELS;
+		for (int i = 0; i < CHANNELS; ++i) {
+			const Target<Score>& t = targets[i];
+			if (t.blank()) {
+				stats.idle_cells += band;
+				continue;
+			}
+			const Loc j = loc[i] + k - 1;
+			if (j < 0 || j >= t.seq.length()) {
+				stats.target_oob_cells += band;
+				continue;
+			}
+			const Loc i0 = Geo::i(j, t.d_begin),
+				r0 = std::min(std::max(-i0, 0), band),
+				r1 = std::max(std::min(t.query_length - i0, band), r0),
+				in_band = std::max(std::min(r1, t.band()) - r0, 0);
+			stats.query_oob_cells += band - (r1 - r0);
+			stats.out_of_band_cells += r1 - r0 - in_band;
+		}
+	}
+#endif
 	const Options& options;
+	Source& source;
 	array<Target<Score>, CHANNELS> targets;
 	array<TargetSeqBuffer, CHANNELS> target_seqs;
-	Target<Score>* begin, * next, * end;
 	int active;
 	array<array<const Score*, AMINO_ACID_COUNT>, CHANNELS> profile_ptrs;
 	array<const Letter*, CHANNELS> query_ptrs;
+	array<const int8_t*, CHANNELS> score_tables;    // MATRIX_ROW_SCORES mode: score table of the target of each channel
 	array<Loc, CHANNELS> loc;
 	array<array<Letter, L>, CHANNELS> letters;
 	array<char, 8192> padding;
-	array<int, CHANNELS> target_idx;
 	Loc band;
+	// MASK_TARGET_BAND mode: band of the target of each channel, 0 for idle channels.
+	ScoreVector target_band;
 	vector<Score> blank_profile;
 	vector<Letter> blank_query;
 	array<int8_t, 32> zero_row;
@@ -313,15 +388,14 @@ int64_t profile_padding(Loc band_max) {
 	return round_up(band_max, (Loc)::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS) + L - 2;
 }
 
-/* Computes the targets, which have to satisfy band() <= band_max and d_end >= 1. The profiles have to be padded by
-   at least profile_padding(band_max). */
-template<typename ScoreVector>
-Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score>* targets, int64_t target_count, Loc band_max, const Options& options) {
+/* Computes the targets supplied by the source (see TargetArray) until it runs dry and all channels are idle. The
+   targets have to satisfy band() <= band_max and d_end >= 1. The profiles have to be padded by at least
+   profile_padding(band_max). */
+template<typename ScoreVector, typename Source>
+Stats FLATTEN smith_waterman(Source& source, Loc band_max, const Options& options) {
 	using Score = typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score;
 	const Loc CHANNELS = ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::CHANNELS;
 	constexpr Score SCORE_MIN = numeric_limits<Score>::min();
-	if (target_count == 0)
-		return Stats();
 
 	alignas(32) Score scores[CHANNELS * CHANNELS];
 	// MATRIX_ROW_SCORES mode: scores of each channel along the query, transposed into scores.
@@ -332,19 +406,23 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 	static_assert(!MATRIX_ROW_SCORES || std::is_same<Score, int16_t>::value, "MATRIX_ROW_SCORES requires 16 bit scores");
 	DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector> matrix(round_up(band_max, CHANNELS), 0, nullptr, ScoreVector(SCORE_MIN));
 	assert(round_up(band_max, CHANNELS) <= numeric_limits<Score>::max());
-	TargetIterator<ScoreVector> target_it(targets, target_count, matrix, options);
+	TargetIterator<ScoreVector, Source> target_it(source, matrix, options);
 	const ScoreVector go = ScoreVector(score_matrix.gap_open() + score_matrix.gap_extend()),
-		ge = ScoreVector(score_matrix.gap_extend()), one = ScoreVector(1);
+		ge = ScoreVector(score_matrix.gap_extend()), one = ScoreVector(1), score_min = ScoreVector(SCORE_MIN);
 	ScoreVector max_score(-1), col_counter(0), max_j(-1), max_i(0);
 	Stats stats;
 
 	while(target_it.next_block(matrix, max_score, max_i, max_j, col_counter), target_it.active > 0) {
 		const int band = target_it.band;
+		const ScoreVector target_band = target_it.target_band;
 		assert(band <= (int)target_it.blank_profile.size());
 		for (int k = -L; k < 0; ++k) {
 #ifdef DP_STAT
 			stats.gross_cells += (size_t)band * CHANNELS;
 			stats.net_cells += target_it.net_cells(k);
+#endif
+#ifdef ANCHORED_SWIPE_STAT
+			target_it.lane_stats(k, band, stats);
 #endif
 
 			typename DP::BandedSwipe::DISPATCH_ARCH::Matrix<ScoreVector>::ColumnIterator it(matrix.begin(0, 0));
@@ -373,6 +451,13 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 					ScoreVector score = it.diag() + match_scores;
 					score = max(score, hgap);
 					score = max(score, vgap);
+					/* The cells of rows outside the band of the channel's target are set to SCORE_MIN. The gaps they open
+					   saturate to SCORE_MIN, so they do not reach the band either: vgap only flows to higher rows, and the
+					   hgap flowing down into the band from row target_band stays SCORE_MIN, as all rows outside the band
+					   hold SCORE_MIN when a target is loaded (the matrix is constructed with SCORE_MIN, and
+					   init_channel_nw resets the channel). */
+					if (MASK_TARGET_BAND)
+						score = blend(score_min, score, target_band > row_counter);
 					ScoreVector open = score - go;
 					const ScoreVector gt_mask = score > col_best;
 					col_max_i = blend(col_max_i, row_counter, gt_mask);
@@ -397,6 +482,15 @@ Stats FLATTEN smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH:
 		}
 	}
 	return stats;
+}
+
+// Computes the targets of an array and stores the results in them.
+template<typename ScoreVector>
+Stats smith_waterman(DP::AnchoredSwipe::Target<typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score>* targets, int64_t target_count, Loc band_max, const Options& options) {
+	if (target_count == 0)
+		return Stats();
+	TargetArray<typename ::DISPATCH_ARCH::ScoreTraits<ScoreVector>::Score> source(targets, target_count);
+	return smith_waterman<ScoreVector>(source, band_max, options);
 }
 
 }

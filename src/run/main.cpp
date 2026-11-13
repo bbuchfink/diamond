@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/log_stream.h"
 #include "util/system/system.h"
 #include "tools/tools.h"
+#include "align/new/extension.h"
 
 using std::cout;
 using std::cerr;
@@ -49,6 +50,7 @@ void list_seeds();
 void merge_daa();
 void composition_matrix_workflow();
 void multinode();
+void recover();
 
 void split();
 namespace Benchmark { void benchmark(); }
@@ -143,6 +145,9 @@ int main(int ac, const char* av[])
 #endif
 			multinode();
 			break;
+		case Config::RECOVER:
+			recover();
+			break;
 		case Config::benchmark:
 			Benchmark::benchmark();
 			break;
@@ -210,6 +215,8 @@ int main(int ac, const char* av[])
 		default:
 			return 1;
 		}
+		if (!config.band_hist_file.empty())
+			ExtensionPipeline::write_band_histogram(config.band_hist_file);
 	}
 	catch (const std::bad_alloc &e) {
 		cerr << "Failed to allocate sufficient memory. Please refer to the online wiki for instructions on memory usage." << endl;

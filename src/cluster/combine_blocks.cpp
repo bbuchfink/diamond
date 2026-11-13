@@ -313,8 +313,10 @@ static vector<size_t> combine_blocks(Job& job, const uint64_t memory_limit, cons
 string make_merged_blocks(Job& job, const string& minichunks, const string& merged_dir, uint64_t letter_count) {
 	static const double LETTER_OVERCOUNT = 0.256;
 	const string vols_file = merged_dir + "volumes.tsv";
+	if (config.recover && !recover_step(job, "Superblock partitioning", job.base_dir() + "combine_lock", job.base_dir() + "combine_done"))
+		return string();
 	Atomic combine_lock(job.base_dir() + "combine_lock", job), combine_done(job.base_dir() + "combine_done", job);
-	if (combine_lock.fetch_add() == 0 && combine_done.get() == 0) {
+	if (!config.recover && combine_lock.fetch_add() == 0 && combine_done.get() == 0) {
 		VolumedFile vols_in(minichunks);
 		configure_round(job, 0);
 		mkdir(merged_dir);
@@ -351,8 +353,9 @@ string make_merged_blocks(Job& job, const string& minichunks, const string& merg
 		}
 
 		combine_done.fetch_add();
+		job.finish_step();
 	}
-	else
-		combine_done.await(1);	
+	else if (!combine_done.await(1, job))
+		return string();
 	return vols_file;
 }

@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <atomic>
 #include <vector>
+#include <iostream>
 #include <stdint.h>
 #include "../intrin.h"
 #include "../simd.h"
@@ -112,6 +113,18 @@ struct BitVector {
 
 	uint64_t size() const {
 		return size_;
+	}
+
+	// Binary serialization: the bit count followed by the raw words.
+	void write(std::ostream& out) const {
+		out.write((const char*)&size_, sizeof(size_));
+		out.write((const char*)data_.data(), data_.size() * sizeof(uint64_t));
+	}
+
+	void read(std::istream& in) {
+		in.read((char*)&size_, sizeof(size_));
+		data_.resize((size_t)((size_ + 63) / 64));
+		in.read((char*)data_.data(), data_.size() * sizeof(uint64_t));
 	}
 
 	std::vector<uint64_t> negative_list() const {

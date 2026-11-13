@@ -191,6 +191,74 @@ int64_t FileStack::write(const char* buf, size_t size) {
 #endif
 }
 
+int64_t FileStack::write_at(int64_t offset, const char* buf, size_t size) {
+    lock();
+    int64_t n;
+    try {
+        seek(offset, SEEK_SET);
+        n = write(buf, size);
+    }
+    catch (...) {
+        unlock();
+        throw;
+    }
+    unlock();
+    return n;
+}
+
+string FileStack::read_all() {
+    return read_from(0);
+}
+
+string FileStack::read_from_unlocked(int64_t offset) {
+    string buf;
+    const int64_t size = seek(0, SEEK_END);
+    if (size > offset) {
+        buf.resize(size - offset);
+        seek(offset, SEEK_SET);
+        size_t total = 0, n;
+        while (total < buf.size() && (n = read(&buf[total], buf.size() - total)) > 0)
+            total += n;
+        buf.resize(total);
+    }
+    return buf;
+}
+
+string FileStack::read_from(int64_t offset) {
+    lock();
+    string buf;
+    try {
+        buf = read_from_unlocked(offset);
+    }
+    catch (...) {
+        unlock();
+        throw;
+    }
+    unlock();
+    return buf;
+}
+
+bool FileStack::push_unique(const string& buf, const string& key) {
+    lock();
+    bool pushed = false;
+    try {
+        const string data = read_from_unlocked(0);
+        bool found = data.compare(0, key.size(), key) == 0;
+        for (size_t i = data.find('\n'); !found && i != string::npos; i = data.find('\n', i + 1))
+            found = data.compare(i + 1, key.size(), key) == 0;
+        if (!found) {
+            push_exclusive(buf);
+            pushed = true;
+        }
+    }
+    catch (...) {
+        unlock();
+        throw;
+    }
+    unlock();
+    return pushed;
+}
+
 int FileStack::truncate(size_t size) {
 #ifdef _WIN32
     seek(size, SEEK_SET);

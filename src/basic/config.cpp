@@ -55,6 +55,8 @@ const EMap<Sensitivity> EnumTraits<Sensitivity>::to_string = {
 	{ Sensitivity::FASTER, "faster" },
 	{ Sensitivity::FAST, "fast" },
 	{ Sensitivity::DEFAULT, "default" },
+	{ Sensitivity::LINCLUST_70, "linclust-70" },
+	{ Sensitivity::LINCLUST_60, "linclust-60" },
 	{ Sensitivity::LINCLUST_40, "linclust-40" },
 	{ Sensitivity::LINCLUST_20, "linclust-20" },
 	{ Sensitivity::MID_SENSITIVE, "mid-sensitive" },
@@ -73,6 +75,8 @@ const SEMap<Sensitivity> EnumTraits<Sensitivity>::from_string = {
 	{ "mid-sensitive", Sensitivity::MID_SENSITIVE },
 	{ "shapes-6x10", Sensitivity::SHAPES6x10 },
 	{ "shapes-30x10", Sensitivity::SHAPES30x10 },
+	{ "linclust-70", Sensitivity::LINCLUST_70 },
+	{ "linclust-60", Sensitivity::LINCLUST_60 },
 	{ "linclust-40", Sensitivity::LINCLUST_40 },
 	{ "linclust-20", Sensitivity::LINCLUST_20 },
 	{ "sensitive", Sensitivity::SENSITIVE },
@@ -187,6 +191,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		.add_command("benchmark", "", benchmark)
 		.add_command("deepclust", "", DEEPCLUST)
 		.add_command("countdistinct", "Count distinct sequences in a FASTA file", COUNT_DISTINCT)
+		.add_command("recover", "Recover a parallel clustering run from its temporary directory", RECOVER)
 #ifdef EXTRA
 		.add_command("random-seqs", "", random_seqs)
 		.add_command("sort", "", sort)
@@ -401,9 +406,15 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("ignore-warnings", 0, "Ignore warnings", ignore_warnings)
 		("no-parse-seqids", 0, "Print raw seqids without parsing", no_parse_seqids);
 
+	auto& parallel_opt = parser.add_group("Parallel options", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, RECLUSTER, RECOVER });
+	parallel_opt.add()
+		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir);
+
+	new_extension_pipeline = false;
+	multipass_extension_pipeline = false;
+
 	auto& advanced_aln_cluster = parser.add_group("Advanced options aln/cluster", { blastp, blastx, blastn, CLUSTER_REASSIGN, regression_test, cluster, DEEPCLUST, LINCLUST, RECLUSTER });
 	advanced_aln_cluster.add()
-		("parallel-tmpdir", 0, "directory for temporary files used by multiprocessing", parallel_tmpdir)
 		("bin", 0, "number of query bins for seed search", query_bins)
 		("ext-chunk-size", 0, "chunk size for adaptive ranking (default=auto)", ext_chunk_size)
 		("no-ranking", 0, "disable ranking heuristic", no_ranking)
@@ -418,7 +429,10 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("hit-membuf", 0, "Buffer intermediate hits in memory", hit_membuf)
 		("fpu-compat", 0, "Floating point operations compatibility mode", fpu_compat)
 		("no-mempool", 0, "Disable per-thread memory pool", no_mem_pool)
-		("new-ext", 0, "Enable new extension pipeline", new_extension_pipeline);
+		//("new-ext", 0, "Enable new extension pipeline", new_extension_pipeline)
+		//("multipass-ext", 0, "Enable multipass extension pipeline", multipass_extension_pipeline)
+		("swipe-batch", 0, "Batch size for SWIPE extensions (default=256)", swipe_batch, INT64_C(256))
+		("band-hist", 0, "Output file for the histogram of the bands of the extensions computed by the new extension pipeline (TSV)", band_hist_file);
 
 	auto& advanced = parser.add_group("Advanced options", { blastp, blastx, blastn, regression_test });
 	advanced.add()
@@ -581,7 +595,6 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("output-hits", 0, "", output_hits)
 		("band-bin", 0, "", band_bin, 24)
 		("col-bin", 0, "", col_bin, 400)		
-		("trace-pt-fetch-size", 0, "", trace_pt_fetch_size, UINT64_C(10000000000))
 		("short-query-max-len", 0, "", short_query_max_len, 60)
 		("gapped-filter-evalue1", 0, "", gapped_filter_evalue1, 2000.0)
 		("ext-yield", 0, "", ext_min_yield)
@@ -664,6 +677,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("promiscuous-seed-ratio", 0 , "", promiscuous_seed_ratio, 1000.0);
 		
 	parser.store(argc, argv, command);
+	recover = false;
 
 	if (debug_log)
 		verbosity = 3;
@@ -759,13 +773,16 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	case 0:
 		break;
 	case 1:
-		delete message_stream;
+		if (message_stream != &std::cerr)
+			delete message_stream;
 		message_stream = &std::cerr;
 		break;
 	case 2:
 	case 3:
-		delete message_stream;
-		delete log_stream;
+		if (message_stream != &std::cerr)
+			delete message_stream;
+		if (log_stream != &std::cerr)
+			delete log_stream;
 		log_stream = &std::cerr;
 		message_stream = &std::cerr;
 		break;

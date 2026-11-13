@@ -65,6 +65,8 @@ class FileStack {
         int64_t push(int64_t i);
         int64_t push(const std::string & buf);
         int64_t push(const std::string & buf, size_t & size_after_push);
+        // Pushes buf unless the file already holds a line beginning with key. Returns true if pushed.
+        bool push_unique(const std::string & buf, const std::string & key);
         int64_t fetch_add(int64_t n = 1);
 
         int get_max_line_length();
@@ -75,6 +77,12 @@ class FileStack {
         int64_t seek(int64_t offset, int mode);
         size_t read(char* buf, size_t size);
         int64_t write(const char* buf, size_t size);
+        // Writes buf at the given offset while holding the file lock.
+        int64_t write_at(int64_t offset, const char* buf, size_t size);
+        // Returns the complete file content, read while holding the file lock.
+        std::string read_all();
+        // Returns the file content from offset to the end, read while holding the file lock.
+        std::string read_from(int64_t offset);
         int truncate(size_t size);
 
         bool poll_query(const std::string & query, const double sleep_s=0.5, const size_t max_iter=7200);
@@ -90,6 +98,7 @@ class FileStack {
         int lock();
         int unlock();
         size_t size_unlocked();
+        std::string read_from_unlocked(int64_t offset);
         
 #ifdef _WIN32
         HANDLE hFile;

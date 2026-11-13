@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <condition_variable>
 #include <thread>
 #include <climits>
+#include <algorithm>
 #include "multinode.h"
 #include "volume.h"
 #include "basic/config.h"
@@ -133,25 +134,99 @@ std::pmr::unordered_map<OId, std::pmr::string> read_mapping_table(Job& job, cons
 /* Rough memory estimate for one round 1 worker. It holds the accession map of a single
    volume, i.e. one hash node plus key and string header per record, and the accession
    strings themselves, for which the size of the input file is a good enough upper bound.
-   On top of that come the compression buffers, one per radix, each holding an output
+   On top of that come the compression buffers, one per output bucket, each holding an output
    buffer plus the (rather large) state of the compression stream. */
 static constexpr uint64_t MAP_RECORD_MEM = 96;
 static constexpr uint64_t COMPRESSION_STREAM_MEM = 320 * 1024;
 
-static uint64_t round1_worker_mem(const VolumedFile& volumes) {
+static uint64_t round1_volume_mem(const VolumedFile& volumes) {
 	uint64_t volume_mem = 0;
 	for (const Volume& vol : volumes)
 		volume_mem = std::max(volume_mem, (uint64_t)vol.record_count * MAP_RECORD_MEM + (uint64_t)file_size(vol.path.c_str()));
-	return volume_mem + RADIX_COUNT * COMPRESSION_STREAM_MEM;
+	return volume_mem;
+}
+
+static uint64_t round1_worker_mem(const VolumedFile& volumes, size_t bucket_count) {
+	return round1_volume_mem(volumes) + bucket_count * COMPRESSION_STREAM_MEM;
+}
+
+/* Upper bound for the memory needed per record by a round 2 worker, based on the maximum
+   accession length. The worker holds the deserialized records of a bucket in a list, i.e. a
+   list node with the record and the member accession string per record, both allocated from
+   a pool whose size classes may round an allocation up by a factor of 2. On top of that comes
+   the formatted output block, one line of representative and member accession per record. */
+static uint64_t output_record_mem(size_t max_acc_len) {
+	const uint64_t node = 2 * sizeof(void*) + sizeof(AccMapping), acc = max_acc_len + 1, line = 2 * (uint64_t)max_acc_len + 2;
+	return 2 * (node + acc) + line;
+}
+
+/* Files kept open by the process besides the output buckets. */
+static constexpr long RESERVED_FILES = 64;
+
+/* Partitions the representative OIDs into key ranges for the output buckets, such that the
+   records of each bucket fit into the memory limit. Bucket i receives the representatives
+   [bounds[i], bounds[i + 1]). The ranges are formed from a fine grained histogram of the
+   representatives, so that the buckets hold similar numbers of records. The records of a
+   single representative can not be split, so a very large cluster may still exceed the limit. */
+static vector<uint64_t> output_partition(Job& job, const vector<OId>& merged, const VolumedFile& volumes) {
+	static constexpr int HISTOGRAM_BITS = 20;
+	const uint64_t n = merged.size(), key_end = (uint64_t)job.max_oid() + 1;
+	const uint64_t threads = (uint64_t)std::max(config.threads_, 1);
+	const uint64_t record_mem = output_record_mem(job.max_acc_len());
+	const uint64_t merged_mem = n * sizeof(OId);
+	const uint64_t budget = job.mem_limit > merged_mem ? job.mem_limit - merged_mem : 0;
+
+	/* The number of buckets is limited by the open files (FileArray keeps a data file and a
+	   list file open per bucket) and by the compression streams of a round 1 worker. */
+	const long open_files = max_open_files_per_process();
+	const uint64_t file_buckets = open_files < 0 ? std::numeric_limits<uint64_t>::max() : (uint64_t)std::max((open_files - RESERVED_FILES) / 2, 1L);
+	const uint64_t volume_mem = round1_volume_mem(volumes);
+	const uint64_t mem_buckets = std::max<uint64_t>((budget > volume_mem ? budget - volume_mem : 0) / COMPRESSION_STREAM_MEM, 1);
+	const uint64_t max_buckets = std::min(file_buckets, mem_buckets);
+
+	/* Greedily cutting at the record cap yields fewer than 2 * n / cap + 1 buckets, since two
+	   consecutive buckets together exceed the cap. Parallelism of round 2 is preferred over few
+	   buckets, as long as the bucket limit permits, but a single bucket must fit into memory. */
+	const uint64_t fit_cap = std::max<uint64_t>(budget / record_mem, 1);
+	const uint64_t parallel_cap = std::max<uint64_t>(std::min(fit_cap / threads, (n + threads - 1) / threads), 1);
+	const uint64_t limit_cap = (2 * n + max_buckets - 1) / max_buckets;
+	const uint64_t cap = std::min(fit_cap, std::max(parallel_cap, limit_cap));
+
+	const int shift = std::max(bit_length(job.max_oid()) - HISTOGRAM_BITS, 0);
+	vector<uint64_t> histogram((size_t)(job.max_oid() >> shift) + 1, 0);
+	for (OId rep : merged)
+		++histogram[(size_t)(rep >> shift)];
+	vector<uint64_t> bounds{ 0 };
+	uint64_t records = 0, max_records = 0;
+	for (size_t i = 0; i < histogram.size(); ++i) {
+		if (records > 0 && records + histogram[i] > cap) {
+			bounds.push_back((uint64_t)i << shift);
+			max_records = std::max(max_records, records);
+			records = 0;
+		}
+		records += histogram[i];
+	}
+	max_records = std::max(max_records, records);
+	bounds.push_back(key_end);
+
+	const size_t bucket_count = bounds.size() - 1;
+	job.log("Output partition: buckets=%zu record_cap=%" PRIu64 " max_bucket_records=%" PRIu64 " record_memory=%" PRIu64 " max_buckets=%" PRIu64,
+		bucket_count, cap, max_records, record_mem, max_buckets);
+	if (max_records > fit_cap)
+		job.log("Warning: largest output bucket (%" PRIu64 " records) exceeds the memory limit", max_records);
+	if (bucket_count > max_buckets)
+		job.log("Warning: number of output buckets exceeds the open files or memory limit");
+	return bounds;
 }
 
 static RadixedTable output_round1(Job& job, const vector<OId>& merged, const VolumedFile& volumes) {
 	const string base_dir = job.root_dir() + "output" + PATH_SEPARATOR;
 	job.make_temp_dir(base_dir);
-	unique_ptr<FileArray> output_files(new FileArray(base_dir, RADIX_COUNT, job.worker_id(), false));
-	const int shift = std::max(bit_length(job.max_oid()) - RADIX_BITS, 0);
+	const vector<uint64_t> bounds = output_partition(job, merged, volumes);
+	const size_t bucket_count = bounds.size() - 1;
+	unique_ptr<FileArray> output_files(new FileArray(base_dir, (int)bucket_count, job.worker_id(), false));
 	const size_t volume_count = volumes.size();
-	const uint64_t worker_mem = round1_worker_mem(volumes);
+	const uint64_t worker_mem = round1_worker_mem(volumes, bucket_count);
 	const uint64_t merged_mem = (uint64_t)merged.size() * sizeof(OId);
 	const uint64_t budget = job.mem_limit > merged_mem ? job.mem_limit - merged_mem : 0;
 	const int64_t mem_threads = std::max<int64_t>(budget / worker_mem, 1);
@@ -161,7 +236,7 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 
 	auto worker = [&](const atomic<bool>& stop) {
 		std::pmr::unsynchronized_pool_resource pool;
-		BufferArray buffers(*output_files, RADIX_COUNT);
+		BufferArray buffers(*output_files, (int)bucket_count);
 		for (;;) {
 			if (stop)
 				return;
@@ -176,7 +251,7 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 				const OId oid = it->first;
 				const std::pmr::string& acc = it->second;
 				AccMapping m(merged[oid], oid, acc, pool);
-				buffers.write(m.rep >> shift, m);
+				buffers.write(std::upper_bound(bounds.cbegin() + 1, bounds.cend(), (uint64_t)m.rep) - bounds.cbegin() - 1, m);
 			}
 			
 		}
@@ -192,19 +267,15 @@ static RadixedTable output_round1(Job& job, const vector<OId>& merged, const Vol
 	log_rss();
 
 	volumes.remove(true, false, true);
-	return output_files->buckets(shift);
+	return output_files->buckets(bounds);
 }
 
-/* Rough memory estimate for one round 2 worker. It holds the deserialized records of a
-   single bucket, i.e. a list node, the two OIDs and the two accession strings per record,
-   plus the formatted output block that is queued for writing. */
-static constexpr uint64_t OUTPUT_RECORD_MEM = 224;
-
-static uint64_t round2_worker_mem(const RadixedTable& round1) {
+/* Memory estimate for one round 2 worker, which processes a single bucket at a time. */
+static uint64_t round2_worker_mem(const RadixedTable& round1, size_t max_acc_len) {
 	uint64_t records = 0;
 	for (const Bucket& b : round1)
 		records = std::max(records, (uint64_t)VolumedFile(b).sparse_records());
-	return std::max(records * OUTPUT_RECORD_MEM, UINT64_C(1));
+	return std::max(records * output_record_mem(max_acc_len), UINT64_C(1));
 }
 
 /* Takes the formatted output blocks of the round 2 workers and writes them to the output
@@ -269,7 +340,7 @@ static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile&
 		out << Cluster::HEADER_LINE << endl;
 
 	const size_t bucket_count = round1.size();
-	const uint64_t worker_mem = round2_worker_mem(round1);
+	const uint64_t worker_mem = round2_worker_mem(round1, job.max_acc_len());
 	const uint64_t merged_mem = (uint64_t)merged.size() * sizeof(OId);
 	const uint64_t budget = job.mem_limit > merged_mem ? job.mem_limit - merged_mem : 0;
 	const int64_t mem_threads = std::max<int64_t>(budget / worker_mem, 1);
@@ -301,25 +372,38 @@ static OId output_round2(Job& job, const vector<OId>& merged, const VolumedFile&
 					   threaded. Parallelism comes from processing several buckets at once. */
 					InputBuffer<AccMapping> data(f, pool, 1, 1);
 					data.sort();
-					for (auto it = data.cbegin(); it != data.cend();) {
-						const auto begin = it;
-						const OId rep = it->rep;
-						const std::pmr::string* rep_acc = nullptr;
-						while (it != data.cend() && it->rep == rep) {
-							if (it->member == rep)
-								rep_acc = &it->member_acc;
-							++it;
+					auto for_each_cluster = [&data](const auto& f) {
+						for (auto it = data.cbegin(); it != data.cend();) {
+							const auto begin = it;
+							const OId rep = it->rep;
+							const std::pmr::string* rep_acc = nullptr;
+							while (it != data.cend() && it->rep == rep) {
+								if (it->member == rep)
+									rep_acc = &it->member_acc;
+								++it;
+							}
+							if (rep_acc == nullptr)
+								throw runtime_error("Missing accession mapping for representative OID " + std::to_string(rep));
+							f(*rep_acc, begin, it);
 						}
-						if (rep_acc == nullptr)
-							throw runtime_error("Missing accession mapping for representative OID " + std::to_string(rep));
-						for (auto member = begin; member != it; ++member) {
-							block.append(rep_acc->data(), rep_acc->size());
+					};
+					/* The block is sized exactly up front, as the memory estimate does not allow
+					   for the slack of a geometrically growing string. */
+					size_t block_size = 0;
+					for_each_cluster([&block_size](const std::pmr::string& rep_acc, auto begin, auto end) {
+						for (auto member = begin; member != end; ++member)
+							block_size += rep_acc.size() + member->member_acc.size() + 2;
+					});
+					block.reserve(block_size);
+					for_each_cluster([&](const std::pmr::string& rep_acc, auto begin, auto end) {
+						for (auto member = begin; member != end; ++member) {
+							block.append(rep_acc.data(), rep_acc.size());
 							block += '\t';
 							block.append(member->member_acc.data(), member->member_acc.size());
 							block += '\n';
 						}
 						++clusters;
-					}
+					});
 				}
 				if (!writer.write(i, block, clusters, records))
 					return;

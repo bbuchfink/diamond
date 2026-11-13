@@ -264,21 +264,6 @@ using Targets = std::array<TargetVec, BINS>;
 struct NoCBS {
 	constexpr void* operator[](int i) const { return nullptr; }
 };
-
-namespace AnchoredSwipe {
-
-struct Config {
-	Score score_hint;
-	Statistics& stats;
-	Extension::Mode extension_mode;
-	// The extensions are computed in the band of the anchor's diagonal range widened by band diagonals on either side.
-	// max_diag_spread has to be at least the widest diagonal range (ExtensionPipeline::Extension::diag_spread) of all
-	// extensions passed. Together they bound the band of every target to max_diag_spread + 2 * band, which the
-	// anchored swipe sizes its data structures and profile paddings for.
-	Loc band, max_diag_spread;
-};
-
-}
 	
 namespace Swipe {
 
@@ -291,7 +276,6 @@ namespace BandedSwipe {
 std::list<Hsp> swipe(const Targets& targets, Params& params);
 std::list<Hsp> swipe_set(const SequenceSet::ConstIterator begin, const SequenceSet::ConstIterator end, Params& params);
 int bin(HspValues v, int query_len, int score, int ungapped_score, const int64_t dp_size, unsigned score_width, const Loc mismatch_est);
-void anchored_swipe(ExtensionPipeline::ExtensionQueue& queue, const DP::AnchoredSwipe::Config& cfg, const ExtensionPipeline::ExtensionCallback& callback);
 
 }
 

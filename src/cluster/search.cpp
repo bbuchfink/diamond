@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <inttypes.h>
 #include <algorithm>
+#include <limits>
 #include "basic/statistics.h"
 #include "masking/def.h"
 #include "multinode.h"
@@ -26,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "run/workflow.h"
 #include "util/log_stream.h"
 #include "util/system/system.h"
+#include "data/block/block_wrapper.h"
 
 using std::vector;
 using std::string;
@@ -81,15 +83,15 @@ static void run_all_vs_all(Job& job) {
 	Search::run(seed_filter);
 }
 
-static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, string base_dir, unique_ptr<vector<BitVector>>& seed_hit_table) {
+static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t member_superblock, int64_t rep_superblock, const shared_ptr<Block>& member_block, string base_dir, unique_ptr<vector<BitVector>>& seed_hit_table) {
 	config.lin_stage1_query = true;	
-	config.lin_index_file = use_lin_index(job) ? lin_index_file(volumes[i].path) : string();
-	if (r == i) {
+	config.lin_index_file = use_lin_index(job) ? lin_index_file(volumes[rep_superblock].path) : string();
+	if (rep_superblock == member_superblock) {
 		config.self = true;
 		config.query_file.clear();
 	}
 	else {
-		config.query_file = { volumes[i].path };
+		config.query_file = { volumes[rep_superblock].path };
 		config.self = false;
 	}
 	config.gapped_filter_evalue_ = 0.0;
@@ -101,19 +103,9 @@ static void run_block_combo(Job& job, const VolumedFile& volumes, int64_t r, int
 	if (config.db_size == 0)
 		throw runtime_error("Database size must be set for cascaded linear search round.");
 	//config.comp_based_stats = 1; // TODO
-	config.output_file = base_dir + std::to_string(r) + "_" + std::to_string(i) + ".tsv";
+	config.output_file = base_dir + std::to_string(member_superblock) + "_" + std::to_string(rep_superblock) + ".tsv";
 	log_rss();
-	TaskTimer timer("Opening the database");
-	shared_ptr<SequenceFile> db;
-	try {
-		db.reset(SequenceFile::auto_create({ volumes[r].path }, SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::RANK_BY_SEQID, amino_acid_traits));
-	}
-	catch (FormatDetectionError& e) {
-		throw runtime_error(string("Error opening database chunk file " + volumes[r].path + ": ") + e.what());
-	}
-	timer.finish();
-	if (!db->open_stats().empty())
-		*message_stream << db->open_stats();
+	shared_ptr<SequenceFile> db(new BlockWrapper(member_block, SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES | SequenceFile::Flags::RANK_BY_SEQID, amino_acid_traits));
 	Search::run(seed_hit_table, db, nullptr, nullptr);
 	job.stats().extensions_computed += statistics.get(Statistics::EXT16) + statistics.get(Statistics::EXT32) + statistics.get(Statistics::EXT8);
 }
@@ -164,10 +156,32 @@ void configure_round(Job& job, uint64_t letter_count) {
 	config.output_header.unset();
 }
 
-void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, string base_dir, unique_ptr<vector<BitVector>>& seed_hit_table) {
+shared_ptr<Block> load_member_block(Job& job, const VolumedFile& volumes, int64_t member_superblock) {
+	const string& path = volumes[member_superblock].path;
+	TaskTimer timer("Loading the member block");
+	unique_ptr<SequenceFile> db;
+	try {
+		db.reset(SequenceFile::auto_create({ path }, SequenceFile::Flags::SEQS | SequenceFile::Flags::TITLES, amino_acid_traits));
+	}
+	catch (FormatDetectionError& e) {
+		throw runtime_error(string("Error opening database chunk file " + path + ": ") + e.what());
+	}
+	if (!db->open_stats().empty())
+		*message_stream << db->open_stats();
+	shared_ptr<Block> block(db->load_seqs(std::numeric_limits<int64_t>::max()));
+	db->close();
+	const auto t = timer.microseconds();
+	timer.finish();
+	block->load_stats(*message_stream, t);
+	block->clear_raw_bytes();
+	job.log("Loaded member block. Sequences=%" PRIu64 " Letters=%" PRIu64, (uint64_t)block->seqs().size(), (uint64_t)block->seqs().letters());
+	return block;
+}
+
+void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, const shared_ptr<Block>& member_block, string base_dir, unique_ptr<vector<BitVector>>& seed_hit_table) {
 	configure_round(job, volumes.letter_count());
 	if(job.is_linear_round())
-		run_block_combo(job, volumes, r, i, base_dir, seed_hit_table);
+		run_block_combo(job, volumes, r, i, member_block, base_dir, seed_hit_table);
 	else
 		run_all_vs_all(job);
 }

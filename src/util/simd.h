@@ -46,6 +46,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <arm_neon.h>
 #endif
 
+// Read prefetch with low temporal locality (GCC locality hint 1 / prefetcht2).
+static inline void prefetch_read(const void* p) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+	__builtin_prefetch(p, 0, 1);
+#elif defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_IX86))
+	_mm_prefetch((const char*)p, _MM_HINT_T2);
+#elif defined(_MSC_VER) && (defined(_M_ARM64) || defined(_M_ARM))
+	__prefetch(p);
+#else
+	(void)p;
+#endif
+}
+
 /* ARCH_ID identifies the object library variant a translation unit is compiled into:
    0 = generic, 1 = SSE4.1, 2 = AVX2, 3 = AVX512, 4 = NEON.
 

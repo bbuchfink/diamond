@@ -18,13 +18,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <memory>
 #include "../sequence_file.h"
 #include "block.h"
 
+/* SequenceFile interface to a block held in memory. The OIds of the file are the positions
+   in the block, so the block2oid mapping of the block is expected to be the identity.
+   Loading the complete block via SequenceFile::load_seqs_shared does not copy it but returns
+   the block itself, so the caller must not modify it. */
 struct BlockWrapper : public SequenceFile
 {
 
-	BlockWrapper(const Block& block, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
+	BlockWrapper(const std::shared_ptr<Block>& block, Flags flags = Flags::NONE, const ValueTraits& value_traits = amino_acid_traits);
 	
 	virtual int64_t file_count() const override;
 	virtual void create_partition_balanced(int64_t max_letters) override;
@@ -62,9 +67,15 @@ struct BlockWrapper : public SequenceFile
 		return 0;
 	}
 
+	/* Returns the wrapped block without copying if the load starting at the current
+	   position covers all of it, nullptr otherwise. The pointer has its own use count, so
+	   code that checks for sole ownership (e.g. before replacing a block by a sorted copy)
+	   behaves as for a freshly loaded block. */
+	std::shared_ptr<Block> share_block(int64_t max_letters);
+
 private:
 
-	const Block& block_;
+	const std::shared_ptr<Block> block_;
 	OId oid_;
 
 };

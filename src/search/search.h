@@ -73,7 +73,9 @@ struct Context {
 
 extern Reduction steinegger12;
 extern Reduction murphy10;
+extern Reduction diamond8;
 extern Reduction diamond9;
+extern Reduction diamond9b;
 extern Reduction diamond10;
 extern Reduction diamond14;
 extern Reduction diamond17;

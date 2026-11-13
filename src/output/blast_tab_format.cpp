@@ -96,7 +96,7 @@ map<FieldId, OutputField> TabularFormat::field_def = {
 { FieldId::NORMALIZED_NIDENT, { FieldId::NORMALIZED_NIDENT, "normalized_nident", "normalized_nident", "Number of identical matches normalized by maximum length", HspValues::IDENT | HspValues::LENGTH, Flags::NONE } },
 { FieldId::ApproxPIdent, { FieldId::ApproxPIdent, "approx_pident", "approx_pident", "Approximate percentage of identical matches", HspValues::COORDS, Flags::NONE } },
 { FieldId::CorrectedBitScore, { FieldId::CorrectedBitScore, "corrected_bitscore", "corrected_bitscore", "Bit score corrected for edge effects", HspValues::NONE, Flags::NONE } },
-{ FieldId::SLineages, { FieldId::SLineages, "slineages", "", "Unique Subject Lineage(s), separated by a '<>'", HspValues::NONE, Flags::NO_REALIGN } }
+{ FieldId::SLineages, { FieldId::SLineages, "slineages", "", "Unique Subject Lineage(s), separated by a '<>'", HspValues::NONE, Flags::NO_REALIGN } },
 #ifdef DP_STAT
 { FieldId::Reserved1, { FieldId::Reserved1, "reserved1", "reserved1", "", HspValues::NONE, Flags::NO_REALIGN } },
 { FieldId::Reserved2, { FieldId::Reserved2, "reserved2", "reserved2", "", HspValues::NONE, Flags::NO_REALIGN } }

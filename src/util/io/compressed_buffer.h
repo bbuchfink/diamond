@@ -47,6 +47,9 @@ struct CompressedBuffer {
 		return size_;
 	}
 
+	// Memory held by the compression stream of one buffer once it is in use (excluding the output buffer).
+	static size_t stream_memory();
+
 private:
 	std::vector<char> buf_;
 #ifdef WITH_ZSTD

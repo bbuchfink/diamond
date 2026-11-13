@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <utility>
+#include <memory>
 #include <unordered_map>
 #include "sequence_set.h"
 #include "util/data_structures/bit_vector.h"
@@ -201,6 +202,9 @@ struct SequenceFile {
 
 	Type type() const { return type_; }
     Block* load_seqs(const int64_t max_letters, OId max_seqs = 0, const BitVector* filter = nullptr, const Chunk& chunk = Chunk());
+    /* Like load_seqs, but a file that holds the sequences in memory (BlockWrapper) may return
+       its block without copying. The returned block must not be modified. */
+    std::shared_ptr<Block> load_seqs_shared(const int64_t max_letters, const BitVector* filter = nullptr);
 	void get_seq();
 	optional<uint64_t> total_blocks() const;
 	std::pair<std::vector<OId>, std::vector<uint64_t>> partition(uint64_t max_block_size, uint64_t start_size = 0) const;

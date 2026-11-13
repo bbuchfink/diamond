@@ -46,7 +46,9 @@ Reduction Reduction::instance("A KR EDNQ C G H ILVM FYW P ST");
 
 namespace Search {
 	Reduction murphy10("A KR EDNQ C G H ILVM FYW P ST");
+	Reduction diamond8("A G CP ST NDE FWY RQHK ILMV");
 	Reduction diamond9("A G P CH ST NDE RQK FWY ILMV");
+	Reduction diamond9b("G P AC DE NH ST RQK FWY ILMV");
 	Reduction diamond10("A C G H P ST NDE RQK FWY ILMV");
 	Reduction diamond14("A C Q E G H M P S T ND RK FWY ILV");
 	Reduction diamond18("A R N D C Q E G H L K M F P S T WY IV");

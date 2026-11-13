@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 using std::vector;
 using std::string;
 
-BlockWrapper::BlockWrapper(const Block& block, Flags flags, const ValueTraits& value_traits) :
+BlockWrapper::BlockWrapper(const std::shared_ptr<Block>& block, Flags flags, const ValueTraits& value_traits) :
 	SequenceFile(SequenceFile::Type::BLOCK, flags, FormatFlags::LENGTH_LOOKUP | FormatFlags::TITLES_LAZY | FormatFlags::SEEKABLE, value_traits),
 	block_(block),
 	oid_(0)
@@ -34,11 +34,11 @@ int64_t BlockWrapper::file_count() const {
 }
 
 SequenceFile::SeqInfo BlockWrapper::read_seqinfo() {
-	if (oid_ >= block_.seqs().size()) {
+	if (oid_ >= block_->seqs().size()) {
 		++oid_;
 		return SeqInfo(0, 0);
 	}
-	const Loc l = block_.seqs().length(oid_);
+	const Loc l = block_->seqs().length(oid_);
 	if (l == 0)
 		throw std::runtime_error("Database with sequence length 0 is not supported");
 	return SeqInfo(oid_++, l);
@@ -60,7 +60,7 @@ OId BlockWrapper::tell_seq() const {
 }
 
 bool BlockWrapper::eof() const {
-	return oid_ >= block_.seqs().size();
+	return oid_ >= block_->seqs().size();
 }
 
 void BlockWrapper::init_seq_access() {
@@ -92,11 +92,11 @@ void BlockWrapper::seek_chunk(const Chunk& chunk) {
 }
 
 std::string BlockWrapper::seqid(OId oid, bool all, bool full_titles) {
-	return block_.ids()[oid];
+	return block_->ids()[oid];
 }
 
 size_t BlockWrapper::id_len(const SeqInfo& seq_info, const SeqInfo& seq_info_next) {
-	return block_.ids().length(seq_info.pos);
+	return block_->ids().length(seq_info.pos);
 }
 
 void BlockWrapper::seek_offset(size_t p) {
@@ -105,12 +105,14 @@ void BlockWrapper::seek_offset(size_t p) {
 void BlockWrapper::read_seq_data(Letter* dst, size_t len, size_t& pos, bool seek) {
 	*(dst - 1) = Sequence::DELIMITER;
 	*(dst + len) = Sequence::DELIMITER;
-	std::copy(block_.seqs().ptr(pos), block_.seqs().end(pos), dst);
+	const SequenceSet& seqs = block_->seqs();
+	std::copy(seqs.ptr(pos), seqs.end(pos), dst);
 	++pos;
 }
 
 void BlockWrapper::read_id_data(const int64_t oid, char* dst, size_t len, bool all, bool full_titles) {
-	std::copy(block_.ids().ptr(oid), block_.ids().end(oid), dst);
+	const StringSet& ids = block_->ids();
+	std::copy(ids.ptr(oid), ids.end(oid), dst);
 	dst[len] = '\0';
 }
 
@@ -118,11 +120,11 @@ void BlockWrapper::skip_id_data() {
 }
 
 optional<uint64_t> BlockWrapper::sequence_count() const {
-	return block_.seqs().size();
+	return block_->seqs().size();
 }
 
 optional<uint64_t> BlockWrapper::letters() const {
-	return block_.seqs().letters();
+	return block_->seqs().letters();
 }
 
 int BlockWrapper::db_version() const {
@@ -164,6 +166,16 @@ void BlockWrapper::seq_data(size_t oid, std::vector<Letter>& dst)
 Loc BlockWrapper::seq_length(size_t oid)
 {
 	throw OperationNotSupported();
+}
+
+std::shared_ptr<Block> BlockWrapper::share_block(int64_t max_letters) {
+	if (oid_ != 0 || block_->empty() || (int64_t)block_->seqs().letters() > max_letters
+		|| !flag_any(flags(), Flags::SEQS) || flag_any(flags(), Flags::LAZY_MASKING | Flags::QUALITY)
+		|| (flag_any(flags(), Flags::TITLES) && !block_->has_ids()))
+		return nullptr;
+	oid_ = block_->seqs().size();
+	const std::shared_ptr<Block> owner = block_;
+	return std::shared_ptr<Block>(owner.get(), [owner](Block*) {});
 }
 
 void BlockWrapper::end_random_access(bool dictionary)

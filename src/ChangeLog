@@ -1,3 +1,30 @@
+[2.2.9]
+- Added the `recover` workflow to restore and continue interrupted or failed clustering workflows using
+  the `--parallel-tmpdir` option.
+- Improved the performance of the search workflows and all-vs-all alignment rounds of the clustering workflows
+  (contributed by @kevinmoran1988).
+- Improved the performance of reading sequences from compressed input files (contributed by @jeremyratcliffgdm).
+- Improved the performance of gapped extension in frameshift alignment mode (contributed by @jeremyratcliffgdm).
+- Improved the performance of the hash join and the search stages of the alignment workflows (contributed by @jeremyratcliffgdm).
+- Improved the performance of SEG masking (contributed by @jeremyratcliffgdm).
+- Improved the performance of the joining output blocks stage (contributed by @jeremyratcliffgdm).
+- Improved the performance of reading FASTQ files.
+- Improved the performance and sensitivity of the linear-time clustering rounds.
+- Improved the performance of the `greedy-vertex-cover` workflow.
+- Improved the performance of output generation in the clustering workflows.
+- Fixed a potential incompatibility of the `.dmnd` database format based on architecture endianness
+  (contributed by @pranavkaruvally).
+- Adjusted seed hit maximum load size in the extension stage according to the block size and index chunks
+  parameters.
+- Clustering workflows using the `--parallel-tmpdir` option will now detect errors and ungraceful
+  termination on any worker node and shut down the computation in a controlled way.
+- Clustering workflows using the `--parallel-tmpdir` option can now be terminated in a controlled way
+  by placing a file named `stop` in the temporary directory.
+- Added the option `--append` to the `makedb` workflow to append sequences to an existing database in
+  `.dmnd` format (contributed by @gerontec).
+- Added the option `--dedup-frames` to deduplicate translated sequences to improve search performance in
+  translated search workflows (contributed by @kevinmoran1988).
+
 [2.2.8]
 - Improved the performance of the clustering workflows.
 - Reduced the temporary disk space use of the clustering workflows.

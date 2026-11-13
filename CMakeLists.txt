@@ -46,6 +46,7 @@ option(WITH_DNA "WITH_DNA" OFF)
 option(WITH_MCL "WITH_MCL" OFF)
 option(USE_TLS "USE_TLS" OFF)
 option(MEM_PROFILE "MEM_PROFILE" OFF)
+option(ANCHORED_SWIPE_STAT "ANCHORED_SWIPE_STAT" OFF)
 
 set(MAX_SHAPE_LEN 19)
 
@@ -93,6 +94,10 @@ endif()
 
 if(MEM_PROFILE)
   add_definitions(-DMEM_PROFILE)
+endif()
+
+if(ANCHORED_SWIPE_STAT)
+  add_definitions(-DANCHORED_SWIPE_STAT)
 endif()
 
 if(EXTRA)
@@ -241,6 +246,7 @@ set(DISPATCH_OBJECTS
         "src/stats/matrix_adjust/matrix_adjust_scalar.cpp"
         "src/align/reseek.cpp"
         "src/search/lin_index/scan.cpp"
+        "src/align/multipass/anchored_swipe.cpp"
         )
 
 if(EXTRA)
@@ -490,6 +496,7 @@ set(OBJECTS
         src/util/io/zlib_bridge.cpp
         src/util/sequence/seqindex.cpp
         src/align/new/extension_pipeline.cpp
+        src/align/multipass/multipass.cpp
 )
 
 if(WITH_DNA)
@@ -582,6 +589,8 @@ enable_testing()
 SET(TD ${CMAKE_SOURCE_DIR}/src/test)
 SET(SP -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test.cmake)
 SET(SP_EC -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test_exit_code.cmake)
+# Sorts the lines of the output and the reference before comparing them, for output written in no particular order.
+SET(SP_SORTED -DTEST_DIR=${CMAKE_SOURCE_DIR}/src/test -P ${CMAKE_SOURCE_DIR}/src/test/test_sorted.cmake)
 function(add_diamond_test NAME ARGS)
   add_test(NAME ${NAME} COMMAND ${CMAKE_COMMAND} -DNAME=${NAME} "-DARGS=${ARGS}" ${SP})
 endfunction()
@@ -591,7 +600,11 @@ endfunction()
 
 add_diamond_test_exit_code(makedb-nr_10k "makedb --in ${TD}/nr_10k.faa -d nr_10k --taxonmap ${TD}/nr_10k.taxids.tsv --taxonnames ${TD}/mini_names.dmp --taxonnodes ${TD}/mini_nodes.dmp")
 
-#add_test(NAME new-ext COMMAND ${CMAKE_COMMAND} -DNAME=new-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p1 -k0 --new-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
+#add_test(NAME new-ext COMMAND ${CMAKE_COMMAND} -DNAME=new-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --new-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
+#add_test(NAME new-ext-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=new-ext-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --new-ext --comp-based-stats 6 --fpu-compat -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
+add_test(NAME multipass-ext COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
+add_test(NAME multipass-ext-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 6 --fpu-compat -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
+add_test(NAME new-ext-linclust COMMAND ${CMAKE_COMMAND} -DNAME=new-ext-linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p8 --approx-id 0 --new-ext" ${SP})
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp_nr10k COMMAND ${CMAKE_COMMAND} -DNAME=blastp_nr10k "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -p4 -f 6 qseqid sseqid evalue staxids skingdoms sphylums" ${SP})
 add_test(NAME blastp-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -k0 --comp-based-stats 6 --fpu-compat" ${SP})

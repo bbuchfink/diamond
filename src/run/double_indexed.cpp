@@ -446,7 +446,7 @@ static void run_query_iteration(const unsigned query_iteration,
 			else {
 				timer.go("Loading reference sequences");
 				MEM_SCOPE("block/target");
-				options.target.reset(db_file.load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
+				options.target = db_file.load_seqs_shared(config.block_size(), &options.db_filter->oid_filter);
 				const auto t = timer.microseconds();
 				timer.finish();
 				options.target->load_stats(*message_stream, t);
@@ -724,7 +724,7 @@ static void master_thread(TaskTimer& total_timer, Config& options) {
 			timer.go("Loading query sequences");
 			MEM_SCOPE("block/query");
 			db_file->flags() |= qflags;
-			options.query.reset(db_file->load_seqs(config.block_size(), 0, &options.db_filter->oid_filter));
+			options.query = db_file->load_seqs_shared(config.block_size(), &options.db_filter->oid_filter);
 			const auto t = timer.microseconds();
 			timer.finish();
 			options.query->load_stats(*message_stream, t);

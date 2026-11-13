@@ -18,7 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <exception>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include "basic/config.h"
 #include "util/string/string.h"
@@ -27,6 +32,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "util/system/system.h"
 #include "volume.h"
 #include "util/algo/hyperloglog.h"
+
+struct Block;
 
 struct ClusterStats {
 	uint64_t hits_evalue_filtered = 0, extensions_computed = 0, hits_filtered = 0, seeds_considered = 0, seeds_indexed = 0;
@@ -43,6 +50,39 @@ struct ClusterStats {
 	}
 };
 
+/* Background thread of a worker in the parallel workflow that writes the current unix time
+   as a 32 bit integer into the slot of the worker (offset 4 * worker_id) of the heartbeat
+   file, once at startup and then every 15 minutes. Allows to detect stalled or killed workers:
+   after each write, the slots of the other workers are compared against the current time and
+   the workers more than 20 minutes behind are recorded in the Job (Job::stale_workers()).
+   If a write fails, the thread terminates and check() rethrows the error in the calling thread.
+   When the worker exits gracefully (the destructor does not run due to an exception), DONE is
+   written into its slot so that it is not reported as stale by the other workers. */
+struct Job;
+
+struct Heartbeat {
+	static const uint32_t DONE = 0xFFFFFFFF;
+	Heartbeat(const std::string& file_name, Job& job);
+	~Heartbeat();
+	void check() const {
+		if (failed_.load(std::memory_order_acquire))
+			std::rethrow_exception(exception_);
+	}
+private:
+	void run();
+	void update_stale_workers(uint32_t now);
+	FileStack file_;
+	Job& job_;
+	const int64_t worker_id_;
+	std::mutex mtx_;
+	std::condition_variable cv_;
+	bool stop_;
+	std::exception_ptr exception_;
+	std::atomic<bool> failed_;
+	const int uncaught_exceptions_;
+	std::thread thread_;
+};
+
 struct Job {
 
 	Job() :
@@ -56,11 +96,24 @@ struct Job {
 		register_temp_dir(base_dir_);
 		make_temp_dir(base_dir());
 		log_file_.reset(new FileStack(base_dir_ + PATH_SEPARATOR + "diamond_job.log", *this));
-		Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id", *this);
-		worker_id_ = worker_id.fetch_add();
+		// In recover mode, the job only inspects the temp directory, so it does not count as a worker.
+		if (config.recover) {
+			worker_id_ = -1;
+			reset_workers();
+		}
+		else {
+			Atomic worker_id(base_dir_ + PATH_SEPARATOR + "worker_id", *this);
+			worker_id_ = worker_id.fetch_add();
+		}
+		if (!config.parallel_tmpdir.empty() && !config.recover) {
+			const std::string heartbeat_file = base_dir_ + PATH_SEPARATOR + "heartbeat";
+			register_sync_file(heartbeat_file);
+			heartbeat_.reset(new Heartbeat(heartbeat_file, *this));
+		}
 	}
 
 	void finish() {
+		heartbeat_.reset();
 		log_file_.reset();
 		for (const auto& file : sync_files_) {
 			remove_tmp_file(file);
@@ -136,6 +189,18 @@ struct Job {
 		max_oid_ = max_oid;
 	}
 
+	/* Maximum length of the sequence accessions in the input, determined when the accession
+	   files are written. Serves as an upper bound for sizing the output tables. */
+	size_t max_acc_len() const {
+		if (max_acc_len_ == std::numeric_limits<size_t>::max())
+			throw std::runtime_error("max_acc_len not set");
+		return max_acc_len_;
+	}
+
+	void set_max_acc_len(size_t len) {
+		max_acc_len_ = len;
+	}
+
 	void register_sync_file(const std::string& file_name) {
 		sync_files_.push_back(file_name);
 	}
@@ -153,7 +218,46 @@ struct Job {
 		++steps_finished_;
 	}
 
+	void check_heartbeat() const {
+		if (heartbeat_)
+			heartbeat_->check();
+	}
+
+	/* Ids of the other workers whose heartbeat was more than 20 minutes behind the current
+	   time at the last heartbeat of this worker. */
+	std::vector<int64_t> stale_workers() const {
+		std::lock_guard<std::mutex> lock(stale_workers_mtx_);
+		return stale_workers_;
+	}
+
+	void set_stale_workers(std::vector<int64_t>&& workers) {
+		std::lock_guard<std::mutex> lock(stale_workers_mtx_);
+		stale_workers_ = std::move(workers);
+	}
+
+	std::string stop_file() const {
+		return root_dir() + "stop";
+	}
+
+	/* Returns true if the parallel computation has to be stopped, either because this worker
+	   detected stale workers (it then writes the stop file into the temp directory) or because
+	   the stop file exists. Once true, it stays true, so that all callers along the way out
+	   see the same decision even if a stale worker writes a heartbeat again in the meantime. */
+	bool stopped();
+
+	/* Recover mode: removes the stop file and the heartbeat file and resets the worker id
+	   counter to 0, so that the workers of the next run start like those of a new run. */
+	void reset_workers();
+
+	/* Makes stopped() return true from now on, without writing the stop file, so that the
+	   callers return as for a stopped job. Ends the run in recover mode. */
+	void stop() {
+		stopped_ = true;
+	}
+
 	bool goon() {
+		if (stopped())
+			return false;
 		const bool r = !config.single_step || steps_finished_ == 0;
 		if (!r)
 			log("Job step finished, terminating...");
@@ -165,6 +269,7 @@ struct Job {
 private:
 
 	OId max_oid_;
+	size_t max_acc_len_ = std::numeric_limits<size_t>::max();
 	std::string base_dir_;
 	int64_t worker_id_;
 	int round_, round_count_;
@@ -175,8 +280,29 @@ private:
 	std::vector<std::string> sync_files_;
 	std::vector<std::string> temp_dirs_;
 	int steps_finished_;
+	mutable std::mutex stale_workers_mtx_;
+	std::vector<int64_t> stale_workers_;
+	bool stopped_ = false;
+	// Declared last so that the thread is stopped before the other members are destroyed.
+	std::unique_ptr<Heartbeat> heartbeat_;
 
 };
+
+/* Recover mode (diamond recover): the code of the parallel workflow is run through, checking the
+   state of each synchronized step in the temp directory instead of executing it. A completed step
+   is passed through like a worker that waited for it. At the first step that has not been
+   completed, the job is stopped. If that step has been begun, its lock and queue are reset to 0,
+   so that the next run executes it again (the queue skips the items already finished). */
+
+/* Checks a step executed by the worker that takes the lock and marked as completed by done.
+   queue_file, if given, is the queue the step uses for its work items. Returns true if the step
+   has been completed, otherwise resets lock and queue and stops the job. */
+bool recover_step(Job& job, const char* step, const std::string& lock_file, const std::string& done_file, const std::string& queue_file = std::string());
+/* Checks a step whose n work items are distributed by a queue and recorded in the finished list
+   when done. Returns true if all items are finished, otherwise resets the queue and stops the job. */
+bool recover_queue(Job& job, const char* step, const std::string& queue_file, const std::string& finished_file, int64_t n);
+// Returns true if the finished list holds all n work items. Does not create the file.
+bool queue_finished(Job& job, const std::string& finished_file, int64_t n);
 
 std::pair<std::string, uint64_t> get_reps(Job& job, const std::string& round_minichunks, std::unique_ptr<std::vector<OId>> clustering);
 void merge(Job& job, const VolumedFile& volumes, const VolumedFile& input_volumes, Header hdr_format);
@@ -184,7 +310,12 @@ std::vector<int> make_blocks(Job& job, VolumedFile& volumes, std::vector<std::un
 	const std::string& seqs_vf, const std::string& accs_vf);
 std::pair<std::string, std::string> len_sort(Job& job, VolumedFile& volumes);
 std::vector<OId> build_merged(Job& job);
-void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, std::string base_dir, std::unique_ptr<std::vector<BitVector>>& seed_hit_table);
+/* Loads the complete member superblock of a linear round. It is kept in memory while the
+   superblock is searched against all rep superblocks and used by the searches without
+   copying, instead of reading it from disk for each block combination. */
+std::shared_ptr<Block> load_member_block(Job& job, const VolumedFile& volumes, int64_t member_superblock);
+/* member_block is the loaded superblock r for linear rounds, and ignored otherwise. */
+void run_search(Job& job, const VolumedFile& volumes, int64_t r, int64_t i, const std::shared_ptr<Block>& member_block, std::string base_dir, std::unique_ptr<std::vector<BitVector>>& seed_hit_table);
 void configure_round(Job& job, uint64_t letter_count);
 /* Masking algorithm applied to the input sequences when the length sorted minichunks are
    written. Everything downstream (seed counting, seed index building, alignment) reads the
