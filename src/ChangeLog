@@ -8,6 +8,8 @@
 - Improved the performance of the hash join and the search stages of the alignment workflows (contributed by @jeremyratcliffgdm).
 - Improved the performance of SEG masking (contributed by @jeremyratcliffgdm).
 - Improved the performance of the joining output blocks stage (contributed by @jeremyratcliffgdm).
+- Added the option `--swipe-xdrop` to enable xdrop in frameshift alignment mode, optionally followed by the xdrop
+  bitscore (default 23.8) (contributed by @jeremyratcliffgdm).
 - Improved the performance of reading FASTQ files.
 - Improved the performance and sensitivity of the linear-time clustering rounds.
 - Improved the performance of the `greedy-vertex-cover` workflow.
@@ -24,6 +26,12 @@
   `.dmnd` format (contributed by @gerontec).
 - Added the option `--dedup-frames` to deduplicate translated sequences to improve search performance in
   translated search workflows (contributed by @kevinmoran1988).
+- Added the option `--no-ident-hits` to not report hits if the query sequence is identical to the target
+  (disregarding sequence ids/titles).
+- Fixed a potential crash for GCC < 12.
+- The tool now allows FASTA files to contain comment lines at the beginning (any line that does not
+  indicate the start of a record).
+- Fixed a bug that could cause an error when file names contained spaces.
 
 [2.2.8]
 - Improved the performance of the clustering workflows.

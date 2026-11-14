@@ -283,6 +283,8 @@ void Run::process_target(QueryState* state, Search::Hit* begin, Search::Hit* end
 	const SequenceSet& targets = cfg.target->seqs();
 	const BlockId target = targets.local_position((uint64_t)begin->subject_).first;
 	const uint64_t target_begin = targets.position(target, 0);
+	if (config.no_ident_hits && ::Extension::identical_target(state->query_id, target, cfg))
+		return;
 
 	std::vector<::Extension::SeedHit> seed_hits;
 	seed_hits.reserve(end - begin);

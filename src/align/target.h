@@ -170,6 +170,9 @@ struct SeedHitList {
 	std::vector<TargetScore> target_scores;
 };
 
+// Returns true if the sequence of the target equals the sequence of the query (--no-ident-hits). Hard masked
+// positions of either sequence match any letter, since the query and the target may be masked differently.
+bool identical_target(BlockId query_block_id, BlockId target_block_id, const Search::Config& cfg);
 void culling(TargetList& targets, bool sort_only, const Search::Config& cfg);
 void culling(std::vector<Match>& targets, const Search::Config& cfg);
 bool append_hits(TargetList& targets, TargetList::iterator begin, TargetList::iterator end, const bool with_culling, const Search::Config& cfg);

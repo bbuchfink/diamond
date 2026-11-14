@@ -86,6 +86,11 @@ struct Option<double> {
 	Option() :
 		present_(false)
 	{}
+	explicit Option(const double value) :
+		value_(value),
+		present_(true),
+		base_(nullptr)
+	{}
 	bool present() const {
 		return present_;
 	}

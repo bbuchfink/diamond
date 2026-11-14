@@ -136,6 +136,21 @@ inline bool check_pcount<Option<std::vector<std::string>>>(const std::vector<std
 	return v.size() >= (size_t)min_count;
 }
 
+// Assigns the implicit value of an option given without an argument (registered with min_count = 0).
+// Returns false if the option type does not support implicit values.
+template<typename T>
+inline bool read_implicit(T& dst, const T& implicit_value) {
+	return false;
+}
+
+template<>
+inline bool read_implicit<Option<double>>(Option<double>& dst, const Option<double>& implicit_value) {
+	if (!implicit_value.present())
+		return false;
+	dst = implicit_value.get_present();
+	return true;
+}
+
 template<typename T>
 inline bool check_present(const T& v) {
 	return false;
@@ -175,6 +190,8 @@ struct OptionDesc : public OptionBase
 	{ }
 	virtual void read(const std::vector<std::string> &v)
 	{
+		if (v.empty() && min_count == 0 && read_implicit(*store_, default_))
+			return;
 		if (!check_pcount<T>(v, min_count))
 			throw std::runtime_error("Invalid parameter count for option '" + (short_id ? std::string("-") + short_id + '/' : std::string()) + "--" + id + "'");
 		read_option(*store_, v);

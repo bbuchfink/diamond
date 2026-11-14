@@ -41,8 +41,16 @@ static int64_t count_targets(It begin, It end) {
 	return n;
 }
 
-template<typename It>
-static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
+struct NoTargetFilter {
+	bool operator()(BlockId) const {
+		return false;
+	}
+};
+
+// Groups the seed hits [begin, end) of a query by target. Targets for which skip_target(target_block_id)
+// returns true are left out of the list.
+template<typename It, typename SkipTarget = NoTargetFilter>
+static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs, SkipTarget skip_target = SkipTarget()) {
 	MEM_SCOPE("extend/seed-hit-list");
 	std::sort(begin, end, Search::Hit::CmpSubject());	
 	const auto targets = count_targets(begin, end);
@@ -59,6 +67,7 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 	unsigned target_len;
 	uint32_t target = UINT32_MAX;
 	uint16_t score = 0;
+	bool skip = false;
 #ifdef HIT_KEEP_TARGET_ID
 	if(true) {
 #else
@@ -72,7 +81,7 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 #endif
 			const uint32_t t = (uint32_t)l.first;
 			if (t != target) {
-				if (target != UINT32_MAX) {
+				if (target != UINT32_MAX && !skip) {
 #ifdef EVAL_TARGET
 					list.target_scores.push_back({ uint32_t(list.target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
 #else
@@ -80,11 +89,16 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 #endif
 					score = 0;
 				}
-				list.seed_hits.next();
 				target = t;
+				skip = skip_target((BlockId)t);
+				if (skip)
+					continue;
+				list.seed_hits.next();
 				target_len = (unsigned)ref_seqs[target].length();
 				list.target_block_ids.push_back(target);
 			}
+			else if (skip)
+				continue;
 			list.seed_hits.push_back({ (int)i->seed_offset_, (int)l.second, i->score_, (unsigned)i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
@@ -96,7 +110,7 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 			while (*it <= subject_offset) ++it;
 			uint32_t t = (uint32_t)(it - limit_begin) - 1;
 			if (t != target) {
-				if (target != UINT32_MAX) {
+				if (target != UINT32_MAX && !skip) {
 #ifdef EVAL_TARGET
 					list.target_scores.push_back({ uint32_t(list.target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
 #else
@@ -104,16 +118,21 @@ static SeedHitList load_hits(It begin, It end, const SequenceSet& ref_seqs) {
 #endif
 					score = 0;
 				}
+				target = t;
+				skip = skip_target((BlockId)t);
+				if (skip)
+					continue;
 				list.seed_hits.next();
 				list.target_block_ids.push_back(t);
-				target = t;
 				target_len = (unsigned)ref_seqs[target].length();
 			}
+			else if (skip)
+				continue;
 			list.seed_hits.push_back({ (int)i->seed_offset_, (int)(subject_offset - *(it - 1)), i->score_, (unsigned)i->query_ % align_mode.query_contexts });
 			score = std::max(score, i->score_);
 		}
 	}
-	if (target != UINT32_MAX)
+	if (target != UINT32_MAX && !skip)
 #ifdef EVAL_TARGET
 		list.target_scores.push_back({ uint32_t(list.target_block_ids.size() - 1), score, score_matrix.evalue(score, query_len, target_len) });
 #else

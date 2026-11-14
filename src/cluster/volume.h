@@ -55,18 +55,18 @@ struct Volume {
 	}
 	friend std::istream& operator>>(std::istream& str, Volume& v) {
 		std::string line;
-		std::istringstream row;
+		std::vector<uint64_t> fields;
 		v.oid_begin = v.oid_end = 0;
 		v.record_count = std::numeric_limits<OId>::max();
 		do {
 			if (!std::getline(str, line)) return str;
-			row.clear();
-			row.str(line);
-		} while (!(row >> v.path));
-		OId record_count;
-		if (row >> record_count) {
-			v.record_count = record_count;
-			row >> v.oid_begin >> v.oid_end;
+		} while (!parse_list_line(line, v.path, fields, 3));
+		if (!fields.empty()) {
+			v.record_count = (OId)fields[0];
+			if (fields.size() >= 2)
+				v.oid_begin = (OId)fields[1];
+			if (fields.size() >= 3)
+				v.oid_end = (OId)fields[2];
 		}
 		return str;
 	}

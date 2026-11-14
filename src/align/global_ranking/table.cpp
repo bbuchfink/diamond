@@ -118,7 +118,10 @@ static void get_query_hits_reextend(size_t source_query_block_id, SeedHits::Iter
 	const SequenceSet& target_seqs = cfg.target->seqs();
 
 	hits.clear();
-	Extension::SeedHitList l = Extension::load_hits(begin, end, cfg.target->seqs());
+	const BlockId query_id = (BlockId)source_query_block_id;
+	Extension::SeedHitList l = config.no_ident_hits
+		? Extension::load_hits(begin, end, cfg.target->seqs(), [query_id, &cfg](BlockId target) { return Extension::identical_target(query_id, target, cfg); })
+		: Extension::load_hits(begin, end, cfg.target->seqs());
 	for (size_t i = 0; i < l.target_block_ids.size(); ++i) {
 		const auto score = target_score(l.seed_hits.begin(i), l.seed_hits.end(i), query_seq.data(), target_seqs[l.target_block_ids[i]]);
 		hits.emplace_back((uint32_t)cfg.target->block_id2oid(l.target_block_ids[i]), score.first, score.second);

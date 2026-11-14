@@ -138,8 +138,35 @@ struct InputBuffer {
 		sort(data_);
 	}
 
+	/* Stable bottom-up merge sort, equivalent to std::list::sort(). We do not call lst.sort() because
+	   libstdc++ before GCC 12 (PR libstdc++/66742) default-constructs its temporary lists in sort(), so for
+	   std::pmr::list they are bound to the default memory resource instead of mem_pool. The following
+	   splice/merge with unequal allocators then calls __builtin_abort() (issue #994, GCC 10.3).
+	   Here all temporaries are constructed with the allocator of lst. */
 	void sort(std::pmr::list<T>& lst) {
-		lst.sort();
+		using List = std::pmr::list<T>;
+		if (lst.size() < 2)
+			return;
+		const auto alloc = lst.get_allocator();
+		List carry(alloc);
+		std::vector<List> bins; // bins[i] is empty or holds 2^i sorted elements, older elements in higher bins
+		/* Reserve so that the vector never reallocates: the list move constructor is not noexcept in some
+		   standard libraries (MSVC), so a reallocation would copy the lists onto the default memory resource. */
+		bins.reserve(64);
+		while (!lst.empty()) {
+			carry.splice(carry.begin(), lst, lst.begin());
+			size_t i = 0;
+			for (; i < bins.size() && !bins[i].empty(); ++i) {
+				bins[i].merge(carry);
+				carry.swap(bins[i]);
+			}
+			if (i == bins.size())
+				bins.emplace_back(alloc);
+			carry.swap(bins[i]);
+		}
+		for (size_t i = 1; i < bins.size(); ++i)
+			bins[i].merge(bins[i - 1]);
+		lst.swap(bins.back());
 	}
 
 private:

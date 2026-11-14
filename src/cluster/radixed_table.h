@@ -19,7 +19,62 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include <vector>
+#include <string>
+#include <algorithm>
+#include <stdexcept>
 #include "util/parallel/filestack.h"
+
+// Parses one line of a list file: a path followed by up to max_fields unsigned integer fields.
+// The files written by the clustering workflow separate fields by tabs, so the path may contain
+// spaces. Lines without a tab (e.g. user supplied volume lists) are split on whitespace, the path
+// being everything before the trailing integer fields. Returns false for blank lines.
+inline bool parse_list_line(const std::string& line, std::string& path, std::vector<uint64_t>& fields, size_t max_fields) {
+	static const char* const WS = " \t\r\n";
+	fields.clear();
+	const size_t b = line.find_first_not_of(WS);
+	if (b == std::string::npos)
+		return false;
+	const size_t e = line.find_last_not_of(WS) + 1;
+	std::string s = line.substr(b, e - b);
+	auto is_uint = [](const std::string& t) {
+		return !t.empty() && t.size() <= 20 && std::all_of(t.begin(), t.end(), [](char c) { return c >= '0' && c <= '9'; });
+	};
+	const size_t tab = s.find('\t');
+	if (tab != std::string::npos) {
+		path = s.substr(0, tab);
+		size_t i = tab + 1;
+		while (i <= s.size()) {
+			size_t j = s.find('\t', i);
+			if (j == std::string::npos)
+				j = s.size();
+			std::string t = s.substr(i, j - i);
+			const size_t tb = t.find_first_not_of(WS);
+			t = tb == std::string::npos ? std::string() : t.substr(tb, t.find_last_not_of(WS) + 1 - tb);
+			if (!t.empty()) {
+				if (!is_uint(t))
+					throw std::runtime_error("Format error in list file line: " + line);
+				if (fields.size() < max_fields)
+					fields.push_back(std::stoull(t));
+			}
+			i = j + 1;
+		}
+	}
+	else {
+		while (fields.size() < max_fields) {
+			const size_t sp = s.find_last_of(WS);
+			if (sp == std::string::npos)
+				break;
+			const std::string t = s.substr(sp + 1);
+			if (!is_uint(t))
+				break;
+			fields.push_back(std::stoull(t));
+			s.resize(s.find_last_not_of(WS, sp) + 1);
+		}
+		std::reverse(fields.begin(), fields.end());
+		path = s;
+	}
+	return true;
+}
 
 struct Bucket {
 	static constexpr uint64_t NIL = std::numeric_limits<uint64_t>::max();
@@ -58,15 +113,14 @@ struct RadixedTable : public std::vector<Bucket> {
 
 	RadixedTable(const std::string& file_name, int shift) : shift(shift) {
 		std::ifstream file(file_name);
-		std::string path;
-		uint64_t records;
-		for (;;) {
-			if (!(file >> path))
-				return;
-			file >> records;
-			if (!file)
+		std::string line, path;
+		std::vector<uint64_t> fields;
+		while (std::getline(file, line)) {
+			if (!parse_list_line(line, path, fields, 1))
+				continue;
+			if (fields.empty())
 				throw std::runtime_error("Format error in RadixedTable");
-			emplace_back(path, records);
+			emplace_back(path, fields.front());
 		}
 	}
 

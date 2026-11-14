@@ -711,7 +711,7 @@ void setup_search(Sensitivity sens, Search::Config& cfg)
 		}
 	}
 
-	const double swipe_xdrop_bits = config.swipe_xdrop.get(cfg.extension_mode == Extension::Mode::BANDED_FAST ? 23.8 : 0.0);
+	const double swipe_xdrop_bits = config.swipe_xdrop.get(0.0);
 	if (swipe_xdrop_bits < 0.0)
 		throw runtime_error("--swipe-xdrop must be non-negative.");
 	if (swipe_xdrop_bits > 0.0) {

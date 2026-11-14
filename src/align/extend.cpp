@@ -176,6 +176,25 @@ static bool add_self_aln(const Search::Config& cfg) {
 	return config.add_self_aln && ((config.self && cfg.current_ref_block == 0) || (!config.self && cfg.current_query_block == cfg.current_ref_block));
 }
 
+static Sequence unmasked_seq(const Block& block, BlockId id) {
+	return block.unmasked_seqs().empty() ? block.seqs()[id] : block.unmasked_seqs()[id];
+}
+
+bool identical_target(BlockId query_block_id, BlockId target_block_id, const Search::Config& cfg) {
+	if (align_mode.query_translated)
+		return false;
+	const Sequence q = unmasked_seq(*cfg.query, query_block_id), t = unmasked_seq(*cfg.target, target_block_id);
+	const Loc n = q.length();
+	if (n != t.length())
+		return false;
+	for (Loc i = 0; i < n; ++i) {
+		const Letter a = letter_mask(q[i]), b = letter_mask(t[i]);
+		if (a != b && a != MASK_LETTER && b != MASK_LETTER)
+			return false;
+	}
+	return true;
+}
+
 static Hsp seed_only_hsp(const SeedHit& hit, unsigned query_source_len) {
 	Hsp hsp;
 	hsp.seed_only = true;
@@ -367,7 +386,9 @@ vector<Match> extend(BlockId query_id, Search::Hit* begin, Search::Hit* end, con
 	const Query query(query_id, stat, cfg, pool);
 	TaskTimer timer(flag_any(flags, DP::Flags::PARALLEL) ? config.target_parallel_verbosity : UINT_MAX);
 	timer.go("Loading seed hits");
-	SeedHitList l = load_hits(begin, end, cfg.target->seqs());
+	SeedHitList l = config.no_ident_hits
+		? load_hits(begin, end, cfg.target->seqs(), [query_id, &cfg](BlockId target) { return identical_target(query_id, target, cfg); })
+		: load_hits(begin, end, cfg.target->seqs());
 	stat.inc(Statistics::TARGET_HITS0, l.target_block_ids.size());
 	stat.inc(Statistics::TIME_LOAD_HIT_TARGETS, timer.microseconds());
 	timer.finish();

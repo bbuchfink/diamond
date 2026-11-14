@@ -45,10 +45,16 @@ static SeqFileFormat guess_format(File& file) {
 	string r = file.peek(1);
 	if (r.empty())
 		throw EmptyFileError("Error detecting input file format. Input file seems to be empty.");
-	switch (r.front()) {
-	case '>': return SeqFileFormat::FASTA;
-	case '@': return SeqFileFormat::FASTQ;
-	default: throw FormatDetectionError("Error detecting input file format (when treating as text file). First line must begin with '>' (FASTA) or '@' (FASTQ).");
+	return r.front() == '@' ? SeqFileFormat::FASTQ : SeqFileFormat::FASTA;
+}
+
+// Skips any lines preceding the first FASTA record (e.g. ';' comment lines, see issue #992).
+static void skip_fasta_preamble(File& file) {
+	for (;;) {
+		const string c = file.peek(1);
+		if (c.empty() || c.front() == '>')
+			return;
+		file.getline();
 	}
 }
 
@@ -69,6 +75,12 @@ FastaFile::FastaFile(const vector<string>& file_name, Flags flags, const ValueTr
 	format_ = guess_format(file_.back());
 	if (file_name.size() > 1)
 		file_.emplace_back(file_name[1], "rb", File::Flags::TREAT_BLANK_AS_STDIN | File::Flags::DETECT_COMPRESSION);
+	if (format_ == SeqFileFormat::FASTA) {
+		for (File& f : file_)
+			skip_fasta_preamble(f);
+		if (file_.front().peek(1).empty())
+			throw EmptyFileError("Error reading input file: no FASTA record (line starting with '>') was found.");
+	}
 	file_ptr_ = file_.begin();
 	if (!config.fasta_index_file.empty()) {
 		ifstream in(config.fasta_index_file, std::ios::binary);
@@ -123,8 +135,11 @@ void FastaFile::close() {
 void FastaFile::rewind() {
 	raw_chunk_no_ = 0;
 	oid_ = 0;
-	for (auto& f : file_)
+	for (auto& f : file_) {
 		f.rewind();
+		if (format_ == SeqFileFormat::FASTA)
+			skip_fasta_preamble(f);
+	}
 	file_ptr_ = file_.begin();
 }
 

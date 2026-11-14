@@ -102,11 +102,10 @@ unordered_map<string, uint64_t> read_seed_counts(const string& file_name) {
 	if (!in.good())
 		return counts;
 	string line, path;
-	uint64_t n;
+	vector<uint64_t> fields;
 	while (std::getline(in, line)) {
-		std::istringstream row(line);
-		if (row >> path >> n)
-			counts[path] = n;
+		if (parse_list_line(line, path, fields, 1) && !fields.empty())
+			counts[path] = fields.front();
 	}
 	return counts;
 }

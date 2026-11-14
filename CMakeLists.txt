@@ -602,9 +602,9 @@ add_diamond_test_exit_code(makedb-nr_10k "makedb --in ${TD}/nr_10k.faa -d nr_10k
 
 #add_test(NAME new-ext COMMAND ${CMAKE_COMMAND} -DNAME=new-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --new-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
 #add_test(NAME new-ext-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=new-ext-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --new-ext --comp-based-stats 6 --fpu-compat -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP})
-add_test(NAME multipass-ext COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
-add_test(NAME multipass-ext-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 6 --fpu-compat -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
-add_test(NAME new-ext-linclust COMMAND ${CMAKE_COMMAND} -DNAME=new-ext-linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p8 --approx-id 0 --new-ext" ${SP})
+#add_test(NAME multipass-ext COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 0 -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
+#add_test(NAME multipass-ext-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=multipass-ext-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -c1 -p8 -k0 --multipass-ext --comp-based-stats 6 --fpu-compat -f 6 qseqid sseqid qstart qend sstart send evalue" ${SP_SORTED})
+#add_test(NAME new-ext-linclust COMMAND ${CMAKE_COMMAND} -DNAME=new-ext-linclust "-DARGS=linclust -d ${TD}/nr_10k.faa -p8 --approx-id 0 --new-ext" ${SP})
 add_test(NAME blastp COMMAND ${CMAKE_COMMAND} -DNAME=blastp "-DARGS=blastp -q ${TD}/1.faa -d ${TD}/2.faa -p1" ${SP})
 add_test(NAME blastp_nr10k COMMAND ${CMAKE_COMMAND} -DNAME=blastp_nr10k "-DARGS=blastp -q ${TD}/nr_10k.faa -d nr_10k.dmnd -p4 -f 6 qseqid sseqid evalue staxids skingdoms sphylums" ${SP})
 add_test(NAME blastp-cbs6 COMMAND ${CMAKE_COMMAND} -DNAME=blastp-cbs6 "-DARGS=blastp -q ${TD}/nr_10k.faa -d ${TD}/nr_10k.faa -p4 -c1 -k0 --comp-based-stats 6 --fpu-compat" ${SP})

@@ -321,6 +321,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("salltitles", 0, "include full subject titles in DAA file", salltitles)
 		("sallseqid", 0, "include all subject ids in DAA file", sallseqid)
 		("no-self-hits", 0, "suppress reporting of identical self hits", no_self_hits)
+		("no-ident-hits", 0, "do not align targets whose sequence is identical to the query (ignores titles)", no_ident_hits)
 		("taxonlist", 0, "restrict search to list of taxon ids (comma-separated)", taxonlist)
 		("taxon-exclude", 0, "exclude list of taxon ids (comma-separated)", taxon_exclude)
 		("seqidlist", 0, "filter the database by list of accessions", seqidlist)
@@ -452,7 +453,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("lin-stage1", 0, "only consider seed hits against longest query for identical seeds", lin_stage1_query)
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("reseek-xdrop", 0, "xdrop for ungapped alignment (using --reseek-diags)", reseek_ungapped_xdrop, 20.0)
-		("swipe-xdrop", 0, "xdrop for banded 3-frame swipe alignment in bits (0 to disable)", swipe_xdrop)
+		("swipe-xdrop", 0, "xdrop for banded 3-frame swipe alignment in bits (23.8 if given without value)", swipe_xdrop, Option<double>(23.8), 0)
 		("ungapped-evalue", 0, "E-value threshold for ungapped filter (auto)", ungapped_evalue_, -1.0)
 		("ungapped-evalue-short", 0, "E-value threshold for ungapped filter (short reads) (auto)", ungapped_evalue_short_, -1.0)
 		("short-query-ungapped-bitscore", 0, "Bit score threshold for ungapped alignments for short queries", short_query_ungapped_bitscore, 25.0)
@@ -708,6 +709,8 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 
 	if (command == blastx && no_self_hits)
 		throw runtime_error("--no-self-hits option is not supported in blastx mode.");
+	if (command == blastx && no_ident_hits)
+		throw runtime_error("--no-ident-hits option is not supported in blastx mode.");
 
 	if (long_reads) {
 		query_range_culling = true;
@@ -949,7 +952,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 	trace_pt_membuf = hit_membuf;
 
 	if (command != Config::version) {
-		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1789842843);
+		static const std::chrono::time_point<std::chrono::system_clock> release_time = std::chrono::system_clock::from_time_t(1794684579);
 		if (std::chrono::system_clock::now() - release_time > std::chrono::hours(180 * 24)) {
 			set_color(Color::YELLOW, true);
 			cerr << "Warning: This version of DIAMOND is more than 180 days old. It is recommended to always use the latest version." << endl;
