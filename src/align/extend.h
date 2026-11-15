@@ -43,6 +43,11 @@ struct Query {
 		return hauser_correction.empty() ? nullptr : hauser_correction[context].int8.data();
 	}
 
+	// Length of frame 0, which stands for a translated query; a fully masked frame 0 is stored without letters.
+	Loc frame0_length() const {
+		return align_mode.query_translated ? source_length / 3 : sequence.front().length();
+	}
+
 	BlockId block_id;
 	std::vector<Sequence> sequence;
 	std::vector<HauserCorrection> hauser_correction;

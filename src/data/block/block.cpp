@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
 #include <atomic>
 #include <thread>
 #include <iterator>
@@ -38,6 +39,16 @@ using std::greater;
 using std::string;
 using std::runtime_error;
 using std::numeric_limits;
+
+// A translated frame without an amino acid letter (fully masked by --min-orf) cannot form a seed, so only
+// its slot is stored. Modes that read every frame's letters or length keep them: frameshift alignment,
+// --swipe, --min-query-len, the alternative extension pipelines and normalized_bitscore.
+static bool drop_masked_frames() {
+	static const bool drop = config.frame_shift == 0 && !config.swipe_all && config.min_query_len == 0
+		&& !config.new_extension_pipeline && !config.multipass_extension_pipeline
+		&& std::find(config.output_format.begin(), config.output_format.end(), "normalized_bitscore") == config.output_format.end();
+	return drop;
+}
 
 Block::Block():
 	source_seqs_(),
@@ -88,12 +99,18 @@ int64_t Block::push_back(const Sequence& seq, const char* id, const std::vector<
 	source_seqs_.push_back(seq.data(), seq.end());
 	auto t = Util::Seq::translate(seq);
 	const Loc min_len = config.min_orf_len((Loc)t.front().size());
+	const bool drop = drop_masked_frames();
 	int64_t letters = 0;
 	for (int j = 0; j < 6; ++j) {
-		if (frame_mask & (1 << j)) {
-			letters += Util::Seq::find_orfs(t[j], min_len);
-			seqs_.push_back(t[j].cbegin(), t[j].cend());
+		const bool searched = frame_mask & (1 << j);
+		const Loc n = searched ? Util::Seq::find_orfs(t[j], min_len) : 0;
+		letters += n;
+		if (n == 0 && drop) {
+			seqs_.fill(0, MASK_LETTER);
+			dropped_frame_letters_ += t[j].size();
 		}
+		else if (searched)
+			seqs_.push_back(t[j].cbegin(), t[j].cend());
 		else
 			seqs_.fill(t[j].size(), MASK_LETTER);
 	}
@@ -104,6 +121,7 @@ void Block::append(const Block& b, bool remove_padding, bool append_seqs, bool a
 	if (append_seqs) {
 		seqs_.append(b.seqs_, remove_padding);
 		source_seqs_.append(b.source_seqs_, remove_padding);
+		dropped_frame_letters_ += b.dropped_frame_letters_;
 	}
 	if (append_ids) {
 		ids_.append(b.ids_, remove_padding);
