@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <atomic>
 #include <climits>
 #include <cmath>
 #include <thread>
@@ -558,6 +559,15 @@ const map<Sensitivity, vector<string>> shape_codes = {
 	{ Sensitivity::LINCLUST_70, { "1110110110111","1111010001101011","1110011100010111","1110101001001000111" } }
 } };
 
+template<typename F>
+static void run_threads(int n, F fn) {
+	vector<std::thread> threads;
+	for (int t = 0; t < n; ++t)
+		threads.emplace_back(fn, t);
+	for (std::thread& t : threads)
+		t.join();
+}
+
 // Frames without an amino acid letter (fully masked by --min-orf) cannot form a seed, so seed
 // enumeration skips them instead of scanning them once per shape.
 void skip_masked_frames(Search::Config& cfg) {
@@ -566,16 +576,12 @@ void skip_masked_frames(Search::Config& cfg) {
 	const BlockId n = seqs.size();
 	const int threads = n < 65536 ? 1 : std::max(config.threads_, 1);
 	vector<uint8_t> masked(n);
-	vector<std::thread> workers;
-	for (int t = 0; t < threads; ++t)
-		workers.emplace_back([&, t] {
-			for (BlockId i = BlockId((int64_t)n * t / threads), end = BlockId((int64_t)n * (t + 1) / threads); i < end; ++i) {
-				const Sequence seq = seqs[i];
-				masked[i] = std::none_of(seq.data(), seq.end(), [](Letter l) { return is_amino_acid(letter_mask(l)); });
-			}
-		});
-	for (std::thread& w : workers)
-		w.join();
+	run_threads(threads, [&](int t) {
+		for (BlockId i = BlockId((int64_t)n * t / threads), end = BlockId((int64_t)n * (t + 1) / threads); i < end; ++i) {
+			const Sequence seq = seqs[i];
+			masked[i] = std::none_of(seq.data(), seq.end(), [](Letter l) { return is_amino_acid(letter_mask(l)); });
+		}
+	});
 	cfg.frame_skip.reset(new vector<bool>(n, false));
 	int64_t skipped = 0;
 	for (BlockId i = 0; i < n; ++i)
@@ -590,50 +596,106 @@ void skip_masked_frames(Search::Config& cfg) {
 // Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
 // of each group is the representative, and the rest are skipped during seed enumeration; their hits
 // are replayed from the representative in stage 2. Frames already skipped as fully masked are left out.
+// Parts split by the top hash bits are scanned in block order, so the map matches a serial scan.
 void build_frame_dups(Search::Config& cfg) {
 	TaskTimer timer("Building frame duplicate map");
 	const SequenceSet& seqs = cfg.query->seqs();
 	const BlockId n = seqs.size();
-	const size_t table_bits = std::max<size_t>(16, bit_length((int64_t)n) + 1), table_size = (size_t)1 << table_bits;
-	std::vector<uint32_t> table(table_size, UINT32_MAX);
-	std::vector<uint32_t> rep(n, UINT32_MAX);
 	if (!cfg.frame_skip || cfg.frame_skip->size() != (size_t)n)
 		cfg.frame_skip.reset(new std::vector<bool>(n, false));
-	std::vector<uint32_t> dup_count(n, 0);
-	int64_t dups = 0, dup_letters = 0;
+	const vector<bool>& skip = *cfg.frame_skip;
+	constexpr int PART_BITS = 12;
+	constexpr size_t PARTS = (size_t)1 << PART_BITS;
+	const int threads = n < 65536 ? 1 : std::max(config.threads_, 1);
+	const auto chunk = [n, threads](int t) {
+		return std::make_pair(BlockId((int64_t)n * t / threads), BlockId((int64_t)n * (t + 1) / threads));
+	};
 
-	for (BlockId i = 0; i < n; ++i) {
-		if ((*cfg.frame_skip)[i])
-			continue;
-		const Sequence seq = seqs[i];
-		uint64_t h = 1469598103934665603ull;
-		for (Loc j = 0; j < seq.length(); ++j) {
-			h ^= (unsigned char)letter_mask(seq[j]);
-			h *= 1099511628211ull;
-		}
-		size_t slot = (size_t)(h >> (64 - table_bits));
-		while (true) {
-			const uint32_t e = table[slot];
-			if (e == UINT32_MAX) {
-				table[slot] = i;
-				break;
+	vector<uint64_t> hash(n);
+	vector<uint32_t> part_count((size_t)threads * PARTS, 0);
+	run_threads(threads, [&](int t) {
+		const auto r = chunk(t);
+		uint32_t* count = &part_count[(size_t)t * PARTS];
+		for (BlockId i = r.first; i < r.second; ++i) {
+			if (skip[i])
+				continue;
+			const Sequence seq = seqs[i];
+			uint64_t h = 1469598103934665603ull;
+			for (Loc j = 0; j < seq.length(); ++j) {
+				h ^= (unsigned char)letter_mask(seq[j]);
+				h *= 1099511628211ull;
 			}
-			const Sequence other = seqs[e];
-			if (other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data())) {
-				rep[i] = e;
-				(*cfg.frame_skip)[i] = true;
-				++dup_count[e];
-				++dups;
-				dup_letters += seq.length();
-				break;
-			}
-			slot = (slot + 1) & (table_size - 1);
+			hash[i] = h;
+			++count[h >> (64 - PART_BITS)];
 		}
+	});
+
+	vector<uint32_t> part_begin(PARTS + 1), offset((size_t)threads * PARTS);
+	uint32_t total = 0;
+	for (size_t p = 0; p < PARTS; ++p) {
+		part_begin[p] = total;
+		for (int t = 0; t < threads; ++t) {
+			offset[(size_t)t * PARTS + p] = total;
+			total += part_count[(size_t)t * PARTS + p];
+		}
+	}
+	part_begin[PARTS] = total;
+	vector<uint32_t> order(total);
+	run_threads(threads, [&](int t) {
+		const auto r = chunk(t);
+		uint32_t* off = &offset[(size_t)t * PARTS];
+		for (BlockId i = r.first; i < r.second; ++i)
+			if (!skip[i])
+				order[off[hash[i] >> (64 - PART_BITS)]++] = i;
+	});
+
+	vector<uint32_t> rep(n, UINT32_MAX), dup_count(n, 0);
+	vector<int64_t> thread_dups(threads, 0), thread_letters(threads, 0);
+	std::atomic<size_t> next_part(0);
+	run_threads(threads, [&](int t) {
+		vector<uint32_t> table;
+		for (size_t p; (p = next_part.fetch_add(1, std::memory_order_relaxed)) < PARTS;) {
+			const uint32_t* begin = order.data() + part_begin[p], *end = order.data() + part_begin[p + 1];
+			if (end - begin < 2)
+				continue;
+			const int table_bits = std::max(4, bit_length((uint64_t)(end - begin)) + 1);
+			const size_t mask = ((size_t)1 << table_bits) - 1;
+			table.assign(mask + 1, UINT32_MAX);
+			for (const uint32_t* it = begin; it < end; ++it) {
+				const uint32_t i = *it;
+				const Sequence seq = seqs[i];
+				size_t slot = (size_t)((hash[i] << PART_BITS) >> (64 - table_bits));
+				while (true) {
+					const uint32_t e = table[slot];
+					if (e == UINT32_MAX) {
+						table[slot] = i;
+						break;
+					}
+					const Sequence other = seqs[e];
+					if (hash[e] == hash[i] && other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data())) {
+						rep[i] = e;
+						++dup_count[e];
+						++thread_dups[t];
+						thread_letters[t] += seq.length();
+						break;
+					}
+					slot = (slot + 1) & mask;
+				}
+			}
+		}
+	});
+	int64_t dups = 0, dup_letters = 0;
+	for (int t = 0; t < threads; ++t) {
+		dups += thread_dups[t];
+		dup_letters += thread_letters[t];
 	}
 
 	cfg.frame_dup_begin.assign(n + 1, 0);
-	for (BlockId i = 0; i < n; ++i)
+	for (BlockId i = 0; i < n; ++i) {
 		cfg.frame_dup_begin[i + 1] = cfg.frame_dup_begin[i] + dup_count[i];
+		if (rep[i] != UINT32_MAX)
+			(*cfg.frame_skip)[i] = true;
+	}
 	cfg.frame_dup_ids.resize(cfg.frame_dup_begin[n]);
 	std::vector<uint32_t> pos(cfg.frame_dup_begin.begin(), cfg.frame_dup_begin.end() - 1);
 	for (BlockId i = 0; i < n; ++i)
