@@ -286,8 +286,11 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (query_iteration > 0)
 		options.query_skip.reset(new vector<bool> (query_aligned));
 
-	if (config.dedup_frames && config.command != ::Config::blastn && align_mode.query_translated && !config.swipe_all)
-		Search::build_frame_dups(options);
+	if (config.command != ::Config::blastn && align_mode.query_translated && !config.swipe_all) {
+		Search::skip_masked_frames(options);
+		if (config.dedup_frames)
+			Search::build_frame_dups(options);
+	}
 
 	if (options.lin_index)
 		config.algo = ::Config::Algo::DOUBLE_INDEXED;

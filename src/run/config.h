@@ -126,8 +126,8 @@ struct Config {
 
 	std::shared_ptr<Block>                     query, target;
 	std::unique_ptr<std::vector<bool>>         query_skip;
-	// Identical translated frames are searched once: frame_skip marks the duplicates, and
-	// frame_dup_* lists, per representative, the frames its hits stand in for (see build_frame_dups).
+	// frame_skip marks translated frames that seed enumeration skips: fully masked frames, and with
+	// --dedup-frames the duplicates; frame_dup_* lists, per representative, the frames its hits stand in for.
 	std::unique_ptr<std::vector<bool>>         frame_skip;
 	std::vector<uint32_t>                      frame_dup_begin, frame_dup_ids;
 	std::unique_ptr<HitBuffer>                 seed_hit_buf;

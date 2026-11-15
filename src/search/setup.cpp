@@ -17,8 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
 #include <climits>
 #include <cmath>
+#include <thread>
 #include "basic/config.h"
 #include "search.h"
 #include "util/math/integer.h"
@@ -556,9 +558,38 @@ const map<Sensitivity, vector<string>> shape_codes = {
 	{ Sensitivity::LINCLUST_70, { "1110110110111","1111010001101011","1110011100010111","1110101001001000111" } }
 } };
 
+// Frames without an amino acid letter (fully masked by --min-orf) cannot form a seed, so seed
+// enumeration skips them instead of scanning them once per shape.
+void skip_masked_frames(Search::Config& cfg) {
+	TaskTimer timer("Finding fully masked frames");
+	const SequenceSet& seqs = cfg.query->seqs();
+	const BlockId n = seqs.size();
+	const int threads = n < 65536 ? 1 : std::max(config.threads_, 1);
+	vector<uint8_t> masked(n);
+	vector<std::thread> workers;
+	for (int t = 0; t < threads; ++t)
+		workers.emplace_back([&, t] {
+			for (BlockId i = BlockId((int64_t)n * t / threads), end = BlockId((int64_t)n * (t + 1) / threads); i < end; ++i) {
+				const Sequence seq = seqs[i];
+				masked[i] = std::none_of(seq.data(), seq.end(), [](Letter l) { return is_amino_acid(letter_mask(l)); });
+			}
+		});
+	for (std::thread& w : workers)
+		w.join();
+	cfg.frame_skip.reset(new vector<bool>(n, false));
+	int64_t skipped = 0;
+	for (BlockId i = 0; i < n; ++i)
+		if (masked[i]) {
+			(*cfg.frame_skip)[i] = true;
+			++skipped;
+		}
+	timer.finish();
+	*log_stream << "Fully masked frames = " << skipped << '/' << n << " (" << (n ? 100.0 * skipped / n : 0.0) << " %)" << endl;
+}
+
 // Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
 // of each group is the representative, and the rest are skipped during seed enumeration; their hits
-// are replayed from the representative in stage 2.
+// are replayed from the representative in stage 2. Frames already skipped as fully masked are left out.
 void build_frame_dups(Search::Config& cfg) {
 	TaskTimer timer("Building frame duplicate map");
 	const SequenceSet& seqs = cfg.query->seqs();
@@ -566,11 +597,14 @@ void build_frame_dups(Search::Config& cfg) {
 	const size_t table_bits = std::max<size_t>(16, bit_length((int64_t)n) + 1), table_size = (size_t)1 << table_bits;
 	std::vector<uint32_t> table(table_size, UINT32_MAX);
 	std::vector<uint32_t> rep(n, UINT32_MAX);
-	cfg.frame_skip.reset(new std::vector<bool>(n, false));
+	if (!cfg.frame_skip || cfg.frame_skip->size() != (size_t)n)
+		cfg.frame_skip.reset(new std::vector<bool>(n, false));
 	std::vector<uint32_t> dup_count(n, 0);
 	int64_t dups = 0, dup_letters = 0;
 
 	for (BlockId i = 0; i < n; ++i) {
+		if ((*cfg.frame_skip)[i])
+			continue;
 		const Sequence seq = seqs[i];
 		uint64_t h = 1469598103934665603ull;
 		for (Loc j = 0; j < seq.length(); ++j) {
