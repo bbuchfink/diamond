@@ -21,12 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <atomic>
 #include <climits>
 #include <cmath>
-#include <memory>
-#include <thread>
+#include <mutex>
+#include <numeric>
+#define _REENTRANT
+#include "ips4o/ips4o.hpp"
 #include "basic/config.h"
 #include "search.h"
 #include "util/math/integer.h"
 #include "util/math/math.h"
+#include "util/parallel/thread_pool.h"
 #include "masking/def.h"
 #include "basic/shape_config.h"
 #include "align/def.h"
@@ -560,20 +563,9 @@ const map<Sensitivity, vector<string>> shape_codes = {
 	{ Sensitivity::LINCLUST_70, { "1110110110111","1111010001101011","1110011100010111","1110101001001000111" } }
 } };
 
-template<typename F>
-static void run_threads(int n, F fn) {
-	vector<std::thread> threads;
-	for (int t = 0; t < n; ++t)
-		threads.emplace_back(fn, t);
-	for (std::thread& t : threads)
-		t.join();
-}
-
-// Thread t's share of n frames, aligned to 64 so that each thread owns whole bit vector words.
-static std::pair<BlockId, BlockId> frame_chunk(BlockId n, int t, int threads) {
-	const auto at = [n, threads](int k) { return k == threads ? n : BlockId(((int64_t)n * k / threads) & ~int64_t(63)); };
-	return { at(t), at(t + 1) };
-}
+// Frames, and the sorted frame keys below, are processed in chunks of this many. It is a multiple of 64, so
+// each chunk of frames owns whole bit vector words.
+static constexpr int64_t FRAME_CHUNK = 1 << 16;
 
 static uint64_t frame_hash(const Sequence& seq) {
 	uint64_t h = 1469598103934665603ull;
@@ -590,33 +582,30 @@ void skip_masked_frames(Search::Config& cfg) {
 	TaskTimer timer("Finding fully masked frames");
 	const SequenceSet& seqs = cfg.query->seqs();
 	const BlockId n = seqs.size();
-	const int threads = n < 65536 ? 1 : std::max(config.threads_, 1);
+	const int64_t chunks = (n + FRAME_CHUNK - 1) / FRAME_CHUNK;
 	cfg.frame_skip.reset(new BitVector(n));
 	BitVector& skip = *cfg.frame_skip;
-	vector<int64_t> thread_skipped(threads, 0);
-	run_threads(threads, [&](int t) {
-		const auto r = frame_chunk(n, t, threads);
-		int64_t skipped = 0;
-		for (BlockId i = r.first; i < r.second; ++i) {
+	std::atomic<int64_t> skipped(0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(std::max(config.threads_, 1), chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		int64_t k = 0;
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i) {
 			const Sequence seq = seqs[i];
 			if (std::none_of(seq.data(), seq.end(), [](Letter l) { return is_amino_acid(letter_mask(l)); })) {
 				skip.set(i);
-				++skipped;
+				++k;
 			}
 		}
-		thread_skipped[t] = skipped;
+		skipped += k;
 	});
-	int64_t skipped = 0;
-	for (int64_t s : thread_skipped)
-		skipped += s;
 	timer.finish();
-	*log_stream << "Fully masked frames = " << skipped << '/' << n << " (" << (n ? 100.0 * skipped / n : 0.0) << " %)" << endl;
+	const int64_t s = skipped;
+	*log_stream << "Fully masked frames = " << s << '/' << n << " (" << (n ? 100.0 * s / n : 0.0) << " %)" << endl;
 }
 
-// Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
-// of each group is the representative, and the rest are skipped during seed enumeration; their hits
-// are replayed from the representative in stage 2. Frames already skipped as fully masked are left out.
-// Parts split by the top hash bits are scanned in block order, so the map matches a serial scan.
+// Translated frames that repeat letter for letter are searched once. Frames are sorted by hash, the first
+// of each group in block order is the representative, and the rest are skipped during seed enumeration;
+// their hits are replayed from the representative in stage 2. Frames already skipped as fully masked are left out.
 void build_frame_dups(Search::Config& cfg) {
 	TaskTimer timer("Building frame duplicate map");
 	const SequenceSet& seqs = cfg.query->seqs();
@@ -624,112 +613,73 @@ void build_frame_dups(Search::Config& cfg) {
 	if (!cfg.frame_skip || cfg.frame_skip->size() != (size_t)n)
 		cfg.frame_skip.reset(new BitVector(n));
 	BitVector& skip = *cfg.frame_skip;
-	constexpr int PART_BITS = 12;
-	constexpr size_t PARTS = (size_t)1 << PART_BITS;
-	const int threads = n < 65536 ? 1 : std::max(config.threads_, 1);
+	const int threads = std::max(config.threads_, 1);
+	const int64_t chunks = (n + FRAME_CHUNK - 1) / FRAME_CHUNK;
 
-	vector<uint32_t> part_count((size_t)threads * PARTS, 0);
-	run_threads(threads, [&](int t) {
-		const auto r = frame_chunk(n, t, threads);
-		uint32_t* count = &part_count[(size_t)t * PARTS];
-		for (BlockId i = r.first; i < r.second; ++i)
+	// Each searched frame is keyed by the top half of its hash above its block id, so sorting the keys
+	// brings frames that may be identical together, each group in block order.
+	vector<int64_t> key_begin(chunks + 1, 0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		int64_t k = 0;
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i)
+			k += !skip.get(i);
+		key_begin[c + 1] = k;
+	});
+	std::partial_sum(key_begin.begin(), key_begin.end(), key_begin.begin());
+	vector<uint64_t> keys(key_begin[chunks]);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		uint64_t* key = keys.data() + key_begin[c];
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i)
 			if (!skip.get(i))
-				++count[frame_hash(seqs[i]) >> (64 - PART_BITS)];
+				*key++ = (frame_hash(seqs[i]) & ~uint64_t(UINT32_MAX)) | (uint32_t)i;
 	});
-	vector<uint32_t> part_begin(PARTS + 1), offset((size_t)threads * PARTS);
-	uint32_t total = 0;
-	for (size_t p = 0; p < PARTS; ++p) {
-		part_begin[p] = total;
-		for (int t = 0; t < threads; ++t) {
-			offset[(size_t)t * PARTS + p] = total;
-			total += part_count[(size_t)t * PARTS + p];
-		}
-	}
-	part_begin[PARTS] = total;
+	ips4o::parallel::sort(keys.begin(), keys.end(), std::less<uint64_t>(), threads);
 
-	// Hashed again here instead of being kept per frame, so only the searched frames take memory.
-	std::unique_ptr<uint64_t[]> hash(new uint64_t[total]);
-	std::unique_ptr<uint32_t[]> frame(new uint32_t[total]);
-	run_threads(threads, [&](int t) {
-		const auto r = frame_chunk(n, t, threads);
-		uint32_t* off = &offset[(size_t)t * PARTS];
-		for (BlockId i = r.first; i < r.second; ++i)
-			if (!skip.get(i)) {
-				const uint64_t h = frame_hash(seqs[i]);
-				const uint32_t k = off[h >> (64 - PART_BITS)]++;
-				hash[k] = h;
-				frame[k] = (uint32_t)i;
-			}
-	});
-
-	// A duplicate is recorded as representative << 32 | frame.
-	vector<vector<uint64_t>> thread_pairs(threads);
-	vector<int64_t> thread_letters(threads, 0);
-	std::atomic<size_t> next_part(0);
-	run_threads(threads, [&](int t) {
-		vector<uint32_t> table;
-		vector<uint64_t>& pairs = thread_pairs[t];
+	// Each group is scanned by the chunk it starts in. A duplicate is recorded as representative << 32 | frame.
+	const int64_t m = keys.size(), key_chunks = (m + FRAME_CHUNK - 1) / FRAME_CHUNK;
+	const auto group = [&keys](int64_t k) { return keys[k] >> 32; };
+	vector<uint64_t> pairs;
+	std::mutex pairs_mtx;
+	std::atomic<int64_t> dup_letters(0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, key_chunks), key_chunks, [&](size_t c, size_t) {
+		int64_t k = c * FRAME_CHUNK;
+		const int64_t stop = std::min(k + FRAME_CHUNK, m);
+		while (k > 0 && k < stop && group(k) == group(k - 1))
+			++k;
+		vector<uint64_t> found;
+		vector<uint32_t> reps;
 		int64_t letters = 0;
-		for (size_t p; (p = next_part.fetch_add(1, std::memory_order_relaxed)) < PARTS;) {
-			const uint32_t begin = part_begin[p], end = part_begin[p + 1];
-			if (end - begin < 2)
-				continue;
-			const int table_bits = std::max(4, bit_length((uint64_t)(end - begin)) + 1);
-			const size_t mask = ((size_t)1 << table_bits) - 1;
-			table.assign(mask + 1, UINT32_MAX);
-			for (uint32_t k = begin; k < end; ++k) {
-				const Sequence seq = seqs[frame[k]];
-				size_t slot = (size_t)((hash[k] << PART_BITS) >> (64 - table_bits));
-				while (true) {
-					const uint32_t e = table[slot];
-					if (e == UINT32_MAX) {
-						table[slot] = k;
-						break;
-					}
-					const Sequence other = seqs[frame[e]];
-					if (hash[e] == hash[k] && other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data())) {
-						pairs.push_back((uint64_t)frame[e] << 32 | frame[k]);
-						skip.atomic_set(frame[k]);
-						letters += seq.length();
-						break;
-					}
-					slot = (slot + 1) & mask;
+		while (k < stop) {
+			int64_t end = k + 1;
+			while (end < m && group(end) == group(k))
+				++end;
+			reps.clear();
+			for (; k < end; ++k) {
+				const uint32_t frame = (uint32_t)keys[k];
+				const Sequence seq = seqs[frame];
+				const auto rep = std::find_if(reps.begin(), reps.end(), [&](uint32_t r) {
+					const Sequence other = seqs[r];
+					return other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data());
+				});
+				if (rep == reps.end())
+					reps.push_back(frame);
+				else {
+					found.push_back((uint64_t)*rep << 32 | frame);
+					skip.atomic_set(frame);
+					letters += seq.length();
 				}
 			}
 		}
-		thread_letters[t] = letters;
+		dup_letters += letters;
+		std::lock_guard<std::mutex> lock(pairs_mtx);
+		pairs.insert(pairs.end(), found.begin(), found.end());
 	});
-	hash.reset();
-	frame.reset();
+	vector<uint64_t>().swap(keys);
+	ips4o::parallel::sort(pairs.begin(), pairs.end(), std::less<uint64_t>(), threads);
 
-	// Pairs are bucketed by representative range, so the buckets sorted in parallel concatenate in order.
-	vector<size_t> bucket_count((size_t)threads * threads, 0);
-	run_threads(threads, [&](int t) {
-		size_t* count = &bucket_count[(size_t)t * threads];
-		for (uint64_t x : thread_pairs[t])
-			++count[(x >> 32) * threads / n];
-	});
-	vector<size_t> bucket_begin(threads + 1), bucket_offset((size_t)threads * threads);
-	size_t dups = 0;
-	for (int b = 0; b < threads; ++b) {
-		bucket_begin[b] = dups;
-		for (int t = 0; t < threads; ++t) {
-			bucket_offset[(size_t)t * threads + b] = dups;
-			dups += bucket_count[(size_t)t * threads + b];
-		}
-	}
-	bucket_begin[threads] = dups;
-	vector<uint64_t> pairs(dups);
-	run_threads(threads, [&](int t) {
-		size_t* off = &bucket_offset[(size_t)t * threads];
-		for (uint64_t x : thread_pairs[t])
-			pairs[off[(x >> 32) * threads / n]++] = x;
-		vector<uint64_t>().swap(thread_pairs[t]);
-	});
-	run_threads(threads, [&](int b) {
-		std::sort(pairs.begin() + bucket_begin[b], pairs.begin() + bucket_begin[b + 1]);
-	});
-
+	const size_t dups = pairs.size();
 	cfg.frame_dup_rep.reset(new BitVector(n));
 	cfg.frame_dup_reps.clear();
 	cfg.frame_dup_begin.clear();
@@ -744,13 +694,10 @@ void build_frame_dups(Search::Config& cfg) {
 		cfg.frame_dup_ids[d] = uint32_t(pairs[d]);
 	}
 	cfg.frame_dup_begin.push_back((uint32_t)dups);
-	int64_t dup_letters = 0;
-	for (int64_t l : thread_letters)
-		dup_letters += l;
 
 	timer.finish();
 	*log_stream << "Duplicate frames = " << dups << '/' << n << " (" << (n ? 100.0 * dups / n : 0.0) << " %), letters = "
-		<< dup_letters << '/' << seqs.letters() << ", representatives = " << cfg.frame_dup_reps.size() << std::endl;
+		<< dup_letters.load() << '/' << seqs.letters() << ", representatives = " << cfg.frame_dup_reps.size() << std::endl;
 }
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
