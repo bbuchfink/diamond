@@ -378,6 +378,7 @@ struct Config
 	std::string taxdump;
 	bool fpu_compat;
 	bool no_mem_pool;
+	bool antidiag_swipe = false;
 	bool single_step;
 	bool reseek_diags;
 	double word_threshold;

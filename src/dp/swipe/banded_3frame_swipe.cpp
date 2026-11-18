@@ -18,14 +18,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <array>
+#include <climits>
+#include <cstdint>
+#include <cstring>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <numeric>
 #include <atomic>
+#include <vector>
 #include "../dp.h"
 #include "swipe.h"
 #include "target_iterator.h"
 #include "util/data_structures/mem_buffer.h"
+#include "util/intrin.h"
 #include "util/simd/dispatch.h"
 #include "../score_vector_int16.h"
 #include "../score_vector_int8.h"
@@ -656,12 +663,573 @@ void banded_3frame_swipe_worker(std::vector<DpTarget>::const_iterator begin,
 	*overflow = std::move(of);
 }
 
+#if defined(__AVX2__) && ARCH_AVX2_KERNELS
+static constexpr int ANTIDIAG_SWIPE_WEIGHT = 4;
+struct alignas(16) AntidiagSeam { int16_t s0, s1, s2, h0, h1, h2, p0, p1; };
+struct AntidiagStripMeta { int i_base, s_end; size_t dir_off; };
+struct AntidiagCluster { int q0, q1, pstride; size_t prof_off; };
+struct AntidiagPass1Hit { const Letter* seq; int32_t d_begin, d_end, best_i, best_j; int16_t best_sc; };
+struct AntidiagCache {
+	const int8_t* mat = nullptr;
+	vector<Letter> q_copy[3];
+	vector<AntidiagCluster> clusters;
+	vector<int8_t> prof_buf;
+	size_t prof_used = 0;
+	vector<AntidiagPass1Hit> hits;
+};
+struct AntidiagWorkspace {
+	vector<AntidiagSeam> seam;
+	vector<uint8_t> dir;
+	vector<AntidiagStripMeta> strips;
+	AntidiagCache cache[2];
+	void trim(bool score_only) {
+		if (score_only) return;
+		if (seam.capacity() > (1u << 18)) vector<AntidiagSeam>().swap(seam);
+		if (dir.capacity() > (1u << 24)) vector<uint8_t>().swap(dir);
+		for (int s = 0; s < 2; ++s) {
+			if (cache[s].prof_buf.capacity() > (1u << 24)) {
+				vector<int8_t>().swap(cache[s].prof_buf);
+				cache[s].clusters.clear();
+				cache[s].prof_used = 0;
+				cache[s].hits.clear();
+				cache[s].mat = nullptr;
+			}
+		}
+	}
+};
+
+FORCE_INLINE __m256i antidiag_shift_zero(__m256i v) { return _mm256_alignr_epi8(v, _mm256_permute2x128_si256(v, v, 0x08), 14); }
+FORCE_INLINE __m256i antidiag_shift_lane0(__m256i v, int16_t x) { return _mm256_alignr_epi8(v, _mm256_permute2x128_si256(_mm256_set1_epi16(x), v, 0x20), 14); }
+FORCE_INLINE void antidiag_store_seam(AntidiagSeam* dst, __m256i s0, __m256i s1, __m256i s2, __m256i h0, __m256i h1, __m256i h2) {
+	const __m256i p01 = _mm256_unpackhi_epi16(s0, s1), p23 = _mm256_unpackhi_epi16(s2, h0), p45 = _mm256_unpackhi_epi16(h1, h2);
+	const __m256i r = _mm256_unpackhi_epi64(_mm256_unpackhi_epi32(p01, p23), _mm256_unpackhi_epi32(p45, p45));
+	_mm_storeu_si128((__m128i*)dst, _mm256_extracti128_si256(r, 1));
+}
+FORCE_INLINE __m256i antidiag_seed_lane0(int16_t lane0) {
+	return _mm256_inserti128_si256(_mm256_setzero_si256(), _mm_cvtsi32_si128((int)(uint16_t)lane0), 0);
+}
+FORCE_INLINE __m256i antidiag_lane_mask(int i0, int qlen_f, int strip_w) {
+	const __m256i idx = _mm256_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+	const int hi = std::min(strip_w, std::min(i0 + 1, 16)), lo = std::max(-1, std::min(i0 - qlen_f, 16));
+	return _mm256_and_si256(_mm256_cmpgt_epi16(_mm256_set1_epi16((int16_t)hi), idx),
+		_mm256_cmpgt_epi16(idx, _mm256_set1_epi16((int16_t)lo)));
+}
+
+FORCE_INLINE void antidiag_transpose_f01(const signed char* const* base_p, int b, int fstride, int sw, int blk_len, __m256i* dst) {
+	__m256i r[16];
+	if (sw == 16) {
+		for (int u = 0; u < 16; ++u) {
+			const signed char* p = base_p[u] + b;
+			r[u] = _mm256_inserti128_si256(_mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)p)), _mm_loadu_si128((const __m128i*)(p + fstride)), 1);
+		}
+	} else {
+		for (int u = 0; u < sw; ++u) {
+			const signed char* p = base_p[u] + b;
+			r[u] = _mm256_inserti128_si256(_mm256_castsi128_si256(_mm_loadu_si128((const __m128i*)p)), _mm_loadu_si128((const __m128i*)(p + fstride)), 1);
+		}
+		for (int u = sw; u < 16; ++u) r[u] = _mm256_setzero_si256();
+	}
+	__m256i t[16], u[16], v[16];
+	for (int i = 0; i < 8; ++i) {
+		t[2 * i] = _mm256_unpacklo_epi8(r[2 * i], r[2 * i + 1]);
+		t[2 * i + 1] = _mm256_unpackhi_epi8(r[2 * i], r[2 * i + 1]);
+	}
+	for (int g = 0; g < 4; ++g) {
+		const int o = g * 4;
+		u[o] = _mm256_unpacklo_epi16(t[o], t[o + 2]); u[o + 1] = _mm256_unpackhi_epi16(t[o], t[o + 2]);
+		u[o + 2] = _mm256_unpacklo_epi16(t[o + 1], t[o + 3]); u[o + 3] = _mm256_unpackhi_epi16(t[o + 1], t[o + 3]);
+	}
+	for (int i = 0; i < 4; ++i) {
+		v[2 * i] = _mm256_unpacklo_epi32(u[i], u[i + 4]); v[2 * i + 1] = _mm256_unpackhi_epi32(u[i], u[i + 4]);
+		v[2 * i + 8] = _mm256_unpacklo_epi32(u[i + 8], u[i + 12]); v[2 * i + 9] = _mm256_unpackhi_epi32(u[i + 8], u[i + 12]);
+	}
+	const int pairs = (blk_len <= 8) ? 4 : 8;
+	for (int i = 0; i < pairs; ++i) {
+		_mm256_store_si256(&dst[2 * i], _mm256_unpacklo_epi64(v[i], v[i + 8]));
+		_mm256_store_si256(&dst[2 * i + 1], _mm256_unpackhi_epi64(v[i], v[i + 8]));
+	}
+}
+
+FORCE_INLINE void antidiag_transpose_f2(const signed char* const* base_p, int b, int fstride2, int sw, int blk_len, __m128i* dst) {
+	__m128i r[16];
+	if (sw == 16) {
+		for (int u = 0; u < 16; ++u) r[u] = _mm_loadu_si128((const __m128i*)(base_p[u] + fstride2 + b));
+	} else {
+		for (int u = 0; u < sw; ++u) r[u] = _mm_loadu_si128((const __m128i*)(base_p[u] + fstride2 + b));
+		for (int u = sw; u < 16; ++u) r[u] = _mm_setzero_si128();
+	}
+	__m128i t[16], u[16], v[16];
+	for (int i = 0; i < 8; ++i) {
+		t[2 * i] = _mm_unpacklo_epi8(r[2 * i], r[2 * i + 1]);
+		t[2 * i + 1] = _mm_unpackhi_epi8(r[2 * i], r[2 * i + 1]);
+	}
+	for (int g = 0; g < 4; ++g) {
+		const int o = g * 4;
+		u[o] = _mm_unpacklo_epi16(t[o], t[o + 2]); u[o + 1] = _mm_unpackhi_epi16(t[o], t[o + 2]);
+		u[o + 2] = _mm_unpacklo_epi16(t[o + 1], t[o + 3]); u[o + 3] = _mm_unpackhi_epi16(t[o + 1], t[o + 3]);
+	}
+	for (int i = 0; i < 4; ++i) {
+		v[2 * i] = _mm_unpacklo_epi32(u[i], u[i + 4]); v[2 * i + 1] = _mm_unpackhi_epi32(u[i], u[i + 4]);
+		v[2 * i + 8] = _mm_unpacklo_epi32(u[i + 8], u[i + 12]); v[2 * i + 9] = _mm_unpackhi_epi32(u[i + 8], u[i + 12]);
+	}
+	const int pairs = (blk_len <= 8) ? 4 : 8;
+	for (int i = 0; i < pairs; ++i) {
+		_mm_store_si128(&dst[2 * i], _mm_unpacklo_epi64(v[i], v[i + 8]));
+		_mm_store_si128(&dst[2 * i + 1], _mm_unpackhi_epi64(v[i], v[i + 8]));
+	}
+}
+
+template<bool Traceback, bool Masked>
+FORCE_INLINE __m256i antidiag_step_frame(__m256i sm3, __m256i sm4, __m256i sm2, __m256i m,
+	__m256i v_fs, __m256i v_open, __m256i v_ext, __m256i mask, __m256i& v, __m256i& h, __m256i& dir_out)
+{
+	const __m256i sm42 = _mm256_max_epi16(sm4, sm2), fs = _mm256_subs_epi16(sm42, v_fs);
+	const __m256i diag = _mm256_adds_epi16(_mm256_max_epi16(sm3, fs), m);
+	const __m256i h_in = h, vh = _mm256_max_epi16(v, h_in);
+	__m256i cur = _mm256_max_epi16(diag, vh);
+	if (Masked) cur = _mm256_and_si256(cur, mask);
+	const __m256i open = _mm256_subs_epu16(cur, v_open), ve = _mm256_subs_epu16(v, v_ext), he = _mm256_subs_epu16(h_in, v_ext);
+	if (Traceback) {
+		const __m256i is_vh = _mm256_cmpgt_epi16(vh, diag);
+		const __m256i b2 = _mm256_blendv_epi8(_mm256_cmpgt_epi16(sm2, sm4), _mm256_cmpgt_epi16(v, h_in), is_vh);
+		__m256i lo = _mm256_srli_epi16(b2, 15), hi = _mm256_srli_epi16(_mm256_cmpgt_epi16(ve, open), 15);
+		lo = _mm256_sub_epi16(_mm256_add_epi16(lo, lo), _mm256_cmpgt_epi16(fs, sm3));
+		lo = _mm256_sub_epi16(_mm256_add_epi16(lo, lo), is_vh);
+		hi = _mm256_sub_epi16(_mm256_add_epi16(hi, hi), _mm256_cmpgt_epi16(he, open));
+		dir_out = _mm256_or_si256(_mm256_slli_epi16(hi, 3), lo);
+	}
+	v = _mm256_max_epi16(ve, open);
+	h = _mm256_max_epi16(he, open);
+	if (Masked) { v = _mm256_and_si256(v, mask); h = _mm256_and_si256(h, mask); }
+	return cur;
+}
+
+template<bool Traceback>
+static int antidiag_run_target_avx2(const Sequence* q, const int8_t* prof, int pstride, int q0,
+	const DpTarget& t, int64_t j_beg, int64_t j_end, int i_max, int16_t init_best, int xdrop,
+	AntidiagWorkspace& ws, int& best_i, int& best_j, int& best_f)
+{
+	const int full_qlen = (int)q[0].length();
+	const int qlen = std::min(full_qlen, i_max + 1), qlen2 = std::min((int)q[1].length(), i_max + 1), qlen3 = std::min((int)q[2].length(), i_max + 1);
+	AntidiagSeam* seam = nullptr;
+	if (j_end - j_beg > 16) {
+		if ((int)ws.seam.size() < full_qlen + 48) ws.seam.resize((size_t)full_qlen + 48);
+		seam = ws.seam.data() + 16;
+	}
+	int prev_w_lo = 0, prev_w_hi = -1;
+	if (Traceback) {
+		size_t total_dir = 0;
+		ws.strips.clear();
+		for (int64_t j0 = j_beg; j0 < j_end; j0 += 16) {
+			const int sw = (int)std::min<int64_t>(16, j_end - j0);
+			const int ib = std::max(0, (int)j0 + t.d_begin);
+			const int se = std::max(0, std::min(qlen - 1, (int)(j0 + sw - 1) + t.d_end - 1) - ib + sw);
+			ws.strips.push_back({ ib, se, total_dir });
+			total_dir += (size_t)se * 32;
+		}
+		if (ws.dir.size() < total_dir) ws.dir.resize(total_dir);
+	}
+	const __m256i v_open = _mm256_set1_epi16((int16_t)(score_matrix.gap_open() + score_matrix.gap_extend()));
+	const __m256i v_ext = _mm256_set1_epi16((int16_t)score_matrix.gap_extend());
+	const __m256i v_fs = _mm256_set1_epi16((int16_t)score_matrix.frame_shift());
+	const int fstride = pstride, fstride2 = 2 * pstride;
+	int16_t best_sc = init_best;
+	best_i = -1;
+	int xdrop_best = 0;
+	__m256i v_best = _mm256_set1_epi16(best_sc);
+	alignas(32) __m256i trans01[16];
+	alignas(16) __m128i trans2[16];
+	const Letter* tseq = t.seq.data();
+	size_t strip_idx = 0;
+	for (int64_t j0 = j_beg; j0 < j_end; j0 += 16, ++strip_idx) {
+		const int sw = (int)std::min<int64_t>(16, j_end - j0);
+		const int i_base = std::max(0, (int)j0 + t.d_begin);
+		const int s_end = std::min(qlen - 1, (int)(j0 + sw - 1) + t.d_end - 1) - i_base + sw;
+		if (s_end <= 0) {
+			prev_w_lo = 0; prev_w_hi = -1;
+			if (xdrop > 0 && xdrop_best >= xdrop) break;
+			continue;
+		}
+		if (j0 > j_beg) {
+			const int r_lo = i_base - 2, r_hi = i_base + s_end;
+			if (prev_w_hi < prev_w_lo) {
+				std::fill(seam + r_lo, seam + r_hi + 1, AntidiagSeam{});
+			} else {
+				if (r_lo < prev_w_lo) std::fill(seam + r_lo, seam + std::min(r_hi, prev_w_lo - 1) + 1, AntidiagSeam{});
+				if (r_hi > prev_w_hi) std::fill(seam + std::max(r_lo, prev_w_hi + 1), seam + r_hi + 1, AntidiagSeam{});
+			}
+		}
+		uint8_t* dir_base = Traceback ? (ws.dir.data() + ws.strips[strip_idx].dir_off) : nullptr;
+		const signed char* base_p[16];
+		for (int u = 0; u < sw; ++u) {
+			const unsigned c = (unsigned)letter_mask(tseq[j0 + u]);
+			const int off = (int)(c < AMINO_ACID_COUNT ? c : (unsigned)MASK_LETTER) * 3 * pstride + 32 + (i_base - u - q0);
+			base_p[u] = (const signed char*)prof + off;
+		}
+		__m256i strip_max_v = _mm256_setzero_si256();
+		auto run_strip = [&](auto hl_tag, auto hr_tag) {
+			constexpr bool HasL = decltype(hl_tag)::value, HasR = decltype(hr_tag)::value;
+			__m256i v0 = _mm256_setzero_si256(), v1 = v0, v2 = v0;
+			__m256i h0 = HasL ? antidiag_seed_lane0(seam[i_base].h0) : v0, h1 = HasL ? antidiag_seed_lane0(seam[i_base].h1) : v0, h2 = HasL ? antidiag_seed_lane0(seam[i_base].h2) : v0;
+			__m256i d1_0 = HasL ? antidiag_seed_lane0(seam[i_base].s0) : v0, d1_1 = HasL ? antidiag_seed_lane0(seam[i_base].s1) : v0, d1_2 = HasL ? antidiag_seed_lane0(seam[i_base].s2) : v0;
+			__m256i d2_0 = HasL ? antidiag_seed_lane0(seam[i_base - 1].s0) : v0, d2_1 = HasL ? antidiag_seed_lane0(seam[i_base - 1].s1) : v0, d2_2 = HasL ? antidiag_seed_lane0(seam[i_base - 1].s2) : v0;
+			__m256i d3_2 = HasL ? antidiag_seed_lane0(seam[i_base - 2].s2) : v0;
+			for (int b = 0; b < s_end; b += 16) {
+				const int i_blk = i_base + b, blk_len = std::min(16, s_end - b);
+				antidiag_transpose_f01(base_p, b, fstride, sw, blk_len, trans01);
+				antidiag_transpose_f2(base_p, b, fstride2, sw, blk_len, trans2);
+				auto step_k = [&](auto m_tag, int k)
+#if defined(__GNUC__)
+					__attribute__((always_inline))
+#endif
+				{
+					constexpr bool M = decltype(m_tag)::value;
+					const int i0 = i_blk + k;
+					__m256i dir0, dir1, dir2;
+					const __m256i mk0 = M ? antidiag_lane_mask(i0, qlen, sw) : _mm256_setzero_si256();
+					const __m256i m0 = _mm256_cvtepi8_epi16(_mm_load_si128((const __m128i*)&trans01[k]));
+					const __m256i s0 = antidiag_step_frame<Traceback, M>(d2_0, d3_2, d2_1, m0, v_fs, v_open, v_ext, mk0, v0, h0, dir0);
+					const __m256i mk1 = (!M || i0 < qlen3 || qlen2 == qlen) ? mk0 : antidiag_lane_mask(i0, qlen2, sw);
+					const __m256i m1 = _mm256_cvtepi8_epi16(_mm_load_si128((const __m128i*)&trans01[k] + 1));
+					const __m256i s1 = antidiag_step_frame<Traceback, M>(d2_1, d2_0, d2_2, m1, v_fs, v_open, v_ext, mk1, v1, h1, dir1);
+					d3_2 = d2_2; d2_0 = d1_0;
+					const __m256i mk2 = (!M || i0 < qlen3 || qlen3 == qlen2) ? mk1 : antidiag_lane_mask(i0, qlen3, sw);
+					const __m256i m2 = _mm256_cvtepi8_epi16(_mm_load_si128(&trans2[k]));
+					const __m256i s2 = antidiag_step_frame<Traceback, M>(d3_2, d2_1, d2_0, m2, v_fs, v_open, v_ext, mk2, v2, h2, dir2);
+					if (Traceback) {
+						const __m256i dir3 = _mm256_or_si256(dir0, _mm256_or_si256(_mm256_slli_epi16(dir1, 5), _mm256_slli_epi16(dir2, 10)));
+						_mm256_storeu_si256((__m256i*)(dir_base + (size_t)(b + k) * 32), dir3);
+					}
+					d2_1 = d1_1; d2_2 = d1_2;
+					const __m256i smax = _mm256_max_epi16(_mm256_max_epi16(s0, s1), s2);
+					if (xdrop > 0) strip_max_v = _mm256_max_epi16(strip_max_v, smax);
+					const int msk = _mm256_movemask_epi8(_mm256_cmpgt_epi16(smax, v_best));
+					if (UNLIKELY(msk != 0)) {
+						if (!Traceback) {
+							alignas(32) int16_t bm[16]; _mm256_store_si256((__m256i*)bm, smax);
+							for (uint32_t m = (uint32_t)msk; m; ) {
+								const int u = ctz(m) >> 1; m &= ~(3u << (u * 2));
+								if (bm[u] > best_sc) { best_sc = bm[u]; best_i = i0 - u; best_j = (int)j0 + u; }
+							}
+						} else {
+							alignas(32) int16_t b0[16], b1[16], b2[16];
+							_mm256_store_si256((__m256i*)b0, s0); _mm256_store_si256((__m256i*)b1, s1); _mm256_store_si256((__m256i*)b2, s2);
+							for (uint32_t m = (uint32_t)msk; m; ) {
+								const int u = ctz(m) >> 1; m &= ~(3u << (u * 2));
+								if (b0[u] > best_sc) { best_sc = b0[u]; best_i = i0 - u; best_j = (int)j0 + u; best_f = 0; }
+								if (b1[u] > best_sc) { best_sc = b1[u]; best_i = i0 - u; best_j = (int)j0 + u; best_f = 1; }
+								if (b2[u] > best_sc) { best_sc = b2[u]; best_i = i0 - u; best_j = (int)j0 + u; best_f = 2; }
+							}
+						}
+						v_best = _mm256_set1_epi16(best_sc);
+					}
+					if (HasR) antidiag_store_seam(&seam[i0 - 15], s0, s1, s2, h0, h1, h2);
+					if (HasL) {
+						const AntidiagSeam& nx = seam[i0 + 1];
+						d1_0 = antidiag_shift_lane0(s0, nx.s0); d1_1 = antidiag_shift_lane0(s1, nx.s1); d1_2 = antidiag_shift_lane0(s2, nx.s2);
+						h0 = antidiag_shift_lane0(h0, nx.h0); h1 = antidiag_shift_lane0(h1, nx.h1); h2 = antidiag_shift_lane0(h2, nx.h2);
+					} else {
+						d1_0 = antidiag_shift_zero(s0); d1_1 = antidiag_shift_zero(s1); d1_2 = antidiag_shift_zero(s2);
+						h0 = antidiag_shift_zero(h0); h1 = antidiag_shift_zero(h1); h2 = antidiag_shift_zero(h2);
+					}
+				};
+				if (sw == 16 && blk_len == 16 && i_blk >= 15 && i_blk + 15 < qlen3)
+					for (int k = 0; k < 16; ++k) step_k(std::false_type{}, k);
+				else
+					for (int k = 0; k < blk_len; ++k) step_k(std::true_type{}, k);
+			}
+		};
+		if (j0 > j_beg) { if (j0 + 16 < j_end) run_strip(std::true_type{}, std::true_type{}); else run_strip(std::true_type{}, std::false_type{}); }
+		else { if (j0 + 16 < j_end) run_strip(std::false_type{}, std::true_type{}); else run_strip(std::false_type{}, std::false_type{}); }
+		prev_w_lo = i_base - 15; prev_w_hi = i_base + s_end - 16;
+		if (xdrop > 0) {
+			__m128i sm128 = _mm_max_epi16(_mm256_castsi256_si128(strip_max_v), _mm256_extracti128_si256(strip_max_v, 1));
+			sm128 = _mm_max_epi16(sm128, _mm_shuffle_epi32(sm128, _MM_SHUFFLE(1, 0, 3, 2)));
+			sm128 = _mm_max_epi16(sm128, _mm_shuffle_epi32(sm128, _MM_SHUFFLE(2, 3, 0, 1)));
+			sm128 = _mm_max_epi16(sm128, _mm_shufflelo_epi16(sm128, _MM_SHUFFLE(2, 3, 0, 1)));
+			const int strip_max = (int)(int16_t)_mm_extract_epi16(sm128, 0);
+			if (strip_max > xdrop_best) xdrop_best = strip_max;
+			else if (xdrop_best - strip_max >= xdrop) break;
+		}
+	}
+	return best_i < 0 ? 0 : best_sc;
+}
+
+static Hsp antidiag_emit_traceback(const Sequence* q, Strand strand, int dna_len, const DpTarget& target,
+	int best_sc, double evalue, int best_i, int best_j, int best_f, int j_beg, const AntidiagWorkspace& ws)
+{
+	Hsp out(true);
+	out.swipe_target = target.target_idx; out.score = best_sc * config.cbs_matrix_scale;
+	out.bit_score = score_matrix.bitscore(out.score); out.evalue = evalue;
+	out.transcript.reserve(size_t(out.score * config.transcript_len_estimate));
+	int i = best_i, j = best_j, f = best_f, rem = best_sc;
+	out.set_end(i + 1, j + 1, Frame(strand, f), dna_len);
+	const int gap_open = score_matrix.gap_open(), gap_ext = score_matrix.gap_extend(), fs_pen = score_matrix.frame_shift();
+	auto get_dir = [&](int r, int c, int fr) -> uint8_t {
+		const int m_idx = (c - j_beg) >> 4, u = (c - j_beg) & 15;
+		const AntidiagStripMeta& sm = ws.strips[(size_t)m_idx];
+		const int s = r + u - sm.i_base;
+		if (UNLIKELY(m_idx < 0 || (size_t)m_idx >= ws.strips.size() || s < 0 || s >= sm.s_end))
+			throw runtime_error("Antidiag traceback bounds.");
+		uint16_t d16;
+		std::memcpy(&d16, ws.dir.data() + sm.dir_off + ((size_t)s * 16 + (size_t)u) * 2, sizeof(uint16_t));
+		return (uint8_t)((d16 >> (fr * 5)) & 31);
+	};
+	while (rem > 0) {
+		const uint8_t d = get_dir(i, j, f);
+		if (!(d & 1)) {
+			const Letter ql = letter_mask(q[f][i]), sl = letter_mask(target.seq[j]);
+			const int m = score_matrix(sl, ql);
+			out.push_match(ql, sl, m > 0);
+			if (!(d & 2)) { rem -= m; --i; --j; }
+			else if (!(d & 4)) { out.transcript.push_back(op_frameshift_forward); rem -= m - fs_pen; --i; --j; if (--f < 0) { f = 2; --i; } }
+			else { out.transcript.push_back(op_frameshift_reverse); rem -= m - fs_pen; --i; --j; if (++f == 3) { f = 0; ++i; } }
+		} else if (!(d & 4)) {
+			int len = 1;
+			while (get_dir(i, j - len, f) & 8) ++len;
+			out.push_gap(op_deletion, len, target.seq.data() + j);
+			rem += gap_open + len * gap_ext; j -= len;
+		} else {
+			int len = 1;
+			while (get_dir(i - len, j, f) & 16) ++len;
+			out.push_gap(op_insertion, len, nullptr);
+			rem += gap_open + len * gap_ext; i -= len;
+		}
+	}
+	if (UNLIKELY(rem != 0)) throw runtime_error("Antidiag traceback score mismatch.");
+	out.set_begin(i + 1, j + 1, Frame(strand, f), dna_len);
+	out.transcript.reverse();
+	out.transcript.push_terminator();
+	out.subject_source_range = out.subject_range;
+	return out;
+}
+
+static list<Hsp> banded_3frame_antidiag(const TranslatedSequence& query, Strand strand,
+	vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat& stat, bool score_only)
+{
+	list<Hsp> out;
+	if (target_begin == target_end) return out;
+	Sequence q[3]; query.get_strand(strand, q);
+	const int qlen = (int)q[0].length(), dna_len = (int)query.source().length();
+	if (qlen <= 0 || dna_len < 3) return out;
+	if (score_matrix.frame_shift() > 16384) {
+		vector<DpTarget> ov32;
+		return banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, ov32);
+	}
+	auto q_span = [&](const DpTarget& t) -> pair<int, int> {
+		const int64_t jb = std::max<int64_t>(0, 1 - (int64_t)t.d_end);
+		const int64_t je = std::min<int64_t>(t.seq.length(), (int64_t)qlen - t.d_begin);
+		if (jb >= je || t.d_end <= t.d_begin) return { qlen, qlen };
+		return { std::max(0, (int)jb + t.d_begin - 16), std::min(qlen, (int)je + t.d_end + 16) };
+	};
+	std::sort(target_begin, target_end, [&](const DpTarget& a, const DpTarget& b) { return q_span(a).first < q_span(b).first; });
+	int min_slen = INT_MAX, max_slen = 0;
+	for (auto it = target_begin; it < target_end; ++it) {
+		const int sl = (int)it->seq.length();
+		min_slen = std::min(min_slen, sl);
+		max_slen = std::max(max_slen, sl);
+	}
+	int cutoff_sc = 1;
+	if (min_slen <= max_slen) {
+		int lo = 1, hi = 4096;
+		while (lo < hi) {
+			const int mid = (lo + hi) >> 1;
+			const int sc_val = mid * config.cbs_matrix_scale;
+			if (score_matrix.report_cutoff(sc_val, score_matrix.evalue(sc_val, qlen, (unsigned)min_slen)) ||
+				score_matrix.report_cutoff(sc_val, score_matrix.evalue(sc_val, qlen, (unsigned)max_slen)))
+				hi = mid;
+			else
+				lo = mid + 1;
+		}
+		cutoff_sc = lo;
+	}
+	const int xdrop = config.raw_swipe_xdrop;
+	static thread_local AntidiagWorkspace ws;
+	AntidiagCache& sc = ws.cache[strand == REVERSE ? 1 : 0];
+	bool cache_hit = (sc.mat == score_matrix.matrix8());
+	for (int f = 0; f < 3 && cache_hit; ++f)
+		cache_hit = ((Loc)sc.q_copy[f].size() == q[f].length() && std::memcmp(sc.q_copy[f].data(), q[f].data(), (size_t)q[f].length() * sizeof(Letter)) == 0);
+	if (!cache_hit) {
+		if (sc.prof_buf.capacity() > (1u << 24)) vector<int8_t>().swap(sc.prof_buf);
+		sc.mat = score_matrix.matrix8();
+		for (int f = 0; f < 3; ++f) sc.q_copy[f].assign(q[f].data(), q[f].data() + q[f].length());
+		sc.clusters.clear();
+		sc.prof_used = 0;
+		sc.hits.clear();
+	} else if (score_only) {
+		sc.hits.clear();
+	}
+	auto hit_less = [](const AntidiagPass1Hit& a, const AntidiagPass1Hit& b) {
+		if (a.seq != b.seq) return (uintptr_t)a.seq < (uintptr_t)b.seq;
+		if (a.d_begin != b.d_begin) return a.d_begin < b.d_begin;
+		return a.d_end < b.d_end;
+	};
+	if (!score_only && sc.hits.size() > 1)
+		std::sort(sc.hits.begin(), sc.hits.end(), hit_less);
+
+	vector<DpTarget> ov32;
+	for (auto c_beg = target_begin; c_beg < target_end;) {
+		pair<int, int> sp = q_span(*c_beg);
+		if (sp.first >= sp.second) { ++c_beg; continue; }
+		const AntidiagCluster* hit = nullptr;
+		for (size_t i = 0; i < sc.clusters.size(); ++i)
+			if (sc.clusters[i].q0 <= sp.first && sp.second <= sc.clusters[i].q1) { hit = &sc.clusters[i]; break; }
+		int q0 = sp.first, q1 = sp.second, pstride = 0;
+		const int8_t* prof_ptr = nullptr;
+		auto c_end = c_beg + 1;
+		if (hit) {
+			q0 = hit->q0; pstride = hit->pstride; prof_ptr = sc.prof_buf.data() + hit->prof_off;
+			for (; c_end < target_end; ++c_end) {
+				const pair<int, int> nsp = q_span(*c_end);
+				if (nsp.first >= nsp.second || nsp.second > hit->q1) break;
+			}
+		} else {
+			for (; c_end < target_end; ++c_end) {
+				const pair<int, int> nsp = q_span(*c_end);
+				if (nsp.first >= nsp.second || nsp.first > q1 + 256 || (std::max(q1, nsp.second) - q0 > 4096 && nsp.first > q0 + 64)) break;
+				q1 = std::max(q1, nsp.second);
+			}
+			using Sv8 = ScoreVector<int8_t, 0>;
+			pstride = ((q1 - q0 + 31) & ~31) + 96;
+			const size_t prof_off = sc.prof_used, prof_sz = (size_t)AMINO_ACID_COUNT * 3 * (size_t)pstride;
+			sc.prof_used += prof_sz;
+			if (sc.prof_buf.size() < sc.prof_used) sc.prof_buf.resize(sc.prof_used);
+			sc.clusters.push_back({ q0, q1, pstride, prof_off });
+			int8_t* cl_prof = sc.prof_buf.data() + prof_off;
+			std::memset(cl_prof, 0, prof_sz);
+			prof_ptr = cl_prof;
+			for (int f = 0; f < 3; ++f) {
+				const int qfl = (int)q[f].length(), n = std::max(0, std::min(q1, qfl) - q0), full = n & ~31;
+				const Letter* qp = q[f].data() + std::min(q0, qfl);
+				alignas(32) Letter tail[32] = {}; std::copy(qp + full, qp + n, tail);
+				const __m256i vtail = _mm256_load_si256((const __m256i*)tail);
+				for (unsigned a = 0; a < AMINO_ACID_COUNT; ++a) {
+					int8_t* dst = cl_prof + ((int)a * 3 + f) * pstride + 32;
+					for (int i = 0; i < full; i += 32) Sv8(a, _mm256_loadu_si256((const __m256i*)(qp + i))).store(dst + i);
+					if (full < n) Sv8(a, vtail).store(dst + full);
+				}
+			}
+		}
+		for (auto it = c_beg; it < c_end; ++it) {
+			const int64_t jb = std::max<int64_t>(0, 1 - (int64_t)it->d_end);
+			const int64_t je = std::min<int64_t>(it->seq.length(), (int64_t)qlen - it->d_begin);
+			if (jb >= je || it->d_end <= it->d_begin) continue;
+			const unsigned slen = (unsigned)it->seq.length();
+			int t_cut = cutoff_sc;
+			while (t_cut > 1 && score_matrix.report_cutoff((t_cut - 1) * config.cbs_matrix_scale, score_matrix.evalue((t_cut - 1) * config.cbs_matrix_scale, qlen, slen)))
+				--t_cut;
+			const int16_t init_best = (int16_t)(t_cut - 1);
+			int best_i = 0, best_j = 0, best_f = 0;
+			int best_sc = 0;
+			if (score_only) {
+				best_sc = antidiag_run_target_avx2<false>(q, prof_ptr, pstride, q0, *it, jb, je, qlen - 1, init_best, xdrop, ws, best_i, best_j, best_f);
+			} else {
+				const AntidiagPass1Hit key = { it->seq.data(), it->d_begin, it->d_end, 0, 0, 0 };
+				const auto h_it = std::lower_bound(sc.hits.begin(), sc.hits.end(), key, hit_less);
+				const AntidiagPass1Hit* h1 = (h_it != sc.hits.end() && h_it->seq == key.seq && h_it->d_begin == key.d_begin && h_it->d_end == key.d_end) ? &(*h_it) : nullptr;
+				if (h1) {
+					const int64_t je_crop = std::min<int64_t>(je, jb + (((h1->best_j - jb) | 15) + 1));
+					const int i_crop = std::min(qlen - 1, (int)h1->best_i + 15);
+					best_sc = antidiag_run_target_avx2<true>(q, prof_ptr, pstride, q0, *it, jb, je_crop, i_crop, (int16_t)(h1->best_sc - 1), 0, ws, best_i, best_j, best_f);
+					if (UNLIKELY(best_sc != h1->best_sc))
+						best_sc = antidiag_run_target_avx2<true>(q, prof_ptr, pstride, q0, *it, jb, je, qlen - 1, init_best, xdrop, ws, best_i, best_j, best_f);
+				} else {
+					best_sc = antidiag_run_target_avx2<true>(q, prof_ptr, pstride, q0, *it, jb, je, qlen - 1, init_best, xdrop, ws, best_i, best_j, best_f);
+				}
+			}
+			if (UNLIKELY(best_sc >= SHRT_MAX)) {
+				out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(it, it + 1, score_only, query, strand, stat, false, ov32));
+				continue;
+			}
+			if (best_sc <= 0) continue;
+			const int score = best_sc * config.cbs_matrix_scale;
+			const double evalue = score_matrix.evalue(score, qlen, slen);
+			if (!score_matrix.report_cutoff(score, evalue)) continue;
+			if (score_only) {
+				sc.hits.push_back({ it->seq.data(), it->d_begin, it->d_end, best_i, best_j, (int16_t)best_sc });
+				Hsp h(false);
+				h.swipe_target = it->target_idx; h.score = score; h.bit_score = score_matrix.bitscore(score); h.evalue = evalue;
+				h.query_range.end_ = std::min(best_i + 1, qlen);
+				h.query_range.begin_ = std::max(h.query_range.end_ - (best_j + 1), 0);
+				h.frame = strand == FORWARD ? 0 : 3;
+				h.query_source_range = TranslatedPosition::absolute_interval(
+					TranslatedPosition(h.query_range.begin_, Frame(h.frame)), TranslatedPosition(h.query_range.end_, Frame(h.frame)), dna_len);
+				out.push_back(std::move(h));
+			} else {
+				out.push_back(antidiag_emit_traceback(q, strand, dna_len, *it, best_sc, evalue, best_i, best_j, best_f, (int)jb, ws));
+			}
+		}
+		c_beg = c_end;
+	}
+	ws.trim(score_only);
+	return out;
+}
+#endif
+
 list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, vector<DpTarget>::iterator target_begin, vector<DpTarget>::iterator target_end, DpStat &stat, bool score_only, bool parallel)
 {
+	bool pre_sorted = false;
+#if defined(__AVX2__) && ARCH_AVX2_KERNELS
+	if (config.antidiag_swipe && !parallel) {
+		if (!score_only)
+			return banded_3frame_antidiag(query, strand, target_begin, target_end, stat, false);
+		const ptrdiff_t n_tgt = target_end - target_begin;
+		const int qlen = (int)query.index(strand == FORWARD ? 0 : 3).length();
+		if (n_tgt <= 8 || qlen <= 0)
+			return banded_3frame_antidiag(query, strand, target_begin, target_end, stat, true);
+		std::stable_sort(target_begin, target_end);
+		pre_sorted = true;
+		vector<DpTarget> anti_targets;
+		auto swipe_end = target_begin;
+		for (auto g = target_begin; g < target_end;) {
+			const int m = (int)std::min<ptrdiff_t>(16, target_end - g);
+			int band = 0, i1 = INT_MAX, q_lo = qlen, q_hi = 0;
+			int64_t w_anti = 0;
+			for (int k = 0; k < m; ++k) {
+				const DpTarget& t = g[k];
+				const int b = t.d_end - t.d_begin;
+				band = std::max(band, b);
+				i1 = std::min(i1, std::max(t.d_end - 1, 0));
+				const int64_t jb = std::max<int64_t>(0, 1 - (int64_t)t.d_end);
+				const int64_t je = std::min<int64_t>(t.seq.length(), (int64_t)qlen - t.d_begin);
+				if (jb < je && b > 0) {
+					w_anti += ((je - jb + 15) >> 4) * std::min(qlen, b + 15);
+					q_lo = std::min(q_lo, std::max(0, (int)jb + t.d_begin - 16));
+					q_hi = std::max(q_hi, std::min(qlen, (int)je + t.d_end + 16));
+				}
+			}
+			int max_span = 0;
+			for (int k = 0; k < m; ++k)
+				max_span = std::max(max_span, (int)g[k].seq.length() - (i1 - (g[k].d_end - 1)));
+			const int j_cols = std::max(0, std::min(max_span, qlen - (i1 + 1 - band)));
+			const int64_t w_swipe = (int64_t)j_cols * std::min(qlen, band);
+			if (q_hi > q_lo) w_anti += (int64_t)(q_hi - q_lo) * 2;
+			if (m > 8 && w_swipe * ANTIDIAG_SWIPE_WEIGHT <= w_anti * 8) {
+				if (swipe_end != g) std::move(g, g + m, swipe_end);
+				swipe_end += m;
+			} else {
+				if (anti_targets.empty()) anti_targets.reserve((size_t)(target_end - g));
+				anti_targets.insert(anti_targets.end(), std::make_move_iterator(g), std::make_move_iterator(g + m));
+			}
+			g += m;
+		}
+		if (swipe_end == target_begin)
+			return banded_3frame_antidiag(query, strand, anti_targets.begin(), anti_targets.end(), stat, true);
+		if (!anti_targets.empty()) {
+			vector<DpTarget> ov16, ov32;
+			list<Hsp> out = banded_3frame_swipe_targets<ScoreVector<int16_t, SHRT_MIN>>(target_begin, swipe_end, true, query, strand, stat, false, ov16);
+			if (!ov16.empty())
+				out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(ov16.begin(), ov16.end(), true, query, strand, stat, false, ov32));
+			out.splice(out.end(), banded_3frame_antidiag(query, strand, anti_targets.begin(), anti_targets.end(), stat, true));
+			return out;
+		}
+	}
+#endif
 	vector<DpTarget> overflow16, overflow32;
 #if defined (__SSE2__) | defined(__ARM_NEON)
 	TaskTimer timer("Banded 3frame swipe (sort)", parallel ? 3 : UINT_MAX);
-	std::stable_sort(target_begin, target_end);
+	if (!pre_sorted)
+		std::stable_sort(target_begin, target_end);
 	list<Hsp> out;
 	if (parallel) {
 		timer.go("Banded 3frame swipe (run)");
@@ -702,6 +1270,7 @@ list<Hsp> banded_3frame_swipe(const TranslatedSequence &query, Strand strand, ve
 	out.splice(out.end(), banded_3frame_swipe_targets<int32_t>(overflow16.begin(), overflow16.end(), score_only, query, strand, stat, false, overflow32));
 	return out;
 #else
+	(void)pre_sorted;
 	return banded_3frame_swipe_targets<int32_t>(target_begin, target_end, score_only, query, strand, stat, false, overflow32);
 #endif
 }
