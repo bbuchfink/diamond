@@ -116,6 +116,10 @@ struct Block {
 	BlockId oid_count() const {
 		return (BlockId)block2oid_.size();
 	}
+	// Letters of translated frames that were stored empty because they are fully masked.
+	int64_t dropped_frame_letters() const noexcept {
+		return dropped_frame_letters_;
+	}
 	void offset_oids(OId offset);
 
 private:
@@ -131,6 +135,7 @@ private:
 	MaskingTable soft_masking_table_;
 	bool soft_masked_;
 	uint64_t raw_bytes_;
+	int64_t dropped_frame_letters_ = 0;
 
 	friend struct SequenceFile;
 	friend struct BlastVolume;

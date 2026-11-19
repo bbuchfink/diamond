@@ -286,15 +286,18 @@ static void run_query_iteration(const unsigned query_iteration,
 	if (query_iteration > 0)
 		options.query_skip.reset(new vector<bool> (query_aligned));
 
-	if (config.dedup_frames && config.command != ::Config::blastn && align_mode.query_translated && !config.swipe_all)
-		Search::build_frame_dups(options);
+	if (config.command != ::Config::blastn && align_mode.query_translated && !config.swipe_all) {
+		Search::skip_masked_frames(options);
+		if (config.dedup_frames)
+			Search::build_frame_dups(options);
+	}
 
 	if (options.lin_index)
 		config.algo = ::Config::Algo::DOUBLE_INDEXED;
 
 	if (config.algo == ::Config::Algo::AUTO &&
 		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
-			|| query_seqs.letters() > MAX_INDEX_QUERY_SIZE
+			|| query_seqs.letters() + options.query->dropped_frame_letters() > MAX_INDEX_QUERY_SIZE
 			|| (options.db_letters ? options.db_letters.value() : db_file.disk_size()) < MIN_QUERY_INDEXED_DB_SIZE
 			|| config.target_indexed
 			|| config.swipe_all
