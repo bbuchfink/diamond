@@ -454,6 +454,7 @@ Config::Config(int argc, const char **argv, bool check_io, CommandLineParser& pa
 		("xdrop", 'x', "xdrop for ungapped alignment", ungapped_xdrop, 12.3)
 		("reseek-xdrop", 0, "xdrop for ungapped alignment (using --reseek-diags)", reseek_ungapped_xdrop, 20.0)
 		("swipe-xdrop", 0, "xdrop for banded 3-frame swipe alignment in bits (23.8 if given without value)", swipe_xdrop, Option<double>(23.8), 0)
+		("antidiag-swipe", 0, "enable anti-diagonal SIMD kernel for wide-band 3-frame swipe alignment", antidiag_swipe)
 		("ungapped-evalue", 0, "E-value threshold for ungapped filter (auto)", ungapped_evalue_, -1.0)
 		("ungapped-evalue-short", 0, "E-value threshold for ungapped filter (short reads) (auto)", ungapped_evalue_short_, -1.0)
 		("short-query-ungapped-bitscore", 0, "Bit score threshold for ungapped alignments for short queries", short_query_ungapped_bitscore, 25.0)
