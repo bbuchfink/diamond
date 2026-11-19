@@ -17,12 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****/
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
+#include <atomic>
 #include <climits>
 #include <cmath>
+#include <mutex>
+#include <numeric>
+#define _REENTRANT
+#include "ips4o/ips4o.hpp"
 #include "basic/config.h"
 #include "search.h"
 #include "util/math/integer.h"
 #include "util/math/math.h"
+#include "util/parallel/thread_pool.h"
 #include "masking/def.h"
 #include "basic/shape_config.h"
 #include "align/def.h"
@@ -556,59 +563,141 @@ const map<Sensitivity, vector<string>> shape_codes = {
 	{ Sensitivity::LINCLUST_70, { "1110110110111","1111010001101011","1110011100010111","1110101001001000111" } }
 } };
 
-// Translated frames that repeat letter for letter are searched once. Frames are hashed, the first
-// of each group is the representative, and the rest are skipped during seed enumeration; their hits
-// are replayed from the representative in stage 2.
+// Frames, and the sorted frame keys below, are processed in chunks of this many. It is a multiple of 64, so
+// each chunk of frames owns whole bit vector words.
+static constexpr int64_t FRAME_CHUNK = 1 << 16;
+
+static uint64_t frame_hash(const Sequence& seq) {
+	uint64_t h = 1469598103934665603ull;
+	for (Loc j = 0; j < seq.length(); ++j) {
+		h ^= (unsigned char)letter_mask(seq[j]);
+		h *= 1099511628211ull;
+	}
+	return h;
+}
+
+// Frames without an amino acid letter (fully masked by --min-orf) cannot form a seed, so seed
+// enumeration skips them instead of scanning them once per shape.
+void skip_masked_frames(Search::Config& cfg) {
+	TaskTimer timer("Finding fully masked frames");
+	const SequenceSet& seqs = cfg.query->seqs();
+	const BlockId n = seqs.size();
+	const int64_t chunks = (n + FRAME_CHUNK - 1) / FRAME_CHUNK;
+	cfg.frame_skip.reset(new BitVector(n));
+	BitVector& skip = *cfg.frame_skip;
+	std::atomic<int64_t> skipped(0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(std::max(config.threads_, 1), chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		int64_t k = 0;
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i) {
+			const Sequence seq = seqs[i];
+			if (std::none_of(seq.data(), seq.end(), [](Letter l) { return is_amino_acid(letter_mask(l)); })) {
+				skip.set(i);
+				++k;
+			}
+		}
+		skipped += k;
+	});
+	timer.finish();
+	const int64_t s = skipped;
+	*log_stream << "Fully masked frames = " << s << '/' << n << " (" << (n ? 100.0 * s / n : 0.0) << " %)" << endl;
+}
+
+// Translated frames that repeat letter for letter are searched once. Frames are sorted by hash, the first
+// of each group in block order is the representative, and the rest are skipped during seed enumeration;
+// their hits are replayed from the representative in stage 2. Frames already skipped as fully masked are left out.
 void build_frame_dups(Search::Config& cfg) {
 	TaskTimer timer("Building frame duplicate map");
 	const SequenceSet& seqs = cfg.query->seqs();
 	const BlockId n = seqs.size();
-	const size_t table_bits = std::max<size_t>(16, bit_length((int64_t)n) + 1), table_size = (size_t)1 << table_bits;
-	std::vector<uint32_t> table(table_size, UINT32_MAX);
-	std::vector<uint32_t> rep(n, UINT32_MAX);
-	cfg.frame_skip.reset(new std::vector<bool>(n, false));
-	std::vector<uint32_t> dup_count(n, 0);
-	int64_t dups = 0, dup_letters = 0;
+	if (!cfg.frame_skip || cfg.frame_skip->size() != (size_t)n)
+		cfg.frame_skip.reset(new BitVector(n));
+	BitVector& skip = *cfg.frame_skip;
+	const int threads = std::max(config.threads_, 1);
+	const int64_t chunks = (n + FRAME_CHUNK - 1) / FRAME_CHUNK;
 
-	for (BlockId i = 0; i < n; ++i) {
-		const Sequence seq = seqs[i];
-		uint64_t h = 1469598103934665603ull;
-		for (Loc j = 0; j < seq.length(); ++j) {
-			h ^= (unsigned char)letter_mask(seq[j]);
-			h *= 1099511628211ull;
-		}
-		size_t slot = (size_t)(h >> (64 - table_bits));
-		while (true) {
-			const uint32_t e = table[slot];
-			if (e == UINT32_MAX) {
-				table[slot] = i;
-				break;
+	// Each searched frame is keyed by the top half of its hash above its block id, so sorting the keys
+	// brings frames that may be identical together, each group in block order.
+	vector<int64_t> key_begin(chunks + 1, 0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		int64_t k = 0;
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i)
+			k += !skip.get(i);
+		key_begin[c + 1] = k;
+	});
+	std::partial_sum(key_begin.begin(), key_begin.end(), key_begin.begin());
+	vector<uint64_t> keys(key_begin[chunks]);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, chunks), chunks, [&](size_t c, size_t) {
+		const BlockId end = (BlockId)std::min<int64_t>((c + 1) * FRAME_CHUNK, n);
+		uint64_t* key = keys.data() + key_begin[c];
+		for (BlockId i = BlockId(c * FRAME_CHUNK); i < end; ++i)
+			if (!skip.get(i))
+				*key++ = (frame_hash(seqs[i]) & ~uint64_t(UINT32_MAX)) | (uint32_t)i;
+	});
+	ips4o::parallel::sort(keys.begin(), keys.end(), std::less<uint64_t>(), threads);
+
+	// Each group is scanned by the chunk it starts in. A duplicate is recorded as representative << 32 | frame.
+	const int64_t m = keys.size(), key_chunks = (m + FRAME_CHUNK - 1) / FRAME_CHUNK;
+	const auto group = [&keys](int64_t k) { return keys[k] >> 32; };
+	vector<uint64_t> pairs;
+	std::mutex pairs_mtx;
+	std::atomic<int64_t> dup_letters(0);
+	Util::Parallel::scheduled_thread_pool_auto(std::min<int64_t>(threads, key_chunks), key_chunks, [&](size_t c, size_t) {
+		int64_t k = c * FRAME_CHUNK;
+		const int64_t stop = std::min(k + FRAME_CHUNK, m);
+		while (k > 0 && k < stop && group(k) == group(k - 1))
+			++k;
+		vector<uint64_t> found;
+		vector<uint32_t> reps;
+		int64_t letters = 0;
+		while (k < stop) {
+			int64_t end = k + 1;
+			while (end < m && group(end) == group(k))
+				++end;
+			reps.clear();
+			for (; k < end; ++k) {
+				const uint32_t frame = (uint32_t)keys[k];
+				const Sequence seq = seqs[frame];
+				const auto rep = std::find_if(reps.begin(), reps.end(), [&](uint32_t r) {
+					const Sequence other = seqs[r];
+					return other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data());
+				});
+				if (rep == reps.end())
+					reps.push_back(frame);
+				else {
+					found.push_back((uint64_t)*rep << 32 | frame);
+					skip.atomic_set(frame);
+					letters += seq.length();
+				}
 			}
-			const Sequence other = seqs[e];
-			if (other.length() == seq.length() && std::equal(seq.data(), seq.end(), other.data())) {
-				rep[i] = e;
-				(*cfg.frame_skip)[i] = true;
-				++dup_count[e];
-				++dups;
-				dup_letters += seq.length();
-				break;
-			}
-			slot = (slot + 1) & (table_size - 1);
 		}
+		dup_letters += letters;
+		std::lock_guard<std::mutex> lock(pairs_mtx);
+		pairs.insert(pairs.end(), found.begin(), found.end());
+	});
+	vector<uint64_t>().swap(keys);
+	ips4o::parallel::sort(pairs.begin(), pairs.end(), std::less<uint64_t>(), threads);
+
+	const size_t dups = pairs.size();
+	cfg.frame_dup_rep.reset(new BitVector(n));
+	cfg.frame_dup_reps.clear();
+	cfg.frame_dup_begin.clear();
+	cfg.frame_dup_ids.resize(dups);
+	for (size_t d = 0; d < dups; ++d) {
+		const uint32_t rep = uint32_t(pairs[d] >> 32);
+		if (cfg.frame_dup_reps.empty() || cfg.frame_dup_reps.back() != rep) {
+			cfg.frame_dup_reps.push_back(rep);
+			cfg.frame_dup_begin.push_back((uint32_t)d);
+			cfg.frame_dup_rep->set(rep);
+		}
+		cfg.frame_dup_ids[d] = uint32_t(pairs[d]);
 	}
-
-	cfg.frame_dup_begin.assign(n + 1, 0);
-	for (BlockId i = 0; i < n; ++i)
-		cfg.frame_dup_begin[i + 1] = cfg.frame_dup_begin[i] + dup_count[i];
-	cfg.frame_dup_ids.resize(cfg.frame_dup_begin[n]);
-	std::vector<uint32_t> pos(cfg.frame_dup_begin.begin(), cfg.frame_dup_begin.end() - 1);
-	for (BlockId i = 0; i < n; ++i)
-		if (rep[i] != UINT32_MAX)
-			cfg.frame_dup_ids[pos[rep[i]]++] = i;
+	cfg.frame_dup_begin.push_back((uint32_t)dups);
 
 	timer.finish();
 	*log_stream << "Duplicate frames = " << dups << '/' << n << " (" << (n ? 100.0 * dups / n : 0.0) << " %), letters = "
-		<< dup_letters << '/' << seqs.letters() << std::endl;
+		<< dup_letters.load() << '/' << seqs.letters() << ", representatives = " << cfg.frame_dup_reps.size() << std::endl;
 }
 
 int seedp_bits(int shape_weight, int threads, int index_chunks) {
