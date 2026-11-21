@@ -169,6 +169,13 @@ void HitBuffer::plan_bin_groups(uint64_t max_bytes) {
 	const int n = bins();
 	bin_group_end_.assign(n, 0);
 	const bool combine = !config.trace_pt_membuf && !config.swipe_all;
+	// Two buffers of the largest group size are allocated (double buffering) and kept for the
+	// whole alignment phase. Never let a group grow beyond the largest single bin, so that
+	// combining small bins does not raise peak memory above loading bins one at a time (#1008).
+	uint64_t max_bin_bytes = 0;
+	for (int i = 0; i < n; ++i)
+		max_bin_bytes = std::max<uint64_t>(max_bin_bytes, (uint64_t)count_[i] * sizeof(Hit));
+	max_bytes = std::min(max_bytes, max_bin_bytes);
 	int b = 0;
 	while (b < n) {
 		int e = b + 1;
