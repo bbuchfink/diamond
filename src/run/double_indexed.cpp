@@ -297,7 +297,7 @@ static void run_query_iteration(const unsigned query_iteration,
 
 	if (config.algo == ::Config::Algo::AUTO &&
 		(!sensitivity_traits.at(config.sensitivity).support_query_indexed
-			|| query_seqs.letters() > MAX_INDEX_QUERY_SIZE
+			|| query_seqs.letters() + options.query->dropped_frame_letters() > MAX_INDEX_QUERY_SIZE
 			|| (options.db_letters ? options.db_letters.value() : db_file.disk_size()) < MIN_QUERY_INDEXED_DB_SIZE
 			|| config.target_indexed
 			|| config.swipe_all
