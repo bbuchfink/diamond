@@ -74,7 +74,7 @@ Query::Query(BlockId block_id, Statistics& stats, const Search::Config& cfg, std
 		sequence.push_back(cfg.query->seqs()[block_id * contexts + i]);
 	true_aa_length = ::Stats::count_true_aa(sequence.front());
 
-	const Loc qlen = sequence.front().length();
+	const Loc qlen = frame0_length();
 	if (qlen <= config.short_query_max_len)
 		ungapped_cutoff = score_matrix.rawscore(config.short_query_ungapped_bitscore);
 	else if (cfg.ungapped_evalue > 0.0)
@@ -259,7 +259,7 @@ static TargetList extend_chunk(const Query& query,
 		stat.inc(Statistics::MASKED_LAZY, lazy_masking(target_block_ids, target_block_ids + n, *cfg.target, cfg.target_masking));
 
 	pair<FlatArray<SeedHit>, vector<uint32_t>> gf;
-	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query.sequence[0].length() >= GAPPED_FILTER_MIN_QLEN)) {
+	if (cfg.gapped_filter_evalue > 0.0 && config.global_ranking_targets == 0 && (!align_mode.query_translated || query.frame0_length() >= GAPPED_FILTER_MIN_QLEN)) {
 		timer.go("Computing gapped filter");
 		gf = gapped_filter(query, seed_hits, seed_hits_end, target_block_ids, stat, flags, cfg);
 		if (!flag_any(flags, DP::Flags::PARALLEL))
@@ -291,7 +291,7 @@ vector<Match> extend(
 	if (config.log_query || (flag_any(flags, DP::Flags::PARALLEL) && !config.swipe_all))
 		*log_stream << "Query=" << query.title << " Hits=" << l.seed_hits.data_size() << endl;
 
-	const unsigned query_len = (unsigned)query.sequence.front().length();
+	const unsigned query_len = (unsigned)query.frame0_length();
 	const size_t target_count = l.target_block_ids.size();
 	if (cfg.extension_mode == Mode::NONE) { std::sort(l.target_scores.begin(), l.target_scores.end()); return seed_only_matches(query, cfg, l); }
 	const int64_t chunk_size = ranking_chunk_size(target_count, cfg.target->seqs().letters(), cfg.max_target_seqs);

@@ -85,7 +85,7 @@ using TargetVec = vector<ActiveTarget>;
 
 static TargetVec recompute_alt_hsps(const Query& query, TargetVec& targets, const HspValues v, Statistics& stats, std::pmr::memory_resource& pool) {
 	array<DP::Targets, MAX_CONTEXT> dp_targets;
-	const Loc qlen = query.sequence[0].length();
+	const Loc qlen = query.frame0_length();
 	for (auto it = targets.begin(); it != targets.end(); ++it) {
 		const int64_t dp_size = (int64_t)qlen * (int64_t)it->match->seq.length();
 		const ::Stats::TargetMatrix* matrix = it->match->matrix.get();
