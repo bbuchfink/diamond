@@ -104,6 +104,7 @@ static void search_query_offset(const SeedLoc& q,
 	int n = 0;
 	size_t hit_count = 0;
 	work_set.dup_hits.clear();
+	const bool replay = work_set.cfg.frame_dup_rep && work_set.cfg.frame_dup_rep->get(query_id);
 
 	const int interval_mod = config.left_most_interval > 0 ? seed_offset % config.left_most_interval : window_left, interval_overhang = std::max(window_left - interval_mod, 0);
 
@@ -152,7 +153,7 @@ static void search_query_offset(const SeedLoc& q,
 #else
 						work_set.out->write(query_id, (uint64_t)s[*(i + j)], hit_score);
 #endif
-						if (!work_set.cfg.frame_dup_ids.empty())
+						if (replay)
 							work_set.dup_hits.emplace_back((uint64_t)s[*(i + j)], hit_score);
 					}
 #endif
@@ -163,7 +164,9 @@ static void search_query_offset(const SeedLoc& q,
 
 	// Frames identical to this one were skipped during seed enumeration; give them the same hits.
 	if (!work_set.dup_hits.empty()) {
-		const uint32_t begin = work_set.cfg.frame_dup_begin[query_id], end = work_set.cfg.frame_dup_begin[query_id + 1];
+		const vector<uint32_t>& reps = work_set.cfg.frame_dup_reps;
+		const size_t r = std::lower_bound(reps.begin(), reps.end(), (uint32_t)query_id) - reps.begin();
+		const uint32_t begin = work_set.cfg.frame_dup_begin[r], end = work_set.cfg.frame_dup_begin[r + 1];
 		for (uint32_t d = begin; d < end; ++d) {
 			const uint32_t dup = work_set.cfg.frame_dup_ids[d];
 			work_set.out->new_query(dup, seed_offset);

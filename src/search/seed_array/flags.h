@@ -76,7 +76,7 @@ struct EnumCfg {
 	const bool filter_low_complexity_seeds, mask_low_complexity_seeds;
 	const Loc sketch_size;
 	const std::vector<BitVector>* const skip_seed_positions;
-	const std::vector<bool>* skip_seq = nullptr;   // duplicate frames, indexed by block id
+	const BitVector* skip_seq = nullptr;   // fully masked and duplicate frames, indexed by block id
 };
 
 struct SeqInfo {
